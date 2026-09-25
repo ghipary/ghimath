@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calculator, Mail, Instagram, Code, Heart } from 'lucide-react';
+import { Calculator, Mail, Globe, Code, Heart } from 'lucide-react';
 
 const Footer = () => {
   return (
@@ -22,7 +22,7 @@ const Footer = () => {
                 <Mail className="w-5 h-5" />
               </a>
               <a href="#" className="w-10 h-10 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-teal-600 hover:border-teal-600 transition-colors">
-                <Instagram className="w-5 h-5" />
+                <Globe className="w-5 h-5" />
               </a>
               <a href="https://github.com/ghipary/ghimath" target="_blank" rel="noopener noreferrer" className="w-10 h-10 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-teal-600 hover:border-teal-600 transition-colors">
                 <Code className="w-5 h-5" />

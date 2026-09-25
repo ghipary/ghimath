@@ -1,3 +1,52 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ===== ANIMASI CUSTOM ===== */
+@keyframes floatY {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-30px); }
+}
+
+@keyframes floatYReverse {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(30px); }
+}
+
+@keyframes pulseSoft {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.05); }
+}
+
+.animate-float-custom {
+  animation: floatY 4s ease-in-out infinite;
+}
+
+.animate-float-reverse {
+  animation: floatYReverse 5s ease-in-out infinite;
+}
+
+.animate-pulse-soft {
+  animation: pulseSoft 6s ease-in-out infinite;
+}
+
+/* ===== ANIMASI TOMBOL ===== */
+/* Efek tombol saat ditekan */
+button, a[class*="rounded"], a[class*="btn"] {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+button:active, a[class*="rounded"]:active {
+  transform: scale(0.95);
+}
+
+/* Efek hover untuk semua tombol dengan class rounded */
+button:hover, a[class*="rounded"]:hover {
+  transform: translateY(-2px);
+}
+
+/* Khusus tombol CTA utama - efek glow saat di-hover */
+button:focus-visible, a[class*="rounded"]:focus-visible {
+  outline: 2px solid #14b8a6;
+  outline-offset: 2px;
+}
