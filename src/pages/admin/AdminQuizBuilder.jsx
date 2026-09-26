@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import { db } from '../../firebase';
 import { collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp } from 'firebase/firestore';
-import { ArrowLeft, Plus, Trash2, Save, Loader, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Save, Loader, CheckCircle, Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const AdminQuizBuilder = () => {
@@ -84,17 +84,44 @@ const AdminQuizBuilder = () => {
           <button onClick={() => navigate('/admin/materi')} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-teal-600 mb-4">
             <ArrowLeft className="w-4 h-4" /> Kembali ke Kelola Materi
           </button>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Kelola Soal Kuis</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">Total: {questions.length} soal</p>
+          <div className="flex justify-between items-center flex-wrap gap-3">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Kelola Soal Kuis</h1>
+              <p className="text-gray-500 dark:text-gray-400 mt-1">Total: {questions.length} soal</p>
+            </div>
+            <Link 
+              to={`/admin/materi/${materialId}/import`}
+              className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 rounded-xl font-medium transition-colors shadow-md"
+            >
+              <Upload className="w-4 h-4" /> Import Soal 📥
+            </Link>
+          </div>
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
         
-        {/* Form Tambah Soal */}
+        <div className="bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl p-5 text-white shadow-lg">
+          <div className="flex items-start gap-3">
+            <Upload className="w-6 h-6 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="font-bold text-lg mb-1">Males Input Satu-satu? 📥</h3>
+              <p className="text-amber-50 text-sm mb-3">
+                Pakai fitur <strong>Import Soal</strong> — paste banyak soal sekaligus, sistem otomatis memparsing!
+              </p>
+              <Link 
+                to={`/admin/materi/${materialId}/import`}
+                className="inline-flex items-center gap-2 bg-white text-amber-600 font-semibold px-4 py-2 rounded-lg text-sm hover:bg-amber-50 transition-colors"
+              >
+                Coba Sekarang →
+              </Link>
+            </div>
+          </div>
+        </div>
+
         <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border dark:border-slate-800 p-6 md:p-8 space-y-5">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <Plus className="w-5 h-5 text-teal-600" /> Tambah Soal Baru
+            <Plus className="w-5 h-5 text-teal-600" /> Tambah Soal Manual
           </h2>
 
           <div>
@@ -136,7 +163,6 @@ const AdminQuizBuilder = () => {
           </button>
         </form>
 
-        {/* Daftar Soal */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border dark:border-slate-800 p-6 md:p-8">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Daftar Soal</h2>
           {loading ? (
