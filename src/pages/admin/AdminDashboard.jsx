@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import { db } from '../../firebase';
-import { collection, getCountFromServer, query, orderBy, getDocs, limit, where } from 'firebase/firestore';
-import { BookOpen, Users, FileText, PlusCircle, Settings, ListChecks, Loader, ChevronRight, Trophy } from 'lucide-react';
+import { collection, getCountFromServer, query, orderBy, getDocs, limit } from 'firebase/firestore';
+import { BookOpen, Users, FileText, PlusCircle, Settings, ListChecks, Loader, ChevronRight, Trophy, Sparkles, Upload } from 'lucide-react';
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
@@ -45,123 +45,155 @@ const AdminDashboard = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors pb-20">
+    <div className="page-bg transition-colors pb-20 min-h-screen">
+      <div className="grid-pattern"></div>
       <Navbar />
 
-      <div className="bg-white dark:bg-slate-900 border-b dark:border-slate-800 pt-8 pb-12 px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400 font-semibold mb-2">
-            <Settings className="w-4 h-4" /> ADMIN PANEL
-          </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">Dashboard Admin</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">Kelola materi dan pantau aktivitas GhiMath.</p>
+      <div className="page-content max-w-6xl mx-auto px-4 pt-8 sm:pt-12 pb-6">
+        <div className="inline-flex items-center gap-2 bg-white/70 dark:bg-slate-800/60 backdrop-blur-md border border-amber-200/60 dark:border-amber-800/50 px-3 py-1.5 rounded-full text-xs font-semibold text-amber-700 dark:text-amber-400 mb-4 shadow-sm">
+          <Settings className="w-3.5 h-3.5" />
+          ADMIN PANEL
         </div>
+        <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 dark:from-teal-400 dark:via-cyan-400 dark:to-blue-400 bg-clip-text text-transparent mb-2">
+          Dashboard Admin
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400">Kelola materi dan pantau aktivitas GhiMath.</p>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 -mt-6">
+      <div className="page-content max-w-6xl mx-auto px-4 py-4">
         
         {/* Statistik */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg p-6 border dark:border-slate-800">
-            <BookOpen className="w-8 h-8 text-teal-600 mb-3" />
-            <div className="text-3xl font-bold text-gray-900 dark:text-white">
-              {stats.loading ? '…' : stats.materials}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6 sm:mb-8">
+          
+          <div className="card-elevated rounded-2xl p-5 sm:p-6 relative overflow-hidden group hover:-translate-y-1 transition-all">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-teal-400/20 to-cyan-500/10 rounded-full blur-2xl group-hover:scale-150 transition-transform"></div>
+            <div className="relative">
+              <div className="w-11 h-11 bg-gradient-to-br from-teal-400 via-teal-600 to-cyan-600 rounded-xl flex items-center justify-center mb-4 shadow-lg shadow-teal-500/30">
+                <BookOpen className="w-5 h-5 text-white" />
+              </div>
+              <div className="text-3xl font-bold text-gray-900 dark:text-white">
+                {stats.loading ? '…' : stats.materials}
+              </div>
+              <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Total Materi</div>
             </div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">Total Materi</div>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg p-6 border dark:border-slate-800">
-            <Users className="w-8 h-8 text-amber-600 mb-3" />
-            <div className="text-3xl font-bold text-gray-900 dark:text-white">
-              {stats.loading ? '…' : stats.users}
+          <div className="card-elevated rounded-2xl p-5 sm:p-6 relative overflow-hidden group hover:-translate-y-1 transition-all">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-violet-400/20 to-purple-500/10 rounded-full blur-2xl group-hover:scale-150 transition-transform"></div>
+            <div className="relative">
+              <div className="w-11 h-11 bg-gradient-to-br from-violet-500 via-purple-600 to-fuchsia-600 rounded-xl flex items-center justify-center mb-4 shadow-lg shadow-purple-500/30">
+                <Users className="w-5 h-5 text-white" />
+              </div>
+              <div className="text-3xl font-bold text-gray-900 dark:text-white">
+                {stats.loading ? '…' : stats.users}
+              </div>
+              <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Total User</div>
             </div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">Total User</div>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg p-6 border dark:border-slate-800 col-span-2 md:col-span-1">
-            <FileText className="w-8 h-8 text-teal-600 mb-3" />
-            <div className="text-3xl font-bold text-gray-900 dark:text-white">
-              {stats.loading ? '…' : stats.quizResults}
+          <div className="card-elevated rounded-2xl p-5 sm:p-6 relative overflow-hidden group hover:-translate-y-1 transition-all col-span-2 md:col-span-1">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-amber-400/20 to-orange-500/10 rounded-full blur-2xl group-hover:scale-150 transition-transform"></div>
+            <div className="relative">
+              <div className="w-11 h-11 bg-gradient-to-br from-amber-400 via-orange-500 to-pink-500 rounded-xl flex items-center justify-center mb-4 shadow-lg shadow-orange-500/30">
+                <FileText className="w-5 h-5 text-white" />
+              </div>
+              <div className="text-3xl font-bold text-gray-900 dark:text-white">
+                {stats.loading ? '…' : stats.quizResults}
+              </div>
+              <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Kuis Dikerjakan</div>
             </div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">Kuis Dikerjakan</div>
           </div>
         </div>
 
         {/* CTA Upload */}
-        <div className="bg-gradient-to-br from-teal-500 to-teal-700 rounded-2xl shadow-lg p-8 text-white mb-8 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full blur-3xl"></div>
+        <div className="relative overflow-hidden rounded-2xl shadow-xl mb-6 sm:mb-8 p-6 sm:p-8 bg-gradient-to-br from-teal-500 via-cyan-600 to-blue-700 text-white">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-cyan-300/20 rounded-full blur-3xl"></div>
           <div className="relative z-10">
-            <h2 className="text-2xl font-bold mb-2">Upload Materi Baru</h2>
-            <p className="text-teal-100 mb-6">Tambahkan materi baru yang akan langsung muncul di halaman siswa.</p>
+            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm border border-white/30 px-3 py-1 rounded-full text-xs font-semibold mb-4">
+              <Sparkles className="w-3.5 h-3.5" />
+              CEPAT & MUDAH
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold mb-2">Upload Materi Baru</h2>
+            <p className="text-cyan-50 mb-6 text-sm sm:text-base">Tambahkan materi baru yang akan langsung muncul di halaman siswa.</p>
             <Link 
               to="/admin/materi/baru" 
-              className="inline-flex items-center gap-2 bg-white text-teal-700 font-semibold px-6 py-3 rounded-xl hover:bg-teal-50 transition-colors shadow-lg hover:-translate-y-0.5"
+              className="inline-flex items-center gap-2 bg-white text-teal-700 font-bold px-6 py-3 rounded-xl hover:bg-teal-50 transition-all shadow-lg hover:-translate-y-0.5"
             >
-              <PlusCircle className="w-5 h-5" /> Upload Sekarang
+              <Upload className="w-5 h-5" /> Upload Sekarang
             </Link>
           </div>
         </div>
 
         {/* Menu Cepat - 3 KARTU */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          
           <Link 
             to="/admin/materi" 
-            className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm p-6 border dark:border-slate-800 hover:shadow-md hover:border-teal-500 transition-all flex items-center gap-4"
+            className="card-elevated rounded-2xl p-5 sm:p-6 hover:-translate-y-1 hover:shadow-xl transition-all flex items-center gap-4 group"
           >
-            <div className="w-12 h-12 bg-teal-100 dark:bg-teal-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
-              <BookOpen className="w-6 h-6 text-teal-600" />
+            <div className="w-12 h-12 bg-gradient-to-br from-teal-400 to-cyan-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-teal-500/30 group-hover:scale-110 transition-transform">
+              <BookOpen className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-gray-900 dark:text-white">Kelola Materi</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Edit, hapus, publish materi.</p>
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm sm:text-base">Kelola Materi</h3>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Edit, hapus, publish.</p>
             </div>
-            <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
+            <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0 group-hover:text-teal-600 dark:group-hover:text-teal-400 group-hover:translate-x-1 transition-all" />
           </Link>
 
           <Link 
             to="/admin/materi" 
-            className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm p-6 border dark:border-slate-800 hover:shadow-md hover:border-amber-500 transition-all flex items-center gap-4"
+            className="card-elevated rounded-2xl p-5 sm:p-6 hover:-translate-y-1 hover:shadow-xl transition-all flex items-center gap-4 group"
           >
-            <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
-              <ListChecks className="w-6 h-6 text-amber-600" />
+            <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-orange-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-orange-500/30 group-hover:scale-110 transition-transform">
+              <ListChecks className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-gray-900 dark:text-white">Kelola Soal Kuis</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Lihat & kelola soal kuis.</p>
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm sm:text-base">Kelola Soal</h3>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Atur soal kuis.</p>
             </div>
-            <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
+            <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0 group-hover:text-amber-600 dark:group-hover:text-amber-400 group-hover:translate-x-1 transition-all" />
           </Link>
 
-          {/* KARTU BARU - Daftar User */}
           <Link 
             to="/admin/users" 
-            className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm p-6 border dark:border-slate-800 hover:shadow-md hover:border-teal-500 transition-all flex items-center gap-4"
+            className="card-elevated rounded-2xl p-5 sm:p-6 hover:-translate-y-1 hover:shadow-xl transition-all flex items-center gap-4 group"
           >
-            <div className="w-12 h-12 bg-teal-100 dark:bg-teal-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Users className="w-6 h-6 text-teal-600" />
+            <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform">
+              <Users className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-gray-900 dark:text-white">Daftar User</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Lihat progres semua siswa.</p>
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm sm:text-base">Daftar User</h3>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Lihat semua siswa.</p>
             </div>
-            <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
+            <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0 group-hover:text-violet-600 dark:group-hover:text-violet-400 group-hover:translate-x-1 transition-all" />
           </Link>
         </div>
 
         {/* Materi Terbaru */}
         {!stats.loading && recentMaterials.length > 0 && (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border dark:border-slate-800 p-6">
-            <h3 className="font-bold text-gray-900 dark:text-white mb-4">Materi Terbaru</h3>
-            <div className="space-y-3">
+          <div className="card-elevated rounded-2xl p-5 sm:p-6">
+            <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2 text-base sm:text-lg">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-400 to-cyan-600 flex items-center justify-center shadow-md">
+                <Trophy className="w-4 h-4 text-white" />
+              </div>
+              Materi Terbaru
+            </h3>
+            <div className="space-y-2">
               {recentMaterials.map((mat) => (
                 <Link 
                   key={mat.id} 
                   to={`/admin/materi/${mat.id}/edit`}
-                  className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                  className="flex items-center gap-3 p-3 bg-white/50 dark:bg-slate-800/30 hover:bg-gradient-to-r hover:from-teal-50 hover:to-cyan-50 dark:hover:from-slate-800 dark:hover:to-slate-700/50 rounded-lg transition-all border border-transparent hover:border-teal-200/60 dark:hover:border-teal-800/60"
                 >
-                  <div className={`w-2 h-2 rounded-full ${mat.published ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                  <span className="text-gray-700 dark:text-gray-300 flex-1 truncate">{mat.title}</span>
-                  <span className="text-xs text-gray-400">
+                  <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                    mat.published 
+                      ? 'bg-gradient-to-r from-teal-400 to-cyan-500 shadow-sm shadow-teal-500/50' 
+                      : 'bg-gray-300 dark:bg-slate-600'
+                  }`}></div>
+                  <span className="text-sm text-gray-700 dark:text-gray-300 flex-1 truncate font-medium">{mat.title}</span>
+                  <span className="text-xs text-gray-400 flex-shrink-0">
                     {mat.level} • Kelas {mat.grade}
                   </span>
                 </Link>
