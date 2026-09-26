@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { db } from '../firebase';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { BookOpen, Trophy, Clock, ChevronRight, PlayCircle, Loader, Target, TrendingUp } from 'lucide-react';
+import { BookOpen, Trophy, Clock, ChevronRight, PlayCircle, Loader, Target, TrendingUp, Sparkles, Zap } from 'lucide-react';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -116,48 +116,57 @@ const Dashboard = () => {
 
   return (
     <div className="page-bg transition-colors pb-20">
+      <div className="grid-pattern"></div>
       <Navbar />
 
-      <div className="max-w-5xl mx-auto px-3 sm:px-4 pt-8 sm:pt-12 pb-8">
+      <div className="page-content max-w-5xl mx-auto px-3 sm:px-4 pt-8 sm:pt-12 pb-8">
         
-        {/* Header Sapaan */}
+        {/* Header Sapaan dengan badge */}
         <div className="mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">
+          <div className="inline-flex items-center gap-2 bg-white/60 dark:bg-slate-800/60 backdrop-blur-md border border-teal-200/50 dark:border-teal-800/50 px-3 py-1.5 rounded-full text-xs font-semibold text-teal-700 dark:text-teal-400 mb-4 shadow-sm">
+            <Sparkles className="w-3.5 h-3.5" />
+            Selamat datang kembali!
+          </div>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2">
             Halo, {userData?.name || 'Siswa'}! 👋
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
+          <p className="text-gray-600 dark:text-gray-400">
             Jenjang: <span className="font-semibold text-teal-600 dark:text-teal-400">{userData?.level || 'Belum dipilih'}</span>
           </p>
         </div>
 
         {/* PROGRESS CARD */}
-        <div className="card-elevated rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8">
+        <div className="card-elevated card-accent rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8">
           <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
-            <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-md">
+            <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 via-orange-500 to-pink-500 flex items-center justify-center shadow-lg shadow-orange-500/30">
                 <Trophy className="w-5 h-5 text-white" />
               </div>
               Progress Belajarmu
             </h2>
-            <span className="text-xs sm:text-sm font-semibold text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30 px-3 py-1.5 rounded-full">
+            <span className="text-xs sm:text-sm font-semibold text-teal-700 dark:text-teal-400 bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-900/40 dark:to-cyan-900/40 px-3 py-1.5 rounded-full border border-teal-200/50 dark:border-teal-800/50">
               {stats.completedCount} / {stats.totalPublished} materi
             </span>
           </div>
-          <div className="w-full bg-gray-200 dark:bg-slate-700/50 rounded-full h-4 mb-2 overflow-hidden">
+          <div className="w-full bg-gradient-to-r from-gray-100 to-gray-200 dark:from-slate-700/50 dark:to-slate-700/30 rounded-full h-4 mb-2 overflow-hidden shadow-inner">
             <div 
-              className="bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 h-4 rounded-full transition-all duration-500 shadow-md" 
+              className="bg-gradient-to-r from-teal-400 via-teal-500 to-cyan-500 h-4 rounded-full transition-all duration-700 shadow-lg relative overflow-hidden" 
               style={{ width: `${stats.progressPercent}%` }}
-            ></div>
+            >
+              {stats.progressPercent > 0 && (
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse"></div>
+              )}
+            </div>
           </div>
           <div className="flex justify-between items-center text-xs sm:text-sm">
             <span className="text-gray-500 dark:text-gray-400">
               {stats.inProgressCount > 0 && (
-                <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
-                  <TrendingUp className="w-4 h-4" /> {stats.inProgressCount} sedang dibaca
+                <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium">
+                  <Zap className="w-4 h-4" /> {stats.inProgressCount} sedang dibaca
                 </span>
               )}
             </span>
-            <span className="text-gray-600 dark:text-gray-300 font-bold">
+            <span className="text-gray-700 dark:text-gray-200 font-bold">
               {stats.progressPercent}% Selesai
             </span>
           </div>
@@ -168,8 +177,8 @@ const Dashboard = () => {
           <div className="md:col-span-2 space-y-4 sm:space-y-6">
             {/* Lanjutkan Belajar */}
             <div className="card-elevated rounded-2xl p-4 sm:p-6">
-              <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-500 to-teal-700 flex items-center justify-center shadow-md">
+              <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 via-teal-600 to-cyan-600 flex items-center justify-center shadow-lg shadow-teal-500/30">
                   <Clock className="w-5 h-5 text-white" />
                 </div>
                 Lanjutkan Belajar
@@ -177,10 +186,10 @@ const Dashboard = () => {
               {lastMaterial ? (
                 <Link 
                   to={`/materi/${lastMaterial.materialId}`}
-                  className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-slate-800 dark:to-slate-800/50 rounded-xl hover:from-teal-100 hover:to-cyan-100 dark:hover:from-slate-700 dark:hover:to-slate-700/50 transition-all border border-teal-100 dark:border-slate-700"
+                  className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-gradient-to-r from-teal-50/80 via-cyan-50/80 to-white dark:from-slate-800/80 dark:via-slate-800/50 dark:to-slate-800/30 rounded-xl hover:from-teal-100 hover:to-cyan-100 dark:hover:from-slate-700 dark:hover:to-slate-700/50 transition-all border border-teal-200/60 dark:border-slate-700 shadow-sm hover:shadow-md"
                 >
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white dark:bg-slate-700 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
-                    <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-teal-600 dark:text-teal-400" />
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md">
+                    <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white truncate">
@@ -191,16 +200,16 @@ const Dashboard = () => {
                     </p>
                     {lastMaterial.percentage > 0 && !lastMaterial.completed && (
                       <div className="mt-2">
-                        <div className="w-full bg-white dark:bg-slate-800 rounded-full h-1.5">
+                        <div className="w-full bg-white dark:bg-slate-800 rounded-full h-1.5 shadow-inner">
                           <div 
-                            className="bg-gradient-to-r from-amber-400 to-amber-500 h-1.5 rounded-full" 
+                            className="bg-gradient-to-r from-amber-400 to-orange-500 h-1.5 rounded-full shadow-sm" 
                             style={{ width: `${Math.min(100, lastMaterial.percentage)}%` }}
                           ></div>
                         </div>
                       </div>
                     )}
                   </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                  <ChevronRight className="w-5 h-5 text-teal-600 dark:text-teal-400 flex-shrink-0" />
                 </Link>
               ) : (
                 <p className="text-gray-500 dark:text-gray-400 text-sm text-center py-4">
@@ -211,8 +220,8 @@ const Dashboard = () => {
 
             {/* Rekomendasi */}
             <div className="card-elevated rounded-2xl p-4 sm:p-6">
-              <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-md">
+              <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 via-purple-600 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
                   <PlayCircle className="w-5 h-5 text-white" />
                 </div>
                 Rekomendasi Untukmu
@@ -223,11 +232,11 @@ const Dashboard = () => {
                     <Link 
                       key={mat.id}
                       to={`/materi/${mat.id}`}
-                      className="flex items-center gap-3 p-2.5 sm:p-3 hover:bg-teal-50 dark:hover:bg-slate-800 rounded-lg transition-colors border border-transparent hover:border-teal-100 dark:hover:border-slate-700"
+                      className="flex items-center gap-3 p-2.5 sm:p-3 bg-white/50 dark:bg-slate-800/30 hover:bg-gradient-to-r hover:from-violet-50 hover:to-fuchsia-50 dark:hover:from-slate-800 dark:hover:to-slate-700/50 rounded-lg transition-all border border-transparent hover:border-violet-200/60 dark:hover:border-violet-800/60"
                     >
-                      <div className="w-2 h-2 rounded-full bg-gradient-to-r from-teal-400 to-teal-600 flex-shrink-0"></div>
+                      <div className="w-2 h-2 rounded-full bg-gradient-to-r from-violet-400 to-fuchsia-500 flex-shrink-0 shadow-sm"></div>
                       <span className="text-sm text-gray-700 dark:text-gray-300 flex-1 truncate">{mat.title}</span>
-                      <span className="text-xs text-gray-400 flex-shrink-0">{mat.level} {mat.grade}</span>
+                      <span className="text-xs text-gray-400 flex-shrink-0 font-medium">{mat.level} {mat.grade}</span>
                     </Link>
                   ))}
                 </div>
@@ -240,41 +249,48 @@ const Dashboard = () => {
           </div>
 
           <div className="space-y-4 sm:space-y-6">
+            
+            {/* Total Skor - lebih vibrant */}
             <Link 
               to="/leaderboard"
-              className="block card-elevated rounded-2xl p-4 sm:p-6 hover:shadow-xl transition-all group"
+              className="block relative overflow-hidden rounded-2xl p-4 sm:p-6 bg-gradient-to-br from-amber-400 via-orange-500 to-pink-500 text-white shadow-xl hover:shadow-2xl transition-all group hover:-translate-y-1"
             >
-              <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center justify-between">
-                Total Skor Kuis
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
-                  <Trophy className="w-5 h-5 text-white" />
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-yellow-300/30 rounded-full blur-2xl"></div>
+              <div className="relative z-10">
+                <h2 className="text-base sm:text-lg font-bold mb-4 flex items-center justify-between">
+                  Total Skor Kuis
+                  <Trophy className="w-6 h-6 group-hover:rotate-12 transition-transform" />
+                </h2>
+                <div className="text-center py-3 sm:py-4">
+                  <div className="text-5xl sm:text-6xl font-extrabold drop-shadow-lg">
+                    {totalScore}
+                  </div>
+                  <p className="text-xs sm:text-sm text-white/90 mt-2 font-medium">
+                    dari {quizCount} kuis
+                  </p>
+                  <div className="mt-4 bg-white/20 backdrop-blur-sm rounded-lg py-2 text-xs font-semibold border border-white/30">
+                    🏆 Lihat Ranking →
+                  </div>
                 </div>
-              </h2>
-              <div className="text-center py-3 sm:py-4">
-                <div className="text-4xl sm:text-5xl font-extrabold bg-gradient-to-r from-teal-500 to-teal-700 dark:from-teal-400 dark:to-teal-500 bg-clip-text text-transparent">
-                  {totalScore}
-                </div>
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-2">
-                  dari {quizCount} kuis
-                </p>
-                <p className="text-xs text-amber-600 dark:text-amber-400 mt-3 font-semibold">
-                  🏆 Lihat Ranking →
-                </p>
               </div>
             </Link>
             
+            {/* Pilih Materi - teal gradient */}
             <Link 
               to="/materi"
-              className="block relative overflow-hidden bg-gradient-to-br from-teal-500 via-teal-600 to-cyan-700 rounded-2xl shadow-lg p-4 sm:p-6 text-white hover:shadow-2xl transition-all group"
+              className="block relative overflow-hidden bg-gradient-to-br from-teal-500 via-cyan-600 to-blue-700 rounded-2xl shadow-xl hover:shadow-2xl p-4 sm:p-6 text-white transition-all group hover:-translate-y-1"
             >
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
-              <div className="absolute bottom-0 left-0 w-24 h-24 bg-amber-400/20 rounded-full blur-2xl"></div>
+              <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700"></div>
+              <div className="absolute bottom-0 left-0 w-32 h-32 bg-cyan-300/20 rounded-full blur-2xl"></div>
               <div className="relative z-10">
-                <Target className="w-7 h-7 sm:w-8 sm:h-8 mb-3" />
+                <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center mb-3 border border-white/30">
+                  <Target className="w-6 h-6" />
+                </div>
                 <h3 className="font-bold text-base sm:text-lg mb-2">Mau uji kemampuan?</h3>
-                <p className="text-teal-100 text-xs sm:text-sm mb-4">Pilih materi dan kerjakan kuisnya.</p>
-                <div className="w-full bg-white text-teal-700 font-semibold py-2 rounded-lg text-center text-sm">
-                  Pilih Materi
+                <p className="text-cyan-50 text-xs sm:text-sm mb-4">Pilih materi dan kerjakan kuisnya.</p>
+                <div className="w-full bg-white/95 backdrop-blur-sm text-teal-700 font-bold py-2.5 rounded-lg text-center text-sm shadow-lg group-hover:bg-white transition-all">
+                  Pilih Materi →
                 </div>
               </div>
             </Link>

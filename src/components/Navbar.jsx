@@ -21,7 +21,7 @@ const Navbar = () => {
   const linkClass = (path) => {
     const base = "font-medium transition-colors relative";
     if (isActive(path)) {
-      return `${base} text-teal-600 dark:text-teal-400 after:absolute after:-bottom-1 after:left-0 after:right-0 after:h-0.5 after:bg-teal-600 dark:after:bg-teal-400 after:rounded-full`;
+      return `${base} text-teal-600 dark:text-teal-400 after:absolute after:-bottom-1 after:left-0 after:right-0 after:h-0.5 after:bg-gradient-to-r after:from-teal-500 after:to-cyan-500 after:rounded-full`;
     }
     return `${base} text-gray-700 dark:text-gray-300 hover:text-teal-600 dark:hover:text-teal-400`;
   };
@@ -76,15 +76,15 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/70 dark:bg-slate-900/70 backdrop-blur-lg border-b border-gray-200/50 dark:border-slate-700/50">
+    <nav className="sticky top-0 z-50 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-b border-gray-200/60 dark:border-slate-700/60 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           
-          <Link to="/" className="flex items-center gap-2 cursor-pointer">
-            <div className="w-9 h-9 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl flex items-center justify-center shadow-md">
+          <Link to="/" className="flex items-center gap-2 cursor-pointer group">
+            <div className="w-10 h-10 bg-gradient-to-br from-teal-400 via-teal-600 to-cyan-600 rounded-xl flex items-center justify-center shadow-lg shadow-teal-500/30 group-hover:scale-105 transition-transform">
               <Calculator className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-teal-600 to-cyan-600 dark:from-teal-400 dark:to-cyan-400 bg-clip-text text-transparent">GhiMath</span>
+            <span className="text-xl font-bold bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 dark:from-teal-400 dark:via-cyan-400 dark:to-blue-400 bg-clip-text text-transparent">GhiMath</span>
           </Link>
 
           <div className="hidden md:flex items-center gap-6">
@@ -95,7 +95,7 @@ const Navbar = () => {
             </Link>
             
             {isAdmin && (
-              <Link to="/admin" className={`flex items-center gap-1 ${isActive('/admin') ? 'text-amber-600 dark:text-amber-400 font-bold after:absolute after:-bottom-1 after:left-0 after:right-0 after:h-0.5 after:bg-amber-500 after:rounded-full relative' : 'text-amber-600 dark:text-amber-400 font-medium hover:underline'}`}>
+              <Link to="/admin" className={`flex items-center gap-1 ${isActive('/admin') ? 'text-amber-600 dark:text-amber-400 font-bold after:absolute after:-bottom-1 after:left-0 after:right-0 after:h-0.5 after:bg-gradient-to-r after:from-amber-400 after:to-orange-500 after:rounded-full relative' : 'text-amber-600 dark:text-amber-400 font-medium hover:underline'}`}>
                 <Settings className="w-4 h-4" /> Admin
               </Link>
             )}
@@ -119,7 +119,9 @@ const Navbar = () => {
             ) : (
               <>
                 <Link to="/login" className="text-teal-600 dark:text-teal-400 font-medium hover:underline">Masuk</Link>
-                <Link to="/register" className="bg-gradient-to-r from-teal-500 to-teal-700 hover:from-teal-600 hover:to-teal-800 text-white px-5 py-2 rounded-xl font-medium transition-all shadow-md">Daftar</Link>
+                <Link to="/register" className="bg-gradient-to-r from-teal-500 via-cyan-600 to-teal-600 hover:from-teal-600 hover:to-cyan-700 text-white px-5 py-2 rounded-xl font-medium transition-all shadow-lg shadow-teal-500/30">
+                  Daftar
+                </Link>
               </>
             )}
           </div>
@@ -159,7 +161,7 @@ const Navbar = () => {
             ) : (
               <>
                 <Link to="/login" className="block px-3 py-2 text-teal-600 font-medium">Masuk</Link>
-                <Link to="/register" className="block px-3 py-2 mt-1 bg-gradient-to-r from-teal-500 to-teal-700 text-white text-center rounded-xl font-medium shadow-md">Daftar</Link>
+                <Link to="/register" className="block px-3 py-2 mt-1 bg-gradient-to-r from-teal-500 to-cyan-600 text-white text-center rounded-xl font-medium shadow-lg">Daftar</Link>
               </>
             )}
           </div>
