@@ -20,6 +20,12 @@ const MaterialList = () => {
   const topics = ['Semua', 'Aljabar', 'Geometri', 'Statistika', 'Trigonometri', 'Kalkulus', 'Bilangan'];
   const grades = ['Semua', 7, 8, 9, 10, 11, 12];
 
+  // Strip HTML tag untuk preview di card
+  const stripHtml = (html) => {
+    if (!html) return '';
+    return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -51,8 +57,9 @@ const MaterialList = () => {
 
   const filteredMaterials = useMemo(() => {
     return materials.filter((mat) => {
+      const descText = stripHtml(mat.description).toLowerCase();
       const matchSearch = mat.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          mat.description.toLowerCase().includes(searchTerm.toLowerCase());
+                          descText.includes(searchTerm.toLowerCase());
       const matchTopic = selectedTopic === 'Semua' || mat.topic === selectedTopic;
       const matchGrade = selectedGrade === 'Semua' || mat.grade === selectedGrade;
       return matchSearch && matchTopic && matchGrade;
@@ -128,6 +135,7 @@ const MaterialList = () => {
               const isCompleted = progress?.completed === true;
               const isOpened = !!progress;
               const percent = isCompleted ? 100 : (progress?.percentage || 0);
+              const descPreview = stripHtml(mat.description);
 
               return (
                 <Link 
@@ -142,7 +150,6 @@ const MaterialList = () => {
                         : 'border-gray-100 dark:border-slate-800 hover:shadow-lg hover:-translate-y-1 hover:border-teal-300'
                   }`}
                 >
-                  {/* BADGE */}
                   {isCompleted && (
                     <div className="absolute top-3 right-3 bg-teal-500 text-white text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-lg z-10">
                       <CheckCircle className="w-3.5 h-3.5" /> Selesai
@@ -160,7 +167,7 @@ const MaterialList = () => {
                   )}
 
                   <div className="p-6">
-                    <div className="flex items-center gap-2 mb-4">
+                    <div className="flex items-center gap-2 mb-4 flex-wrap">
                       <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${mat.level === 'SMP' ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}>
                         {mat.level}
                       </span>
@@ -194,9 +201,8 @@ const MaterialList = () => {
                         {mat.title}
                       </h3>
                     </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-4">{mat.description}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-4">{descPreview}</p>
 
-                    {/* PROGRESS BAR (kalau sudah dibuka) */}
                     {isOpened && !isCompleted && (
                       <div className="mb-4">
                         <div className="flex items-center justify-between text-xs text-amber-600 dark:text-amber-400 mb-1">
@@ -242,7 +248,6 @@ const MaterialList = () => {
         )}
       </div>
 
-      {/* MODAL LOGIN */}
       {showLoginModal && (
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in"

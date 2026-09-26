@@ -7,46 +7,267 @@
   0%, 100% { transform: translateY(0px); }
   50% { transform: translateY(-30px); }
 }
-
 @keyframes floatYReverse {
   0%, 100% { transform: translateY(0px); }
   50% { transform: translateY(30px); }
 }
-
 @keyframes pulseSoft {
   0%, 100% { opacity: 0.4; transform: scale(1); }
   50% { opacity: 0.6; transform: scale(1.05); }
 }
-
-.animate-float-custom {
-  animation: floatY 4s ease-in-out infinite;
-}
-
-.animate-float-reverse {
-  animation: floatYReverse 5s ease-in-out infinite;
-}
-
-.animate-pulse-soft {
-  animation: pulseSoft 6s ease-in-out infinite;
-}
+.animate-float-custom { animation: floatY 4s ease-in-out infinite; }
+.animate-float-reverse { animation: floatYReverse 5s ease-in-out infinite; }
+.animate-pulse-soft { animation: pulseSoft 6s ease-in-out infinite; }
 
 /* ===== ANIMASI TOMBOL ===== */
-/* Efek tombol saat ditekan */
 button, a[class*="rounded"], a[class*="btn"] {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
-
-button:active, a[class*="rounded"]:active {
-  transform: scale(0.95);
-}
-
-/* Efek hover untuk semua tombol dengan class rounded */
-button:hover, a[class*="rounded"]:hover {
-  transform: translateY(-2px);
-}
-
-/* Khusus tombol CTA utama - efek glow saat di-hover */
+button:active, a[class*="rounded"]:active { transform: scale(0.95); }
+button:hover, a[class*="rounded"]:hover { transform: translateY(-2px); }
 button:focus-visible, a[class*="rounded"]:focus-visible {
   outline: 2px solid #14b8a6;
   outline-offset: 2px;
+}
+
+/* ============================================= */
+/* ===== HYBRID FONT: Angka Matematika ======== */
+/* ============================================= */
+/* Huruf tetap Plus Jakarta Sans, angka & simbol pakai STIX Two Math */
+
+@font-face {
+  font-family: 'MathHybrid';
+  src: local('STIX Two Math'), local('STIXTwoMath-Regular');
+  unicode-range:
+    U+0030-0039,  /* 0-9 */
+    U+002B,       /* + */
+    U+002D,       /* - */
+    U+003D,       /* = */
+    U+00D7,       /* × */
+    U+00F7,       /* ÷ */
+    U+00B1,       /* ± */
+    U+2212,       /* − minus matematika */
+    U+2260,       /* ≠ */
+    U+2264,       /* ≤ */
+    U+2265,       /* ≥ */
+    U+221A,       /* √ */
+    U+221E,       /* ∞ */
+    U+03C0,       /* π */
+    U+2026,       /* … */
+    U+00B2,       /* ² */
+    U+00B3,       /* ³ */
+    U+00B9,       /* ¹ */
+    U+00BC-00BE,  /* ¼ ½ ¾ */
+    U+2150-215F,  /* pecahan lain */
+    U+2070-2079,  /* superscript 0-9 */
+    U+2080-2089;  /* subscript 0-9 */
+}
+
+/* ===== QUILL EDITOR ===== */
+.ql-container {
+  font-family: 'MathHybrid', 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-size: 1rem;
+  min-height: 200px;
+}
+.ql-editor {
+  min-height: 200px;
+  line-height: 1.7;
+  font-family: 'MathHybrid', 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+.ql-editor h1 { font-size: 1.8rem; font-weight: 700; margin: 1rem 0 0.5rem; }
+.ql-editor h2 { font-size: 1.4rem; font-weight: 700; margin: 1rem 0 0.5rem; }
+.ql-editor h3 { font-size: 1.2rem; font-weight: 600; margin: 0.8rem 0 0.4rem; }
+.ql-editor p { margin: 0.5rem 0; }
+.ql-editor ul {
+  list-style-type: disc !important;
+  padding-left: 1.75rem !important;
+  margin: 0.75rem 0 !important;
+}
+.ql-editor ol {
+  list-style-type: decimal !important;
+  padding-left: 1.75rem !important;
+  margin: 0.75rem 0 !important;
+}
+.ql-editor li {
+  display: list-item !important;
+  margin: 0.35rem 0 !important;
+}
+.ql-editor blockquote {
+  border-left: 4px solid #14b8a6;
+  padding-left: 1rem;
+  margin: 1rem 0;
+  font-style: italic;
+  color: #64748b;
+}
+
+.ql-toolbar {
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  background: #f8fafc;
+}
+.ql-container {
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+}
+
+.dark .ql-toolbar { background: #1e293b; border-color: #334155; }
+.dark .ql-container { background: #0f172a; border-color: #334155; color: #e2e8f0; }
+.dark .ql-editor.ql-blank::before { color: #64748b; }
+.dark .ql-toolbar .ql-stroke { stroke: #cbd5e1; }
+.dark .ql-toolbar .ql-fill { fill: #cbd5e1; }
+.dark .ql-toolbar .ql-picker-label { color: #cbd5e1; }
+.dark .ql-toolbar .ql-picker-options { background: #1e293b; border-color: #334155; }
+.dark .ql-toolbar button:hover .ql-stroke { stroke: #14b8a6; }
+.dark .ql-toolbar button:hover .ql-fill { fill: #14b8a6; }
+.dark .ql-toolbar button.ql-active .ql-stroke { stroke: #14b8a6; }
+.dark .ql-toolbar button.ql-active .ql-fill { fill: #14b8a6; }
+
+/* ============================================= */
+/* ==== KONTEN MATERI — PAKSA WRAP NORMAL ===== */
+/* ============================================= */
+
+.material-content {
+  line-height: 1.8;
+  color: #1e293b;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
+  hyphens: none !important;
+  font-family: 'MathHybrid', 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+.dark .material-content { color: #e2e8f0; }
+
+/* ⚡ SELECTOR SUPER AGRESIF — semua elemen */
+.material-content * {
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
+  hyphens: none !important;
+  -webkit-hyphens: none !important;
+  -ms-hyphens: none !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+  font-family: 'MathHybrid', 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+.material-content h1 {
+  font-size: clamp(1.25rem, 5vw, 1.75rem);
+  font-weight: 700;
+  margin: 1.25rem 0 0.6rem;
+  color: #0f172a;
+}
+.dark .material-content h1 { color: #f1f5f9; }
+
+.material-content h2 {
+  font-size: clamp(1.1rem, 4.5vw, 1.35rem);
+  font-weight: 700;
+  margin: 1rem 0 0.5rem;
+  color: #0f172a;
+}
+.dark .material-content h2 { color: #f1f5f9; }
+
+.material-content h3 {
+  font-size: clamp(1rem, 4vw, 1.15rem);
+  font-weight: 600;
+  margin: 0.85rem 0 0.4rem;
+  color: #0f172a;
+}
+.dark .material-content h3 { color: #f1f5f9; }
+
+.material-content p {
+  margin: 0.6rem 0;
+}
+
+.material-content ul {
+  list-style-type: disc !important;
+  padding-left: 1.4rem !important;
+  margin: 0.6rem 0 !important;
+}
+.material-content ol {
+  list-style-type: decimal !important;
+  padding-left: 1.4rem !important;
+  margin: 0.6rem 0 !important;
+}
+.material-content li {
+  display: list-item !important;
+  margin: 0.3rem 0 !important;
+  padding-left: 0.15rem;
+}
+
+.material-content blockquote {
+  border-left: 4px solid #14b8a6;
+  padding: 0.5rem 0.85rem;
+  margin: 0.85rem 0;
+  font-style: italic;
+  background: #f0fdfa;
+  border-radius: 0 8px 8px 0;
+}
+.dark .material-content blockquote {
+  background: #134e4a33;
+  color: #99f6e4;
+}
+
+.material-content strong { font-weight: 700; color: #0f172a; }
+.dark .material-content strong { color: #f1f5f9; }
+.material-content em { font-style: italic; }
+
+.material-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  display: block;
+}
+
+.material-content pre,
+.material-content code {
+  white-space: pre-wrap;
+  word-break: break-all !important;
+  overflow-x: auto;
+  max-width: 100%;
+}
+.material-content a {
+  color: #0d9488;
+  text-decoration: underline;
+  word-break: break-all !important;
+}
+.dark .material-content a { color: #2dd4bf; }
+
+/* ===== EXTRA SMALL (iPhone SE) ===== */
+@media (max-width: 375px) {
+  .material-content {
+    font-size: 0.9rem;
+    line-height: 1.75;
+  }
+  .material-content h1 { font-size: 1.15rem; }
+  .material-content h2 { font-size: 1.05rem; }
+  .material-content h3 { font-size: 0.98rem; }
+  .material-content ul,
+  .material-content ol {
+    padding-left: 1.15rem !important;
+  }
+}
+
+@media (min-width: 376px) and (max-width: 640px) {
+  .material-content {
+    font-size: 0.95rem;
+    line-height: 1.75;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  .material-content {
+    font-size: 1rem;
+    line-height: 1.8;
+  }
+}
+
+@media (min-width: 1025px) {
+  .material-content {
+    font-size: 1.05rem;
+    line-height: 1.85;
+  }
 }

@@ -4,11 +4,34 @@ import Navbar from '../components/Navbar';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { ArrowLeft, CheckCircle, BookOpen, Video, ListChecks, Loader, Clock, TrendingUp, PauseCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle, BookOpen, Video, ListChecks, Loader, Clock, TrendingUp, PauseCircle, Lock, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const TARGET_SECONDS = 900; // 15 menit = 100%
-const AUTO_SAVE_INTERVAL = 30000; // 30 detik
+const TARGET_SECONDS = 900;
+const AUTO_SAVE_INTERVAL = 30000;
+
+// ⚡ Sanitize HTML dari Quill — hapus inline style & karakter aneh
+const sanitizeHtml = (html) => {
+  if (!html) return '';
+  return html
+    // Hapus semua inline style
+    .replace(/\sstyle="[^"]*"/gi, '')
+    .replace(/\sstyle='[^']*'/gi, '')
+    // Hapus semua class (termasuk ql-*)
+    .replace(/\sclass="[^"]*"/gi, '')
+    .replace(/\sclass='[^']*'/gi, '')
+    // Hapus atribut ql-* lainnya
+    .replace(/\sdata-[a-z-]+="[^"]*"/gi, '')
+    // Hapus zero-width space, zero-width joiner, BOM
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    // Hapus soft hyphen
+    .replace(/\u00AD/g, '')
+    // Ganti &nbsp; jadi spasi biasa
+    .replace(/&nbsp;/g, ' ')
+    // Hapus tag span kosong (sisa Quill)
+    .replace(/<span[^>]*>/gi, '')
+    .replace(/<\/span>/gi, '');
+};
 
 const MaterialDetail = () => {
   const { id } = useParams();
@@ -20,21 +43,20 @@ const MaterialDetail = () => {
   const [readingSeconds, setReadingSeconds] = useState(0);
   const [percentage, setPercentage] = useState(0);
   const [isTabActive, setIsTabActive] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const readingSecondsRef = useRef(0);
-  const isCompletedRef = useRef(false);
 
-  // Helper hitung persen
   const calcPercent = (sec) => Math.min(100, Math.round((sec / TARGET_SECONDS) * 100));
 
-  // Helper format waktu mm:ss
   const fmtTime = (sec) => {
     const m = Math.floor(sec / 60);
     const s = sec % 60;
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  // ===== Fetch materi + progress =====
+  const isHtml = (str) => str && /<[a-z][\s\S]*>/i.test(str);
+
   useEffect(() => {
     const fetchMaterial = async () => {
       try {
@@ -61,7 +83,6 @@ const MaterialDetail = () => {
           readingSecondsRef.current = existingSeconds;
           setPercentage(calcPercent(existingSeconds));
           setIsCompleted(existingCompleted);
-          isCompletedRef.current = existingCompleted;
 
           await setDoc(progressRef, {
             userId: user.uid,
@@ -84,42 +105,32 @@ const MaterialDetail = () => {
     fetchMaterial();
   }, [id, navigate, user]);
 
-  // ===== Cek tab aktif (visibility API) =====
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      setIsTabActive(!document.hidden);
-    };
+    const handleVisibilityChange = () => setIsTabActive(!document.hidden);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     setIsTabActive(!document.hidden);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
-  // ===== Timer display pakai requestAnimationFrame (LEBIH SMOOTH) =====
   useEffect(() => {
-    if (loading || !user || !isTabActive) return;
-    
+    if (loading || !user || !isTabActive || isCompleted) return;
     let lastTick = Date.now();
     let rafId;
-
     const tick = () => {
       const now = Date.now();
       const elapsed = Math.floor((now - lastTick) / 1000);
-      
       if (elapsed >= 1) {
         lastTick += elapsed * 1000;
         readingSecondsRef.current += elapsed;
         setReadingSeconds(readingSecondsRef.current);
         setPercentage(calcPercent(readingSecondsRef.current));
       }
-      
       rafId = requestAnimationFrame(tick);
     };
-
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
-  }, [loading, user, isTabActive]);
+  }, [loading, user, isTabActive, isCompleted]);
 
-  // ===== Auto-save setiap 30 detik =====
   useEffect(() => {
     if (loading || !user) return;
     const interval = setInterval(async () => {
@@ -137,7 +148,6 @@ const MaterialDetail = () => {
     return () => clearInterval(interval);
   }, [loading, user, id]);
 
-  // ===== Save saat keluar halaman =====
   useEffect(() => {
     return () => {
       if (!user || loading) return;
@@ -150,20 +160,16 @@ const MaterialDetail = () => {
     };
   }, [user, id, loading]);
 
-  // ===== Tandai Selesai =====
   const handleTandaiSelesai = async () => {
-    if (!user) return;
+    if (!user || isCompleted) return;
     try {
-      const newStatus = !isCompleted;
-      setIsCompleted(newStatus);
-      isCompletedRef.current = newStatus;
-
-      if (newStatus && readingSecondsRef.current < TARGET_SECONDS) {
+      setSaving(true);
+      setIsCompleted(true);
+      if (readingSecondsRef.current < TARGET_SECONDS) {
         readingSecondsRef.current = TARGET_SECONDS;
         setReadingSeconds(TARGET_SECONDS);
         setPercentage(100);
       }
-
       await setDoc(doc(db, 'progress', `${user.uid}_${id}`), {
         userId: user.uid,
         materialId: id,
@@ -171,21 +177,18 @@ const MaterialDetail = () => {
         materialLevel: material.level,
         materialGrade: material.grade,
         materialTopic: material.topic,
-        completed: newStatus,
-        completedAt: newStatus ? serverTimestamp() : null,
+        completed: true,
+        completedAt: serverTimestamp(),
         readingSeconds: readingSecondsRef.current,
-        percentage: newStatus ? 100 : calcPercent(readingSecondsRef.current),
+        percentage: 100,
         lastOpenedAt: serverTimestamp(),
       }, { merge: true });
-
-      if (newStatus) {
-        toast.success('Materi ditandai selesai! ✅');
-      } else {
-        toast('Materi ditandai belum selesai', { icon: '↩️' });
-      }
+      toast.success('Materi ditandai selesai! ✅');
     } catch (error) {
       toast.error('Gagal menyimpan: ' + error.message);
+      setIsCompleted(false);
     }
+    setSaving(false);
   };
 
   const getYoutubeEmbedUrl = (url) => {
@@ -209,16 +212,21 @@ const MaterialDetail = () => {
   if (!material) return null;
 
   const finalPercent = isCompleted ? 100 : percentage;
+  const cleanContent = sanitizeHtml(material.content);
+  const cleanDescription = sanitizeHtml(material.description);
+  const hasContent = cleanContent && cleanContent.replace(/<[^>]*>/g, '').trim().length > 0;
+  const hasPdf = material.fileUrl && material.fileUrl.trim().length > 0;
+  const descIsHtml = isHtml(cleanDescription);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors pb-20">
       <Navbar />
-      <div className="bg-white dark:bg-slate-900 border-b dark:border-slate-800 py-6 px-4">
+      <div className="bg-white dark:bg-slate-900 border-b dark:border-slate-800 py-6 px-3 sm:px-4">
         <div className="max-w-5xl mx-auto">
           <button onClick={() => navigate('/materi')} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-teal-600 mb-4 transition-colors">
             <ArrowLeft className="w-4 h-4" /> Kembali ke Daftar Materi
           </button>
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
             <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${material.level === 'SMP' ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}>
               {material.level}
             </span>
@@ -226,17 +234,18 @@ const MaterialDetail = () => {
             <span className="text-sm text-gray-400">•</span>
             <span className="text-sm text-gray-500 dark:text-gray-400">{material.topic}</span>
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">{material.title}</h1>
-          <p className="text-gray-600 dark:text-gray-400">{material.description}</p>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+            {material.title}
+          </h1>
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="max-w-5xl mx-auto px-3 sm:px-4 py-6 sm:py-8">
         
-        {/* ===== PROGRESS BAR CARD ===== */}
+        {/* PROGRESS BAR */}
         {user && (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border dark:border-slate-800 p-6 mb-6">
-            <div className="flex items-center justify-between mb-3">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border dark:border-slate-800 p-4 sm:p-6 mb-4 sm:mb-6">
+            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 {isCompleted ? (
                   <CheckCircle className="w-5 h-5 text-teal-600" />
@@ -245,84 +254,127 @@ const MaterialDetail = () => {
                 ) : (
                   <PauseCircle className="w-5 h-5 text-amber-600" />
                 )}
-                <h3 className="font-bold text-gray-900 dark:text-white">
-                  {isCompleted 
-                    ? 'Materi Selesai ✅' 
-                    : isTabActive 
-                      ? 'Progress Baca Kamu' 
-                      : 'Timer Dijeda ⏸️'}
+                <h3 className="font-bold text-gray-900 dark:text-white text-sm sm:text-base">
+                  {isCompleted ? 'Materi Selesai ✅' : isTabActive ? 'Progress Baca Kamu' : 'Timer Dijeda ⏸️'}
                 </h3>
               </div>
               <div className="flex items-center gap-3 text-sm">
                 <span className={`flex items-center gap-1 ${!isTabActive && !isCompleted ? 'text-amber-600 dark:text-amber-400' : 'text-gray-500 dark:text-gray-400'}`}>
                   <Clock className="w-4 h-4" /> {fmtTime(readingSeconds)}
                 </span>
-                <span className="font-bold text-teal-600 dark:text-teal-400">
-                  {finalPercent}%
-                </span>
+                <span className="font-bold text-teal-600 dark:text-teal-400">{finalPercent}%</span>
               </div>
             </div>
-
             <div className="w-full bg-gray-200 dark:bg-slate-800 rounded-full h-3 mb-2 overflow-hidden">
               <div 
-                className={`h-3 rounded-full transition-all duration-500 ${
-                  isCompleted 
-                    ? 'bg-gradient-to-r from-teal-500 to-teal-600' 
-                    : 'bg-gradient-to-r from-teal-400 to-teal-500'
-                }`}
+                className={`h-3 rounded-full transition-all duration-500 ${isCompleted ? 'bg-gradient-to-r from-teal-500 to-teal-600' : 'bg-gradient-to-r from-teal-400 to-teal-500'}`}
                 style={{ width: `${finalPercent}%` }}
               ></div>
             </div>
-
             <p className="text-xs text-gray-500 dark:text-gray-400">
               {isCompleted 
                 ? 'Kamu sudah menyelesaikan materi ini. Bagus! 🎉' 
-                : !isTabActive
-                  ? '⏸️ Timer dijeda karena kamu pindah tab. Balik ke sini untuk melanjutkan.'
+                : !isTabActive 
+                  ? '⏸️ Timer dijeda karena kamu pindah tab.' 
                   : finalPercent >= 100 
-                    ? 'Progress sudah 100%! Klik "Tandai Selesai" untuk konfirmasi.' 
+                    ? 'Progress sudah 100%! Klik "Tandai Selesai".' 
                     : `Baca terus untuk menambah progress. Target 15 menit baca.`
               }
             </p>
           </div>
         )}
 
-        {/* ===== PDF VIEWER ===== */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border dark:border-slate-800 overflow-hidden mb-6">
-          <div className="flex items-center gap-2 px-6 py-4 border-b dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50">
-            <BookOpen className="w-5 h-5 text-teal-600" />
-            <h2 className="font-bold text-gray-900 dark:text-white">Materi Bacaan (PDF)</h2>
-          </div>
-          <iframe src={material.fileUrl} title={material.title} className="w-full h-[500px] md:h-[700px] bg-gray-100 dark:bg-slate-800" />
-        </div>
-
-        {/* ===== VIDEO ===== */}
-        {material.videoUrl && (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border dark:border-slate-800 overflow-hidden mb-6">
-            <div className="flex items-center gap-2 px-6 py-4 border-b dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50">
-              <Video className="w-5 h-5 text-amber-600" />
-              <h2 className="font-bold text-gray-900 dark:text-white">Video Penjelasan</h2>
+        {/* DESKRIPSI */}
+        {cleanDescription && (
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border dark:border-slate-800 overflow-hidden mb-4 sm:mb-6">
+            <div className="flex items-center gap-2 px-4 sm:px-6 py-3 sm:py-4 border-b dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50">
+              <FileText className="w-5 h-5 text-teal-600" />
+              <h2 className="font-bold text-gray-900 dark:text-white text-sm sm:text-base">Tentang Materi</h2>
             </div>
-            <div className="aspect-video">
-              <iframe src={getYoutubeEmbedUrl(material.videoUrl)} title={`Video ${material.title}`} className="w-full h-full" allowFullScreen />
+            <div className="p-3 sm:p-6 md:p-8">
+              {descIsHtml ? (
+                <div 
+                  className="material-content"
+                  dangerouslySetInnerHTML={{ __html: cleanDescription }}
+                />
+              ) : (
+                <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{cleanDescription}</p>
+              )}
             </div>
           </div>
         )}
 
-        {/* ===== TOMBOL AKSI ===== */}
-        <div className="flex flex-col sm:flex-row gap-4">
+        {/* KONTEN MATERI */}
+        {hasContent && (
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border dark:border-slate-800 overflow-hidden mb-4 sm:mb-6">
+            <div className="flex items-center gap-2 px-4 sm:px-6 py-3 sm:py-4 border-b dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50">
+              <BookOpen className="w-5 h-5 text-teal-600" />
+              <h2 className="font-bold text-gray-900 dark:text-white text-sm sm:text-base">Materi Bacaan</h2>
+            </div>
+            <div className="p-3 sm:p-6 md:p-8">
+              <div 
+                className="material-content"
+                dangerouslySetInnerHTML={{ __html: cleanContent }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* PDF FALLBACK */}
+        {!hasContent && hasPdf && (
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border dark:border-slate-800 overflow-hidden mb-4 sm:mb-6">
+            <div className="flex items-center gap-2 px-4 sm:px-6 py-3 sm:py-4 border-b dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50">
+              <BookOpen className="w-5 h-5 text-teal-600" />
+              <h2 className="font-bold text-gray-900 dark:text-white text-sm sm:text-base">Materi Bacaan (PDF)</h2>
+            </div>
+            <iframe src={material.fileUrl} title={material.title} className="w-full h-[400px] sm:h-[500px] md:h-[700px] bg-gray-100 dark:bg-slate-800" />
+          </div>
+        )}
+
+        {/* VIDEO */}
+        {material.videoUrl && (
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border dark:border-slate-800 overflow-hidden mb-4 sm:mb-6">
+            <div className="flex items-center gap-2 px-4 sm:px-6 py-3 sm:py-4 border-b dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50">
+              <Video className="w-5 h-5 text-amber-600" />
+              <h2 className="font-bold text-gray-900 dark:text-white text-sm sm:text-base">Video Penjelasan</h2>
+            </div>
+            <div className="aspect-video">
+              <iframe 
+                src={getYoutubeEmbedUrl(material.videoUrl)} 
+                title={`Video ${material.title}`} 
+                className="w-full h-full" 
+                allowFullScreen 
+              />
+            </div>
+          </div>
+        )}
+
+        {/* TOMBOL AKSI */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
           <button 
             onClick={handleTandaiSelesai} 
-            className={`flex-1 flex items-center justify-center gap-2 font-semibold py-4 rounded-xl transition-all ${
+            disabled={isCompleted || saving}
+            className={`flex-1 flex items-center justify-center gap-2 font-semibold py-3.5 sm:py-4 rounded-xl transition-all text-sm sm:text-base ${
               isCompleted 
-                ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 hover:bg-teal-200' 
-                : 'bg-white dark:bg-slate-900 border-2 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-white hover:border-teal-600'
+                ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 cursor-not-allowed' 
+                : 'bg-white dark:bg-slate-900 border-2 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-white hover:border-teal-600 cursor-pointer'
             }`}
           >
-            <CheckCircle className="w-5 h-5" />
-            {isCompleted ? 'Sudah Ditandai Selesai' : 'Tandai Selesai 100%'}
+            {isCompleted ? (
+              <>
+                <Lock className="w-5 h-5" /> Sudah Selesai (Permanen)
+              </>
+            ) : (
+              <>
+                <CheckCircle className="w-5 h-5" />
+                {saving ? 'Menyimpan...' : 'Tandai Selesai 100%'}
+              </>
+            )}
           </button>
-          <Link to={`/materi/${material.id}/kuis`} className="flex-1 flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-semibold py-4 rounded-xl transition-all shadow-lg hover:shadow-xl">
+          <Link 
+            to={`/materi/${material.id}/kuis`} 
+            className="flex-1 flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3.5 sm:py-4 rounded-xl transition-all shadow-lg hover:shadow-xl text-sm sm:text-base"
+          >
             <ListChecks className="w-5 h-5" /> Latihan Soal
           </Link>
         </div>
