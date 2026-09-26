@@ -5,6 +5,7 @@ import { db } from '../../firebase';
 import { collection, addDoc, doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
 import { Save, ArrowLeft, FileText, Video, Link as LinkIcon, Info } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const AdminMaterialForm = () => {
   const { id } = useParams();
@@ -100,7 +101,7 @@ const AdminMaterialForm = () => {
           createdAt: serverTimestamp()
         });
       }
-      alert(isEdit ? 'Materi berhasil diupdate!' : 'Materi berhasil diupload!');
+      toast.success(isEdit ? 'Materi berhasil diupdate! ✅' : 'Materi berhasil diupload! 🎉');
       navigate('/admin/materi');
     } catch (err) {
       console.error(err);

@@ -3,8 +3,9 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { db } from '../firebase';
-import { doc, getDoc, updateDoc, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { User, Mail, GraduationCap, Trophy, Clock, Edit2, Save, X, LogOut, Loader, BookOpen } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const Profile = () => {
   const { user, logout } = useAuth();
@@ -16,16 +17,13 @@ const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Form state untuk edit
   const [editName, setEditName] = useState('');
   const [editLevel, setEditLevel] = useState('');
 
-  // Ambil data user & riwayat kuis
   useEffect(() => {
     const fetchData = async () => {
       if (!user) return;
       try {
-        // 1. Ambil data user dari Firestore
         const userRef = doc(db, 'users', user.uid);
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
@@ -35,15 +33,36 @@ const Profile = () => {
           setEditLevel(data.level || 'SMP');
         }
 
-        // 2. Ambil riwayat kuis dari koleksi quizResults
+        // Query TANPA orderBy — sort di JavaScript
         const q = query(
           collection(db, 'quizResults'),
-          where('userId', '==', user.uid),
-          orderBy('completedAt', 'desc')
+          where('userId', '==', user.uid)
         );
         const qSnap = await getDocs(q);
-        const history = qSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        setQuizHistory(history);
+        const allResults = qSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+        // Sort: paling awal duluan (untuk ambil attempt pertama)
+        allResults.sort((a, b) => {
+          const dateA = a.completedAt?.toDate() || 0;
+          const dateB = b.completedAt?.toDate() || 0;
+          return dateA - dateB;
+        });
+
+        // Dedupe: 1 skor pertama per materi
+        const seenMaterials = new Map();
+        allResults.forEach((r) => {
+          if (!seenMaterials.has(r.materialId)) {
+            seenMaterials.set(r.materialId, r);
+          }
+        });
+        const deduped = Array.from(seenMaterials.values())
+          .sort((a, b) => {
+            const dateA = a.completedAt?.toDate() || 0;
+            const dateB = b.completedAt?.toDate() || 0;
+            return dateB - dateA;
+          });
+
+        setQuizHistory(deduped);
       } catch (error) {
         console.error('Gagal ambil data:', error);
       }
@@ -52,7 +71,6 @@ const Profile = () => {
     fetchData();
   }, [user]);
 
-  // Simpan perubahan profil
   const handleSave = async () => {
     try {
       setSaving(true);
@@ -62,22 +80,21 @@ const Profile = () => {
       });
       setUserData({ ...userData, name: editName, level: editLevel });
       setIsEditing(false);
-      alert('Profil berhasil diperbarui!');
+      toast.success('Profil berhasil diperbarui! ✅');
     } catch (error) {
-      alert('Gagal menyimpan: ' + error.message);
+      toast.error('Gagal menyimpan: ' + error.message);
     }
     setSaving(false);
   };
 
-  // Logout
   const handleLogout = async () => {
     if (window.confirm('Yakin ingin keluar?')) {
       await logout();
+      toast.success('Berhasil keluar. Sampai jumpa! 👋');
       navigate('/');
     }
   };
 
-  // Hitung rata-rata skor
   const averageScore = quizHistory.length > 0
     ? Math.round(quizHistory.reduce((acc, curr) => acc + curr.score, 0) / quizHistory.length)
     : 0;
@@ -94,7 +111,6 @@ const Profile = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors pb-20">
       <Navbar />
 
-      {/* Header Profil */}
       <div className="bg-white dark:bg-slate-900 border-b dark:border-slate-800 pt-8 pb-8 px-4">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2">Profil Saya</h1>
@@ -104,16 +120,13 @@ const Profile = () => {
 
       <div className="max-w-4xl mx-auto px-4 -mt-6 space-y-6">
 
-        {/* Kartu Info User */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg border dark:border-slate-800 p-6 md:p-8">
           <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
             
-            {/* Avatar */}
             <div className="w-20 h-20 bg-teal-100 dark:bg-teal-900/30 rounded-full flex items-center justify-center flex-shrink-0">
               <User className="w-10 h-10 text-teal-600 dark:text-teal-400" />
             </div>
 
-            {/* Info & Form Edit */}
             <div className="flex-1 w-full">
               {isEditing ? (
                 <div className="space-y-3">
@@ -163,7 +176,6 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* Statistik Singkat */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border dark:border-slate-800 p-5 text-center">
             <Trophy className="w-7 h-7 text-amber-500 mx-auto mb-2" />
@@ -176,17 +188,21 @@ const Profile = () => {
             <div className="text-xs text-gray-500 dark:text-gray-400">Kuis Dikerjakan</div>
           </div>
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border dark:border-slate-800 p-5 text-center col-span-2 md:col-span-1">
-            <Clock className="w-7 h-7 text-blue-600 mx-auto mb-2" />
+            <Clock className="w-7 h-7 text-teal-600 mx-auto mb-2" />
             <div className="text-2xl font-bold text-gray-900 dark:text-white">
-              {quizHistory.length > 0 ? new Date(quizHistory[0].completedAt?.toDate()).toLocaleDateString('id-ID') : '-'}
+              {quizHistory.length > 0 && quizHistory[0].completedAt 
+                ? new Date(quizHistory[0].completedAt.toDate()).toLocaleDateString('id-ID') 
+                : '-'}
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400">Kuis Terakhir</div>
           </div>
         </div>
 
-        {/* Riwayat Skor Kuis */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border dark:border-slate-800 p-6 md:p-8">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Riwayat Skor Kuis</h3>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Riwayat Skor Kuis</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+            Nilai pertama per materi (permanen & tidak bisa diubah)
+          </p>
           {quizHistory.length === 0 ? (
             <p className="text-gray-500 text-center py-6">Belum ada riwayat kuis. Ayo kerjakan kuis pertamamu!</p>
           ) : (
@@ -218,7 +234,6 @@ const Profile = () => {
             </div>
           )}
         </div>
-
       </div>
     </div>
   );

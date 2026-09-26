@@ -4,6 +4,7 @@ import Navbar from '../../components/Navbar';
 import { db } from '../../firebase';
 import { collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp } from 'firebase/firestore';
 import { ArrowLeft, Plus, Trash2, Save, Loader, CheckCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const AdminQuizBuilder = () => {
   const { id: materialId } = useParams();
@@ -27,6 +28,7 @@ const AdminQuizBuilder = () => {
       setQuestions(data);
     } catch (error) {
       console.error('Gagal ambil soal:', error);
+      toast.error('Gagal memuat soal');
     }
     setLoading(false);
   };
@@ -41,9 +43,8 @@ const AdminQuizBuilder = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Validasi
-    if (!formData.question.trim()) return alert('Pertanyaan tidak boleh kosong!');
-    if (formData.options.some((opt) => !opt.trim())) return alert('Semua 4 opsi harus diisi!');
+    if (!formData.question.trim()) return toast.error('Pertanyaan tidak boleh kosong!');
+    if (formData.options.some((opt) => !opt.trim())) return toast.error('Semua 4 opsi harus diisi!');
 
     try {
       setSaving(true);
@@ -55,11 +56,11 @@ const AdminQuizBuilder = () => {
         explanation: formData.explanation,
         createdAt: serverTimestamp()
       });
-      alert('Soal berhasil ditambahkan!');
+      toast.success('Soal berhasil ditambahkan! ✏️');
       setFormData({ question: '', options: ['', '', '', ''], correctAnswer: 0, explanation: '' });
       fetchQuestions();
     } catch (error) {
-      alert('Gagal menyimpan: ' + error.message);
+      toast.error('Gagal menyimpan: ' + error.message);
     }
     setSaving(false);
   };
@@ -69,9 +70,9 @@ const AdminQuizBuilder = () => {
     try {
       await deleteDoc(doc(db, 'quizQuestions', questionId));
       setQuestions(questions.filter((q) => q.id !== questionId));
-      alert('Soal berhasil dihapus!');
+      toast.success('Soal berhasil dihapus! 🗑️');
     } catch (error) {
-      alert('Gagal menghapus: ' + error.message);
+      toast.error('Gagal menghapus: ' + error.message);
     }
   };
 

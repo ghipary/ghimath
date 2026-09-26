@@ -4,6 +4,7 @@ import Navbar from '../../components/Navbar';
 import { db } from '../../firebase';
 import { collection, getDocs, deleteDoc, doc, orderBy, query } from 'firebase/firestore';
 import { PlusCircle, Edit, Trash2, Eye, EyeOff, Loader, ListChecks } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const AdminMaterialList = () => {
   const [materials, setMaterials] = useState([]);
@@ -17,6 +18,7 @@ const AdminMaterialList = () => {
       setMaterials(data);
     } catch (error) {
       console.error('Gagal ambil materi:', error);
+      toast.error('Gagal memuat materi');
     }
     setLoading(false);
   };
@@ -28,9 +30,9 @@ const AdminMaterialList = () => {
       try {
         await deleteDoc(doc(db, 'materials', id));
         setMaterials(materials.filter((m) => m.id !== id));
-        alert('Materi berhasil dihapus!');
+        toast.success('Materi berhasil dihapus! 🗑️');
       } catch (error) {
-        alert('Gagal menghapus: ' + error.message);
+        toast.error('Gagal menghapus: ' + error.message);
       }
     }
   };
@@ -91,7 +93,6 @@ const AdminMaterialList = () => {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end gap-2">
-                          {/* TOMBOL KELOLA SOAL (BARU) */}
                           <Link 
                             to={`/admin/materi/${mat.id}/soal`} 
                             className="p-2 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 text-amber-600 transition-colors" 
@@ -99,7 +100,6 @@ const AdminMaterialList = () => {
                           >
                             <ListChecks className="w-4 h-4" />
                           </Link>
-                          {/* TOMBOL EDIT */}
                           <Link 
                             to={`/admin/materi/${mat.id}/edit`} 
                             className="p-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 transition-colors"
@@ -107,7 +107,6 @@ const AdminMaterialList = () => {
                           >
                             <Edit className="w-4 h-4" />
                           </Link>
-                          {/* TOMBOL HAPUS */}
                           <button 
                             onClick={() => handleDelete(mat.id, mat.title)} 
                             className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 transition-colors"

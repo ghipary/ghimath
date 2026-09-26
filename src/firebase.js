@@ -3,14 +3,13 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
-// KUNCI LANGSUNG (Hardcode sementara)
 const firebaseConfig = {
-  apiKey: "AIzaSyBUZFXEfjCw56-ArlI4GSUDa5NHDCzZrig",
-  authDomain: "ghimath.firebaseapp.com",
-  projectId: "ghimath",
-  storageBucket: "ghimath.firebasestorage.app",
-  messagingSenderId: "828678194030",
-  appId: "1:828678194030:web:a93f66531fa2a75187b77f"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 const app = initializeApp(firebaseConfig);

@@ -4,7 +4,7 @@ import Navbar from '../components/Navbar';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { Clock, CheckCircle, XCircle, RotateCcw, ArrowLeft, ListChecks, Loader } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, RotateCcw, ArrowLeft, ListChecks, Loader, AlertTriangle, Trophy } from 'lucide-react';
 
 const Quiz = () => {
   const { id } = useParams();
@@ -13,41 +13,55 @@ const Quiz = () => {
 
   const [material, setMaterial] = useState(null);
   const [questions, setQuestions] = useState([]);
+  const [existingResult, setExistingResult] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState({}); // { questionId: optionIndex }
+  const [answers, setAnswers] = useState({});
   const [finished, setFinished] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
 
-  // Ambil materi & soal
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Ambil info materi
         const matSnap = await getDoc(doc(db, 'materials', id));
         if (matSnap.exists()) setMaterial({ id: matSnap.id, ...matSnap.data() });
 
-        // Ambil soal
         const q = query(collection(db, 'quizQuestions'), where('materialId', '==', id));
         const qSnap = await getDocs(q);
         const data = qSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
         setQuestions(data);
+
+        // Cek apakah user sudah pernah mengerjakan kuis ini
+        if (user) {
+          const rq = query(
+            collection(db, 'quizResults'),
+            where('userId', '==', user.uid),
+            where('materialId', '==', id)
+          );
+          const rSnap = await getDocs(rq);
+          if (!rSnap.empty) {
+            // Ambil yang paling awal (first attempt)
+            const results = rSnap.docs
+              .map((d) => ({ id: d.id, ...d.data() }))
+              .sort((a, b) => (a.completedAt?.toDate() || 0) - (b.completedAt?.toDate() || 0));
+            setExistingResult(results[0]);
+          }
+        }
       } catch (error) {
-        console.error('Gagal ambil soal:', error);
+        console.error('Gagal ambil data:', error);
       }
       setLoading(false);
     };
     fetchData();
-  }, [id]);
+  }, [id, user]);
 
   // Timer
   useEffect(() => {
-    if (loading || finished || questions.length === 0) return;
+    if (loading || finished || questions.length === 0 || existingResult) return;
     const timer = setInterval(() => setElapsedTime((t) => t + 1), 1000);
     return () => clearInterval(timer);
-  }, [loading, finished, questions.length]);
+  }, [loading, finished, questions.length, existingResult]);
 
-  // Hitung skor
   const calculateScore = () => {
     let correct = 0;
     questions.forEach((q) => {
@@ -68,19 +82,21 @@ const Quiz = () => {
     const result = calculateScore();
     setFinished(true);
 
-    // Simpan skor ke Firestore
-    try {
-      await addDoc(collection(db, 'quizResults'), {
-        userId: user.uid,
-        materialId: id,
-        materialTitle: material?.title || 'Materi',
-        score: result.score,
-        correctCount: result.correct,
-        totalQuestions: result.total,
-        completedAt: serverTimestamp()
-      });
-    } catch (error) {
-      console.error('Gagal simpan skor:', error);
+    // Simpan skor ke Firestore (hanya kalau BELUM pernah mengerjakan)
+    if (!existingResult) {
+      try {
+        await addDoc(collection(db, 'quizResults'), {
+          userId: user.uid,
+          materialId: id,
+          materialTitle: material?.title || 'Materi',
+          score: result.score,
+          correctCount: result.correct,
+          totalQuestions: result.total,
+          completedAt: serverTimestamp()
+        });
+      } catch (error) {
+        console.error('Gagal simpan skor:', error);
+      }
     }
   };
 
@@ -90,7 +106,7 @@ const Quiz = () => {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  // === Tampilan LOADING ===
+  // ===== LOADING =====
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-950">
@@ -99,7 +115,7 @@ const Quiz = () => {
     );
   }
 
-  // === Kalau belum ada soal ===
+  // ===== BELUM ADA SOAL =====
   if (questions.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
@@ -116,7 +132,55 @@ const Quiz = () => {
     );
   }
 
-  // === Tampilan HASIL (setelah selesai) ===
+  // ===== SUDAH PERNAH MENGERJAKAN (BLOKIR) =====
+  if (existingResult && !finished) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
+        <Navbar />
+        <div className="max-w-2xl mx-auto px-4 py-16">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl border dark:border-slate-800 p-8 md:p-10 text-center">
+            
+            {/* Ikon */}
+            <div className="w-20 h-20 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+              <AlertTriangle className="w-10 h-10 text-amber-600 dark:text-amber-400" />
+            </div>
+
+            {/* Judul */}
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3">
+              Kamu Sudah Mengerjakan Kuis Ini! 🔒
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-8 leading-relaxed">
+              Setiap kuis hanya bisa dikerjakan <strong>satu kali</strong>. Nilai pertama kamu sudah tercatat dan tidak bisa diganti.
+            </p>
+
+            {/* Kartu Skor */}
+            <div className="bg-gradient-to-br from-teal-500 to-teal-700 rounded-2xl p-6 mb-6 text-white shadow-lg">
+              <Trophy className="w-8 h-8 text-amber-300 mx-auto mb-2" />
+              <p className="text-teal-100 text-sm mb-1">Nilai Kamu</p>
+              <p className="text-5xl font-extrabold mb-2">{existingResult.score}</p>
+              <p className="text-xs text-teal-100">
+                Dikerjakan pada {existingResult.completedAt ? new Date(existingResult.completedAt.toDate()).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}
+              </p>
+            </div>
+
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 text-sm text-amber-700 dark:text-amber-300 mb-6">
+              💡 <strong>Tips:</strong> Sistem ini dibuat agar kamu <strong>berhati-hati saat menjawab</strong>. Nilai yang tercatat adalah hasil pertama kamu.
+            </div>
+
+            {/* Tombol */}
+            <button 
+              onClick={() => navigate(`/materi/${id}`)} 
+              className="w-full flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg"
+            >
+              <ArrowLeft className="w-5 h-5" /> Kembali ke Materi
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ===== HASIL AKHIR =====
   if (finished) {
     const result = calculateScore();
     return (
@@ -182,12 +246,10 @@ const Quiz = () => {
 
           {/* Tombol Aksi */}
           <div className="flex flex-col sm:flex-row gap-4">
-            <button onClick={() => {
-              setFinished(false); setAnswers({}); setCurrentIndex(0); setElapsedTime(0);
-            }} className="flex-1 flex items-center justify-center gap-2 bg-white dark:bg-slate-900 border-2 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-white font-semibold py-4 rounded-xl hover:border-teal-600 transition-all">
-              <RotateCcw className="w-5 h-5" /> Ulangi Kuis
-            </button>
-            <button onClick={() => navigate(`/materi/${id}`)} className="flex-1 flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-semibold py-4 rounded-xl transition-all shadow-lg">
+            <button 
+              onClick={() => navigate(`/materi/${id}`)} 
+              className="flex-1 flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-semibold py-4 rounded-xl transition-all shadow-lg"
+            >
               <ArrowLeft className="w-5 h-5" /> Kembali ke Materi
             </button>
           </div>
@@ -196,7 +258,7 @@ const Quiz = () => {
     );
   }
 
-  // === Tampilan SOAL ===
+  // ===== TAMPILAN SOAL =====
   const currentQ = questions[currentIndex];
   const progress = ((currentIndex + 1) / questions.length) * 100;
   const answeredCount = Object.keys(answers).length;
@@ -206,6 +268,12 @@ const Quiz = () => {
       <Navbar />
       <div className="max-w-3xl mx-auto px-4 py-8">
         
+        {/* Warning Pertama Kali */}
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 mb-4 flex items-start gap-2 text-xs text-amber-700 dark:text-amber-300">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <span><strong>Perhatian:</strong> Kuis ini hanya bisa dikerjakan <strong>sekali</strong>. Jawab dengan hati-hati karena nilai tidak bisa diganti!</span>
+        </div>
+
         {/* Header Progress */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border dark:border-slate-800 p-6 mb-6">
           <div className="flex justify-between items-center mb-3">

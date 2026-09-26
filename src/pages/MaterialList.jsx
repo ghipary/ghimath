@@ -4,12 +4,13 @@ import Navbar from '../components/Navbar';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import { Search, Filter, BookOpen, Clock, Loader, Lock, X } from 'lucide-react';
+import { Search, Filter, BookOpen, Clock, Loader, Lock, X, CheckCircle, BookMarked, TrendingUp } from 'lucide-react';
 
 const MaterialList = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [materials, setMaterials] = useState([]);
+  const [progressMap, setProgressMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTopic, setSelectedTopic] = useState('Semua');
@@ -19,21 +20,34 @@ const MaterialList = () => {
   const topics = ['Semua', 'Aljabar', 'Geometri', 'Statistika', 'Trigonometri', 'Kalkulus', 'Bilangan'];
   const grades = ['Semua', 7, 8, 9, 10, 11, 12];
 
-  // Ambil materi dari Firestore
   useEffect(() => {
-    const fetchMaterials = async () => {
+    const fetchData = async () => {
       try {
         const q = query(collection(db, 'materials'), where('published', '==', true));
         const querySnapshot = await getDocs(q);
         const data = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
         setMaterials(data);
+
+        if (user) {
+          const progressQuery = query(
+            collection(db, 'progress'),
+            where('userId', '==', user.uid)
+          );
+          const progressSnap = await getDocs(progressQuery);
+          const progressData = {};
+          progressSnap.forEach((d) => {
+            const p = d.data();
+            progressData[p.materialId] = p;
+          });
+          setProgressMap(progressData);
+        }
       } catch (error) {
         console.error('Gagal ambil materi:', error);
       }
       setLoading(false);
     };
-    fetchMaterials();
-  }, []);
+    fetchData();
+  }, [user]);
 
   const filteredMaterials = useMemo(() => {
     return materials.filter((mat) => {
@@ -45,7 +59,6 @@ const MaterialList = () => {
     });
   }, [materials, searchTerm, selectedTopic, selectedGrade]);
 
-  // Kalau user belum login, klik materi → tampilkan popup
   const handleCardClick = (e) => {
     if (!user) {
       e.preventDefault();
@@ -66,7 +79,6 @@ const MaterialList = () => {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Search & Filter */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border dark:border-slate-800 p-4 md:p-6 mb-8">
           <div className="relative mb-4">
             <Search className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
@@ -98,7 +110,6 @@ const MaterialList = () => {
           </div>
         </div>
 
-        {/* Hasil */}
         {loading ? (
           <div className="text-center py-20">
             <Loader className="w-10 h-10 text-teal-600 animate-spin mx-auto mb-4" />
@@ -112,47 +123,126 @@ const MaterialList = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredMaterials.map((mat) => (
-              <Link 
-                key={mat.id} 
-                to={`/materi/${mat.id}`}
-                onClick={handleCardClick}
-                className="group bg-white dark:bg-slate-900 rounded-2xl shadow-sm border dark:border-slate-800 hover:shadow-lg hover:-translate-y-1 transition-all overflow-hidden relative"
-              >
-                <div className="p-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${mat.level === 'SMP' ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}>
-                      {mat.level}
-                    </span>
-                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Kelas {mat.grade}</span>
-                    <span className="text-xs font-medium text-gray-400">•</span>
-                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{mat.topic}</span>
-                  </div>
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${mat.level === 'SMP' ? 'bg-teal-50 dark:bg-teal-900/20' : 'bg-amber-50 dark:bg-amber-900/20'}`}>
-                      <BookOpen className={`w-5 h-5 ${mat.level === 'SMP' ? 'text-teal-600 dark:text-teal-400' : 'text-amber-600 dark:text-amber-400'}`} />
+            {filteredMaterials.map((mat) => {
+              const progress = progressMap[mat.id];
+              const isCompleted = progress?.completed === true;
+              const isOpened = !!progress;
+              const percent = isCompleted ? 100 : (progress?.percentage || 0);
+
+              return (
+                <Link 
+                  key={mat.id} 
+                  to={`/materi/${mat.id}`}
+                  onClick={handleCardClick}
+                  className={`group bg-white dark:bg-slate-900 rounded-2xl shadow-sm border-2 transition-all overflow-hidden relative ${
+                    isCompleted 
+                      ? 'border-teal-500 dark:border-teal-500 hover:shadow-lg hover:-translate-y-1' 
+                      : isOpened
+                        ? 'border-amber-400 dark:border-amber-500 hover:shadow-lg hover:-translate-y-1'
+                        : 'border-gray-100 dark:border-slate-800 hover:shadow-lg hover:-translate-y-1 hover:border-teal-300'
+                  }`}
+                >
+                  {/* BADGE */}
+                  {isCompleted && (
+                    <div className="absolute top-3 right-3 bg-teal-500 text-white text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-lg z-10">
+                      <CheckCircle className="w-3.5 h-3.5" /> Selesai
                     </div>
-                    <h3 className="font-bold text-lg text-gray-900 dark:text-white leading-tight group-hover:text-teal-600 transition-colors">{mat.title}</h3>
+                  )}
+                  {!isCompleted && isOpened && (
+                    <div className="absolute top-3 right-3 bg-amber-500 text-white text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-lg z-10">
+                      <BookMarked className="w-3.5 h-3.5" /> {percent}%
+                    </div>
+                  )}
+                  {!user && (
+                    <div className="absolute top-3 right-3 bg-amber-100 dark:bg-amber-900/30 p-1.5 rounded-lg z-10">
+                      <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    </div>
+                  )}
+
+                  <div className="p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${mat.level === 'SMP' ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}>
+                        {mat.level}
+                      </span>
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Kelas {mat.grade}</span>
+                      <span className="text-xs font-medium text-gray-400">•</span>
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{mat.topic}</span>
+                    </div>
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                        isCompleted 
+                          ? 'bg-teal-100 dark:bg-teal-900/30' 
+                          : isOpened 
+                            ? 'bg-amber-50 dark:bg-amber-900/20'
+                            : mat.level === 'SMP' 
+                              ? 'bg-teal-50 dark:bg-teal-900/20' 
+                              : 'bg-amber-50 dark:bg-amber-900/20'
+                      }`}>
+                        {isCompleted ? (
+                          <CheckCircle className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                        ) : (
+                          <BookOpen className={`w-5 h-5 ${
+                            isOpened 
+                              ? 'text-amber-600 dark:text-amber-400'
+                              : mat.level === 'SMP' 
+                                ? 'text-teal-600 dark:text-teal-400' 
+                                : 'text-amber-600 dark:text-amber-400'
+                          }`} />
+                        )}
+                      </div>
+                      <h3 className="font-bold text-lg text-gray-900 dark:text-white leading-tight group-hover:text-teal-600 transition-colors">
+                        {mat.title}
+                      </h3>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-4">{mat.description}</p>
+
+                    {/* PROGRESS BAR (kalau sudah dibuka) */}
+                    {isOpened && !isCompleted && (
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between text-xs text-amber-600 dark:text-amber-400 mb-1">
+                          <span className="flex items-center gap-1">
+                            <TrendingUp className="w-3 h-3" /> Progress
+                          </span>
+                          <span className="font-bold">{percent}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-slate-800 rounded-full h-1.5">
+                          <div 
+                            className="bg-gradient-to-r from-amber-400 to-amber-500 h-1.5 rounded-full transition-all duration-500" 
+                            style={{ width: `${percent}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    )}
+
+                    {isCompleted && (
+                      <div className="mb-4">
+                        <div className="w-full bg-teal-100 dark:bg-teal-900/30 rounded-full h-1.5">
+                          <div className="bg-teal-600 h-1.5 rounded-full" style={{ width: '100%' }}></div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 pt-3 border-t dark:border-slate-800">
+                      <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> 15 menit</span>
+                      <span className={`font-medium ${
+                        isCompleted 
+                          ? 'text-teal-600 dark:text-teal-400' 
+                          : isOpened 
+                            ? 'text-amber-600 dark:text-amber-400'
+                            : 'text-teal-600 dark:text-teal-400'
+                      }`}>
+                        {isCompleted ? 'Baca Ulang →' : isOpened ? 'Lanjutkan →' : 'Baca Materi →'}
+                      </span>
+                    </div>
                   </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-4">{mat.description}</p>
-                  <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 pt-3 border-t dark:border-slate-800">
-                    <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> 15 menit</span>
-                    <span className="text-teal-600 dark:text-teal-400 font-medium">Baca Materi →</span>
-                  </div>
-                </div>
-                {/* Overlay lock kalau belum login */}
-                {!user && (
-                  <div className="absolute top-3 right-3 bg-amber-100 dark:bg-amber-900/30 p-1.5 rounded-lg">
-                    <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  </div>
-                )}
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* ===== MODAL LOGIN ===== */}
+      {/* MODAL LOGIN */}
       {showLoginModal && (
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in"
@@ -162,7 +252,6 @@ const MaterialList = () => {
             className="bg-white dark:bg-slate-900 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative animate-slide-up-delay-1"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Tombol Close */}
             <button 
               onClick={() => setShowLoginModal(false)}
               className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
@@ -170,12 +259,10 @@ const MaterialList = () => {
               <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
             </button>
 
-            {/* Ikon */}
             <div className="w-16 h-16 bg-teal-100 dark:bg-teal-900/30 rounded-2xl flex items-center justify-center mx-auto mb-5">
               <Lock className="w-8 h-8 text-teal-600 dark:text-teal-400" />
             </div>
 
-            {/* Teks */}
             <h3 className="text-2xl font-bold text-gray-900 dark:text-white text-center mb-2">
               Login Dulu Yuk! 🔒
             </h3>
@@ -183,7 +270,6 @@ const MaterialList = () => {
               Untuk membaca materi lengkap, kamu perlu <strong>masuk</strong> atau <strong>daftar</strong> dulu. Gratis, kok!
             </p>
 
-            {/* Tombol */}
             <div className="flex flex-col gap-3">
               <Link 
                 to="/register"
