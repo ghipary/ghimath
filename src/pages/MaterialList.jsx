@@ -51,14 +51,36 @@ const MaterialList = () => {
     fetchData();
   }, [user]);
 
+  // ⚡ SORT BY BAB NUMBER + KELAS
   const filteredMaterials = useMemo(() => {
-    return materials.filter((mat) => {
+    const filtered = materials.filter((mat) => {
       const descText = stripHtml(mat.description).toLowerCase();
       const matchSearch = mat.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           descText.includes(searchTerm.toLowerCase());
       const matchTopic = selectedTopic === 'Semua' || mat.topic === selectedTopic;
       const matchGrade = selectedGrade === 'Semua' || mat.grade === selectedGrade;
       return matchSearch && matchTopic && matchGrade;
+    });
+
+    // Sort: Kelas → Bab Number → Judul
+    return filtered.sort((a, b) => {
+      // 1. Sort by kelas
+      if (a.grade !== b.grade) return a.grade - b.grade;
+
+      // 2. Extract angka "Bab X" dari judul
+      const getBabNumber = (title) => {
+        if (!title) return 999;
+        const match = title.match(/Bab\s+(\d+)/i);
+        return match ? parseInt(match[1]) : 999;
+      };
+
+      const babA = getBabNumber(a.title);
+      const babB = getBabNumber(b.title);
+
+      if (babA !== babB) return babA - babB;
+
+      // 3. Kalau sama, sort alphabetically
+      return (a.title || '').localeCompare(b.title || '');
     });
   }, [materials, searchTerm, selectedTopic, selectedGrade]);
 
@@ -153,7 +175,6 @@ const MaterialList = () => {
                         : ''
                   }`}
                 >
-                  {/* Top accent bar */}
                   <div className={`h-1.5 ${
                     isCompleted 
                       ? 'bg-gradient-to-r from-teal-400 via-cyan-500 to-teal-600' 
