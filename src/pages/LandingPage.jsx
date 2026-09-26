@@ -1,9 +1,49 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import { useAuth } from '../context/AuthContext';
+import { db } from '../firebase';
+import { collection, query, where, getCountFromServer } from 'firebase/firestore';
 import { BookOpen, Trophy, Video, ChevronRight, Sparkles, Users, FileText, Star } from 'lucide-react';
 
 const LandingPage = () => {
+  const { user } = useAuth();
+  const [stats, setStats] = useState({
+    materials: 0,
+    questions: 0,
+    users: 0,
+    loading: true,
+  });
+
+  // Ambil statistik real dari Firestore
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        // 1. Hitung materi yang published
+        const matQuery = query(collection(db, 'materials'), where('published', '==', true));
+        const matSnap = await getCountFromServer(matQuery);
+
+        // 2. Hitung total soal kuis
+        const quizSnap = await getCountFromServer(collection(db, 'quizQuestions'));
+
+        // 3. Hitung total user terdaftar
+        const userSnap = await getCountFromServer(collection(db, 'users'));
+
+        setStats({
+          materials: matSnap.data().count,
+          questions: quizSnap.data().count,
+          users: userSnap.data().count,
+          loading: false,
+        });
+      } catch (error) {
+        console.error('Gagal ambil statistik:', error);
+        setStats(prev => ({ ...prev, loading: false }));
+      }
+    };
+    fetchStats();
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col bg-white dark:bg-slate-950 transition-colors duration-300">
       <Navbar />
@@ -11,23 +51,16 @@ const LandingPage = () => {
       {/* ===== HERO SECTION ===== */}
       <section className="relative flex-1 flex flex-col justify-center items-center text-center px-4 py-20 md:py-32 overflow-hidden">
         
-        {/* Background Pattern Grid */}
         <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,#f1f5f9_1px,transparent_1px),linear-gradient(to_bottom,#f1f5f9_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem]"></div>
         
-        {/* Ornamen Background */}
-        <div 
-          className="absolute top-0 left-1/2 w-96 h-96 bg-teal-300 dark:bg-teal-800/40 rounded-full blur-3xl opacity-60 -z-10 animate-pulse-soft" 
-          style={{ marginLeft: '-12rem' }}
-        ></div>
+        <div className="absolute top-0 left-1/2 w-96 h-96 bg-teal-300 dark:bg-teal-800/40 rounded-full blur-3xl opacity-60 -z-10 animate-pulse-soft" style={{ marginLeft: '-12rem' }}></div>
         <div className="absolute bottom-0 right-0 w-80 h-80 bg-amber-200 dark:bg-amber-800/30 rounded-full blur-3xl opacity-50 -z-10 animate-float-reverse"></div>
 
-        {/* Badge */}
         <div className="inline-flex items-center gap-2 bg-white dark:bg-slate-900 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 px-4 py-2 rounded-full text-sm font-semibold mb-6 shadow-sm animate-fade-in">
           <Sparkles className="w-4 h-4" />
           Media Pembelajaran Interaktif #1
         </div>
 
-        {/* Judul Utama */}
         <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold text-gray-900 dark:text-white leading-[1.1] mb-6 max-w-4xl animate-slide-up-delay-1">
           Belajar Matematika
           <br />
@@ -36,52 +69,59 @@ const LandingPage = () => {
           </span>
         </h1>
 
-        {/* Subjudul */}
         <p className="text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-2xl mb-10 leading-relaxed animate-slide-up-delay-2">
           Materi interaktif, kuis seru, dan pembahasan lengkap untuk siswa{' '}
           <span className="font-semibold text-teal-600 dark:text-teal-400">SMP & SMA</span>.{' '}
           Belajar mandiri kapan saja, di mana saja.
         </p>
 
-        {/* Tombol CTA */}
         <div className="flex flex-col sm:flex-row gap-4 mb-16 animate-slide-up-delay-3">
-          <a 
-            href="/register" 
+          <Link 
+            to={user ? "/dashboard" : "/register"}
             className="group flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-8 py-4 rounded-2xl text-lg font-bold transition-all shadow-lg shadow-teal-600/30 hover:shadow-xl hover:shadow-teal-600/40 hover:-translate-y-0.5"
           >
-            Mulai Belajar Gratis
+            {user ? 'Lanjut Belajar' : 'Mulai Belajar Gratis'}
             <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-          </a>
-          <a 
-            href="/materi" 
+          </Link>
+          <Link 
+            to="/materi" 
             className="flex items-center justify-center gap-2 bg-white dark:bg-slate-900 text-gray-800 dark:text-white border-2 border-gray-200 dark:border-slate-700 hover:border-teal-600 px-8 py-4 rounded-2xl text-lg font-semibold transition-all hover:-translate-y-0.5"
           >
             Lihat Materi
-          </a>
+          </Link>
         </div>
 
-        {/* Stats Section */}
+        {/* ===== STATS SECTION (DINAMIS) ===== */}
         <div className="grid grid-cols-3 gap-6 md:gap-12 max-w-3xl w-full animate-fade-in">
+          
           <div className="text-center hover:scale-110 transition-transform duration-300">
             <div className="flex items-center justify-center gap-2 mb-1">
               <FileText className="w-5 h-5 text-teal-600" />
-              <span className="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white">10+</span>
+              <span className="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white">
+                {stats.loading ? '…' : stats.materials}
+              </span>
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Materi Lengkap</p>
           </div>
+
           <div className="text-center border-x border-gray-200 dark:border-slate-800 hover:scale-110 transition-transform duration-300">
             <div className="flex items-center justify-center gap-2 mb-1">
               <Trophy className="w-5 h-5 text-amber-500" />
-              <span className="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white">100+</span>
+              <span className="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white">
+                {stats.loading ? '…' : stats.questions}
+              </span>
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Soal Kuis</p>
           </div>
+
           <div className="text-center hover:scale-110 transition-transform duration-300">
             <div className="flex items-center justify-center gap-2 mb-1">
               <Users className="w-5 h-5 text-teal-600" />
-              <span className="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white">2</span>
+              <span className="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white">
+                {stats.loading ? '…' : stats.users}
+              </span>
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Jenjang (SMP/SMA)</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Siswa Terdaftar</p>
           </div>
         </div>
       </section>
@@ -102,7 +142,6 @@ const LandingPage = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             
-            {/* Fitur 1: Materi Lengkap */}
             <div className="group bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 dark:border-slate-700 hover:-translate-y-2">
               <div className="w-14 h-14 bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-teal-500/30 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
                 <BookOpen className="w-7 h-7 text-white" />
@@ -115,7 +154,6 @@ const LandingPage = () => {
               </p>
             </div>
 
-            {/* Fitur 2: Kuis Interaktif */}
             <div className="group bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 dark:border-slate-700 hover:-translate-y-2">
               <div className="w-14 h-14 bg-gradient-to-br from-amber-400 to-amber-500 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-amber-500/30 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
                 <Trophy className="w-7 h-7 text-white" />
@@ -128,7 +166,6 @@ const LandingPage = () => {
               </p>
             </div>
 
-            {/* Fitur 3: Video Pembelajaran */}
             <div className="group bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 dark:border-slate-700 hover:-translate-y-2">
               <div className="w-14 h-14 bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-teal-500/30 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
                 <Video className="w-7 h-7 text-white" />
@@ -150,7 +187,6 @@ const LandingPage = () => {
         <div className="max-w-4xl mx-auto">
           <div className="bg-gradient-to-br from-teal-600 to-teal-700 rounded-3xl p-8 md:p-12 text-center shadow-2xl shadow-teal-600/20 relative overflow-hidden">
             
-            {/* Ornamen CTA (sudah diperbaiki) */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/20 rounded-full blur-3xl -z-0 animate-float-custom"></div>
             <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/20 rounded-full blur-3xl -z-0 animate-float-reverse"></div>
             
@@ -162,13 +198,13 @@ const LandingPage = () => {
               <p className="text-teal-100 text-lg mb-8 max-w-xl mx-auto">
                 Daftar gratis sekarang dan rasakan bedanya belajar matematika dengan GhiMath.
               </p>
-              <a 
-                href="/register" 
+              <Link 
+                to={user ? "/dashboard" : "/register"}
                 className="inline-flex items-center gap-2 bg-white text-teal-700 font-bold px-8 py-4 rounded-2xl hover:bg-teal-50 transition-all shadow-lg hover:-translate-y-0.5 hover:scale-105"
               >
-                Daftar Sekarang — Gratis!
+                {user ? 'Lanjut Belajar' : 'Daftar Sekarang — Gratis!'}
                 <ChevronRight className="w-5 h-5" />
-              </a>
+              </Link>
             </div>
           </div>
         </div>

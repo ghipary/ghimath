@@ -16,6 +16,7 @@ import AdminMaterialList from './pages/admin/AdminMaterialList'
 import AdminMaterialForm from './pages/admin/AdminMaterialForm'
 import AdminQuizBuilder from './pages/admin/AdminQuizBuilder'
 import Profile from './pages/Profile'
+import ResetPassword from './pages/ResetPassword';
 
 
 // Komponen Home: Cek status login
@@ -37,6 +38,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           
           {/* Rute Privat (Wajib Login) */}
           <Route 
@@ -47,10 +49,8 @@ function App() {
             path="/dashboard" 
             element={<ProtectedRoute><Dashboard /></ProtectedRoute>} 
           />
-          <Route 
-            path="/materi" 
-            element={<ProtectedRoute><MaterialList /></ProtectedRoute>} 
-          />
+          <Route path="/materi" element={<MaterialList />} />
+
           <Route 
             path="/materi/:id" 
             element={<ProtectedRoute><MaterialDetail /></ProtectedRoute>} 

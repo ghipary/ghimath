@@ -80,7 +80,7 @@ const Login = () => {
           <div>
             <div className="flex justify-between items-center mb-1">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
-              <a href="#" className="text-xs text-teal-600 dark:text-teal-400 hover:underline">Lupa password?</a>
+              <Link to="/reset-password" className="text-xs text-teal-600 dark:text-teal-400 hover:underline">Lupa password?</Link>
             </div>
             <div className="relative">
               <Lock className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
