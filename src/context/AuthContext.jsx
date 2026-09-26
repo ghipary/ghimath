@@ -29,6 +29,8 @@ export const AuthProvider = ({ children }) => {
       role: 'user',
       level: null,
       grade: null,
+      school: '',
+      photoURL: '',
       createdAt: serverTimestamp()
     });
 
@@ -51,6 +53,8 @@ export const AuthProvider = ({ children }) => {
       role: 'user',
       level: null,
       grade: null,
+      school: '',
+      photoURL: newUser.photoURL || '',
       createdAt: serverTimestamp()
     }, { merge: true });
 
@@ -67,7 +71,6 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     });
 
-    // Timeout pengaman: kalau 5 detik belum selesai, paksa loading = false
     const timeoutId = setTimeout(() => {
       setLoading(false);
     }, 5000);

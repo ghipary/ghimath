@@ -14,9 +14,11 @@
     "lucide-react": "^1.48.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "react-easy-crop": "^6.2.3",
     "react-hot-toast": "^2.6.1",
     "react-quill-new": "^3.8.3",
-    "react-router-dom": "^7.18.4"
+    "react-router-dom": "^7.18.4",
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
     "@types/react": "^19.2.18",

@@ -22,14 +22,6 @@ import Profile from './pages/Profile'
 import ResetPassword from './pages/ResetPassword'
 import { Toaster } from 'react-hot-toast'
 
-const Home = () => {
-  const { user, loading } = useAuth();
-  
-  if (loading) return <div className="min-h-screen flex items-center justify-center">Memuat...</div>;
-  
-  return user ? <Dashboard /> : <LandingPage />;
-};
-
 function App() {
   return (
     <AuthProvider>
@@ -51,11 +43,14 @@ function App() {
         />
 
         <Routes>
-          <Route path="/" element={<Home />} />
+          {/* ⚡ Beranda = SELALU Landing Page (promosi) */}
+          <Route path="/" element={<LandingPage />} />
+          
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           
+          {/* Rute Privat */}
           <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/materi" element={<MaterialList />} />
@@ -64,6 +59,7 @@ function App() {
           <Route path="/profil" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
 
+          {/* Rute Admin */}
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
           <Route path="/admin/materi" element={<AdminRoute><AdminMaterialList /></AdminRoute>} />
           <Route path="/admin/materi/baru" element={<AdminRoute><AdminMaterialForm /></AdminRoute>} />

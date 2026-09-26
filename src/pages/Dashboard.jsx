@@ -4,7 +4,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { db } from '../firebase';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { BookOpen, Trophy, Clock, ChevronRight, PlayCircle, Loader, Target, TrendingUp, Sparkles, Zap } from 'lucide-react';
+import { BookOpen, Trophy, Clock, ChevronRight, PlayCircle, Loader, Target, TrendingUp, Sparkles, Zap, BarChart3 } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -114,14 +115,50 @@ const Dashboard = () => {
   const totalScore = quizHistory.reduce((sum, q) => sum + (q.score || 0), 0);
   const quizCount = quizHistory.length;
 
+  // ⚡ Data untuk mini chart (5 kuis terakhir)
+  const miniChartData = [...quizHistory]
+    .slice(-5)
+    .map((q, idx) => ({
+      name: `K${idx + 1}`,
+      fullTitle: q.materialTitle,
+      skor: q.score || 0,
+    }));
+
+  // ⚡ Custom tooltip mini
+  const MiniTooltip = ({ active, payload }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white dark:bg-slate-800 p-2 rounded-lg shadow-xl border border-gray-200 dark:border-slate-700">
+          <p className="text-xs font-bold text-gray-900 dark:text-white">{payload[0].payload.fullTitle}</p>
+          <p className="text-xs text-teal-600 dark:text-teal-400 font-bold">Skor: {payload[0].value}</p>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  // ⚡ Hitung tren (naik/turun)
+  const getTrend = () => {
+    if (miniChartData.length < 2) return null;
+    const first = miniChartData[0].skor;
+    const last = miniChartData[miniChartData.length - 1].skor;
+    const diff = last - first;
+    return {
+      diff,
+      isUp: diff > 0,
+      isFlat: diff === 0,
+    };
+  };
+  const trend = getTrend();
+
   return (
-    <div className="page-bg transition-colors pb-20">
+    <div className="page-bg transition-colors pb-20 min-h-screen">
       <div className="grid-pattern"></div>
       <Navbar />
 
-      <div className="page-content max-w-5xl mx-auto px-3 sm:px-4 pt-8 sm:pt-12 pb-8">
+      <div className="page-content max-w-5xl mx-auto px-3 sm:px-4 pt-8 sm:pt-12 pb-6">
         
-        {/* Header Sapaan dengan badge */}
+        {/* Header Sapaan */}
         <div className="mb-6 sm:mb-8">
           <div className="inline-flex items-center gap-2 bg-white/60 dark:bg-slate-800/60 backdrop-blur-md border border-teal-200/50 dark:border-teal-800/50 px-3 py-1.5 rounded-full text-xs font-semibold text-teal-700 dark:text-teal-400 mb-4 shadow-sm">
             <Sparkles className="w-3.5 h-3.5" />
@@ -132,6 +169,7 @@ const Dashboard = () => {
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
             Jenjang: <span className="font-semibold text-teal-600 dark:text-teal-400">{userData?.level || 'Belum dipilih'}</span>
+            {userData?.grade && <> • Kelas <span className="font-semibold text-teal-600 dark:text-teal-400">{userData.grade}</span></>}
           </p>
         </div>
 
@@ -218,10 +256,72 @@ const Dashboard = () => {
               )}
             </div>
 
+            {/* ⚡ MINI CHART: Tren Skor */}
+            {miniChartData.length >= 2 && (
+              <div className="card-elevated rounded-2xl p-4 sm:p-6">
+                <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                  <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 via-purple-600 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
+                      <TrendingUp className="w-5 h-5 text-white" />
+                    </div>
+                    Tren Skor Kuis
+                  </h2>
+                  
+                  {/* Badge Trend */}
+                  {trend && !trend.isFlat && (
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
+                      trend.isUp 
+                        ? 'bg-gradient-to-r from-teal-100 to-cyan-100 dark:from-teal-900/40 dark:to-cyan-900/40 text-teal-700 dark:text-teal-400' 
+                        : 'bg-gradient-to-r from-amber-100 to-orange-100 dark:from-amber-900/40 dark:to-orange-900/40 text-amber-700 dark:text-amber-400'
+                    }`}>
+                      {trend.isUp ? '📈' : '📉'} {trend.isUp ? '+' : ''}{trend.diff} poin
+                    </span>
+                  )}
+                  {trend && trend.isFlat && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-400">
+                      ➡️ Stabil
+                    </span>
+                  )}
+                </div>
+
+                <div className="w-full h-32 -ml-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={miniChartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                      <XAxis 
+                        dataKey="name" 
+                        tick={{ fontSize: 10, fill: '#94a3b8' }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis 
+                        domain={[0, 100]} 
+                        tick={{ fontSize: 10, fill: '#94a3b8' }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <Tooltip content={<MiniTooltip />} />
+                      <Line 
+                        type="monotone" 
+                        dataKey="skor" 
+                        stroke="#8b5cf6" 
+                        strokeWidth={3}
+                        dot={{ fill: '#8b5cf6', strokeWidth: 2, r: 4, stroke: '#ffffff' }}
+                        activeDot={{ r: 6, fill: '#7c3aed' }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <Link to="/profil" className="mt-3 flex items-center justify-center gap-1.5 text-xs font-semibold text-violet-600 dark:text-violet-400 hover:underline">
+                  <BarChart3 className="w-3.5 h-3.5" /> Lihat detail lengkap di Profil →
+                </Link>
+              </div>
+            )}
+
             {/* Rekomendasi */}
             <div className="card-elevated rounded-2xl p-4 sm:p-6">
               <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 via-purple-600 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 via-cyan-600 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
                   <PlayCircle className="w-5 h-5 text-white" />
                 </div>
                 Rekomendasi Untukmu
@@ -232,9 +332,9 @@ const Dashboard = () => {
                     <Link 
                       key={mat.id}
                       to={`/materi/${mat.id}`}
-                      className="flex items-center gap-3 p-2.5 sm:p-3 bg-white/50 dark:bg-slate-800/30 hover:bg-gradient-to-r hover:from-violet-50 hover:to-fuchsia-50 dark:hover:from-slate-800 dark:hover:to-slate-700/50 rounded-lg transition-all border border-transparent hover:border-violet-200/60 dark:hover:border-violet-800/60"
+                      className="flex items-center gap-3 p-2.5 sm:p-3 bg-white/50 dark:bg-slate-800/30 hover:bg-gradient-to-r hover:from-teal-50 hover:to-cyan-50 dark:hover:from-slate-800 dark:hover:to-slate-700/50 rounded-lg transition-all border border-transparent hover:border-teal-200/60 dark:hover:border-teal-800/60"
                     >
-                      <div className="w-2 h-2 rounded-full bg-gradient-to-r from-violet-400 to-fuchsia-500 flex-shrink-0 shadow-sm"></div>
+                      <div className="w-2 h-2 rounded-full bg-gradient-to-r from-teal-400 to-cyan-500 flex-shrink-0 shadow-sm"></div>
                       <span className="text-sm text-gray-700 dark:text-gray-300 flex-1 truncate">{mat.title}</span>
                       <span className="text-xs text-gray-400 flex-shrink-0 font-medium">{mat.level} {mat.grade}</span>
                     </Link>
@@ -250,7 +350,7 @@ const Dashboard = () => {
 
           <div className="space-y-4 sm:space-y-6">
             
-            {/* Total Skor - lebih vibrant */}
+            {/* Total Skor */}
             <Link 
               to="/leaderboard"
               className="block relative overflow-hidden rounded-2xl p-4 sm:p-6 bg-gradient-to-br from-amber-400 via-orange-500 to-pink-500 text-white shadow-xl hover:shadow-2xl transition-all group hover:-translate-y-1"
@@ -276,7 +376,7 @@ const Dashboard = () => {
               </div>
             </Link>
             
-            {/* Pilih Materi - teal gradient */}
+            {/* Pilih Materi */}
             <Link 
               to="/materi"
               className="block relative overflow-hidden bg-gradient-to-br from-teal-500 via-cyan-600 to-blue-700 rounded-2xl shadow-xl hover:shadow-2xl p-4 sm:p-6 text-white transition-all group hover:-translate-y-1"

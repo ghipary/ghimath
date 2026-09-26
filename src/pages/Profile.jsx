@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { db } from '../firebase';
 import { doc, getDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { User, Mail, GraduationCap, Trophy, Clock, Edit2, Save, X, LogOut, Loader, BookOpen, Sparkles } from 'lucide-react';
+import { User, Mail, GraduationCap, Trophy, Clock, Edit2, Save, X, LogOut, Loader, BookOpen, Sparkles, School, Camera, ZoomIn, ZoomOut, Check, TrendingUp, BarChart3 } from 'lucide-react';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import Cropper from 'react-easy-crop';
 import toast from 'react-hot-toast';
 
 const Profile = () => {
@@ -19,6 +21,17 @@ const Profile = () => {
 
   const [editName, setEditName] = useState('');
   const [editLevel, setEditLevel] = useState('');
+  const [editGrade, setEditGrade] = useState('');
+  const [editSchool, setEditSchool] = useState('');
+  const [editPhoto, setEditPhoto] = useState('');
+
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [cropImage, setCropImage] = useState('');
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -31,6 +44,9 @@ const Profile = () => {
           setUserData(data);
           setEditName(data.name || '');
           setEditLevel(data.level || 'SMP');
+          setEditGrade(data.grade || 7);
+          setEditSchool(data.school || '');
+          setEditPhoto(data.photoURL || '');
         }
 
         const q = query(collection(db, 'quizResults'), where('userId', '==', user.uid));
@@ -65,20 +81,160 @@ const Profile = () => {
     fetchData();
   }, [user]);
 
+  // ⚡ LINE CHART DATA
+  const lineChartData = [...quizHistory]
+    .reverse()
+    .map((q, idx) => ({
+      name: `Kuis ${idx + 1}`,
+      fullTitle: q.materialTitle,
+      skor: q.score || 0,
+    }));
+
+  // ⚡ BAR CHART DATA — deteksi topik dari judul materi
+  const getTopicFromTitle = (title) => {
+    if (!title) return 'Lainnya';
+    const t = title.toLowerCase();
+    if (t.includes('aljabar') || t.includes('persamaan') || t.includes('variabel') || t.includes('kuadrat') || t.includes('plsv') || t.includes('spltv')) return 'Aljabar';
+    if (t.includes('geometri') || t.includes('pythagoras') || t.includes('sudut') || t.includes('garis') || t.includes('segitiga') || t.includes('bangun')) return 'Geometri';
+    if (t.includes('statistik') || t.includes('data') || t.includes('diagram')) return 'Statistika';
+    if (t.includes('trigonometri') || t.includes('sinus') || t.includes('cosinus') || t.includes('tangen')) return 'Trigonometri';
+    if (t.includes('kalkulus') || t.includes('limit') || t.includes('turunan') || t.includes('integral')) return 'Kalkulus';
+    if (t.includes('bilangan')) return 'Bilangan';
+    return 'Lainnya';
+  };
+
+  const topicStats = {};
+  quizHistory.forEach((q) => {
+    const topic = getTopicFromTitle(q.materialTitle);
+    if (!topicStats[topic]) topicStats[topic] = { total: 0, count: 0 };
+    topicStats[topic].total += q.score || 0;
+    topicStats[topic].count += 1;
+  });
+
+  const barChartData = Object.entries(topicStats).map(([topic, data]) => ({
+    topik: topic,
+    rataRata: Math.round(data.total / data.count),
+    jumlah: data.count,
+  })).sort((a, b) => b.rataRata - a.rataRata);
+
+  const getBarColor = (value) => {
+    if (value >= 85) return '#14b8a6';
+    if (value >= 70) return '#06b6d4';
+    if (value >= 50) return '#f59e0b';
+    return '#ef4444';
+  };
+
+  // Custom Tooltips
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white dark:bg-slate-800 p-3 rounded-xl shadow-xl border border-gray-200 dark:border-slate-700">
+          <p className="font-bold text-sm text-gray-900 dark:text-white mb-1">
+            {payload[0].payload.fullTitle || label}
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Skor: <span className="font-bold text-teal-600 dark:text-teal-400">{payload[0].value}</span>
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const BarTooltip = ({ active, payload }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white dark:bg-slate-800 p-3 rounded-xl shadow-xl border border-gray-200 dark:border-slate-700">
+          <p className="font-bold text-sm text-gray-900 dark:text-white mb-1">
+            {payload[0].payload.topik}
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Rata-rata: <span className="font-bold text-teal-600 dark:text-teal-400">{payload[0].value}</span>
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {payload[0].payload.jumlah} kuis
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const handlePhotoUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return toast.error('File harus gambar!');
+    if (file.size > 5 * 1024 * 1024) return toast.error('Max 5MB!');
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setCropImage(event.target.result);
+      setShowCropModal(true);
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
+  const createCroppedImage = async () => {
+    try {
+      if (!cropImage || !croppedAreaPixels) return;
+      const image = await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = cropImage;
+      });
+
+      const canvas = document.createElement('canvas');
+      const SIZE = 200;
+      canvas.width = SIZE;
+      canvas.height = SIZE;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(
+        image,
+        croppedAreaPixels.x, croppedAreaPixels.y,
+        croppedAreaPixels.width, croppedAreaPixels.height,
+        0, 0, SIZE, SIZE
+      );
+
+      setEditPhoto(canvas.toDataURL('image/jpeg', 0.85));
+      setShowCropModal(false);
+      setCropImage('');
+      toast.success('Foto di-crop! Klik Simpan untuk menerapkan. 📸');
+    } catch (err) {
+      toast.error('Gagal: ' + err.message);
+    }
+  };
+
   const handleSave = async () => {
     try {
       setSaving(true);
       await updateDoc(doc(db, 'users', user.uid), {
-        name: editName,
-        level: editLevel
+        name: editName, level: editLevel, grade: Number(editGrade),
+        school: editSchool, photoURL: editPhoto
       });
-      setUserData({ ...userData, name: editName, level: editLevel });
+      setUserData({ ...userData, name: editName, level: editLevel, grade: Number(editGrade), school: editSchool, photoURL: editPhoto });
       setIsEditing(false);
-      toast.success('Profil berhasil diperbarui! ✅');
+      toast.success('Profil diperbarui! ✅');
     } catch (error) {
-      toast.error('Gagal menyimpan: ' + error.message);
+      toast.error('Gagal: ' + error.message);
     }
     setSaving(false);
+  };
+
+  const handleCancel = () => {
+    setEditName(userData?.name || '');
+    setEditLevel(userData?.level || 'SMP');
+    setEditGrade(userData?.grade || 7);
+    setEditSchool(userData?.school || '');
+    setEditPhoto(userData?.photoURL || '');
+    setIsEditing(false);
   };
 
   const handleLogout = async () => {
@@ -119,12 +275,28 @@ const Profile = () => {
 
       <div className="page-content max-w-4xl mx-auto px-4 space-y-6">
 
-        {/* Kartu Info User */}
+        {/* KARTU INFO USER */}
         <div className="card-elevated rounded-2xl p-5 sm:p-8">
           <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
             
-            <div className="w-20 h-20 bg-gradient-to-br from-teal-400 via-teal-600 to-cyan-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-teal-500/30">
-              <User className="w-10 h-10 text-white" />
+            <div className="relative flex-shrink-0">
+              {editPhoto ? (
+                <img src={editPhoto} alt="Foto" className="w-24 h-24 rounded-2xl object-cover shadow-lg shadow-teal-500/30 border-4 border-white dark:border-slate-700" />
+              ) : (
+                <div className="w-24 h-24 bg-gradient-to-br from-teal-400 via-teal-600 to-cyan-600 rounded-2xl flex items-center justify-center shadow-lg shadow-teal-500/30">
+                  <User className="w-12 h-12 text-white" />
+                </div>
+              )}
+              
+              {isEditing && (
+                <>
+                  <button type="button" onClick={() => fileInputRef.current?.click()}
+                    className="absolute -bottom-2 -right-2 w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center shadow-lg shadow-orange-500/40 hover:scale-110 transition-transform border-3 border-white dark:border-slate-700">
+                    <Camera className="w-5 h-5 text-white" />
+                  </button>
+                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+                </>
+              )}
             </div>
 
             <div className="flex-1 w-full">
@@ -135,20 +307,35 @@ const Profile = () => {
                     <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)}
                       className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 outline-none" />
                   </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Jenjang</label>
+                      <select value={editLevel} onChange={(e) => setEditLevel(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 outline-none">
+                        <option value="SMP">SMP</option>
+                        <option value="SMA">SMA</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kelas</label>
+                      <select value={editGrade} onChange={(e) => setEditGrade(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 outline-none">
+                        {[7, 8, 9, 10, 11, 12].map(g => <option key={g} value={g}>Kelas {g}</option>)}
+                      </select>
+                    </div>
+                  </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Jenjang</label>
-                    <select value={editLevel} onChange={(e) => setEditLevel(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 outline-none">
-                      <option value="SMP">SMP</option>
-                      <option value="SMA">SMA</option>
-                    </select>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Asal Sekolah</label>
+                    <input type="text" value={editSchool} onChange={(e) => setEditSchool(e.target.value)}
+                      placeholder="Misal: SMP Negeri 1 Jakarta"
+                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 outline-none" />
                   </div>
                   <div className="flex gap-2 pt-2">
                     <button onClick={handleSave} disabled={saving}
                       className="flex items-center gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 disabled:opacity-50 text-white px-4 py-2 rounded-xl font-medium transition-all shadow-md">
                       <Save className="w-4 h-4" /> {saving ? 'Menyimpan...' : 'Simpan'}
                     </button>
-                    <button onClick={() => setIsEditing(false)} className="flex items-center gap-2 bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-xl font-medium">
+                    <button onClick={handleCancel} className="flex items-center gap-2 bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-xl font-medium">
                       <X className="w-4 h-4" /> Batal
                     </button>
                   </div>
@@ -161,8 +348,16 @@ const Profile = () => {
                   </div>
                   <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mt-1">
                     <GraduationCap className="w-4 h-4" /> 
-                    <span className="text-sm">Jenjang: <strong className="text-teal-600 dark:text-teal-400">{userData?.level || 'Belum dipilih'}</strong></span>
+                    <span className="text-sm">
+                      Jenjang: <strong className="text-teal-600 dark:text-teal-400">{userData?.level || 'Belum dipilih'}</strong>
+                      {userData?.grade && <> • Kelas <strong className="text-teal-600 dark:text-teal-400">{userData.grade}</strong></>}
+                    </span>
                   </div>
+                  {userData?.school && (
+                    <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mt-1">
+                      <School className="w-4 h-4" /> <span className="text-sm">{userData.school}</span>
+                    </div>
+                  )}
                   <div className="flex gap-3 mt-4">
                     <button onClick={() => setIsEditing(true)} className="flex items-center gap-2 text-sm text-teal-600 dark:text-teal-400 font-medium hover:underline">
                       <Edit2 className="w-4 h-4" /> Edit Profil
@@ -177,9 +372,8 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* Statistik */}
+        {/* STATISTIK */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          
           <div className="card-elevated rounded-2xl p-5 text-center relative overflow-hidden group hover:-translate-y-1 transition-all">
             <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-amber-400/15 to-orange-500/10 rounded-full blur-2xl"></div>
             <div className="relative">
@@ -190,7 +384,6 @@ const Profile = () => {
               <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1">Rata-rata Skor</div>
             </div>
           </div>
-
           <div className="card-elevated rounded-2xl p-5 text-center relative overflow-hidden group hover:-translate-y-1 transition-all">
             <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-teal-400/15 to-cyan-500/10 rounded-full blur-2xl"></div>
             <div className="relative">
@@ -201,7 +394,6 @@ const Profile = () => {
               <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1">Kuis Dikerjakan</div>
             </div>
           </div>
-
           <div className="card-elevated rounded-2xl p-5 text-center col-span-2 md:col-span-1 relative overflow-hidden group hover:-translate-y-1 transition-all">
             <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-violet-400/15 to-purple-500/10 rounded-full blur-2xl"></div>
             <div className="relative">
@@ -210,15 +402,155 @@ const Profile = () => {
               </div>
               <div className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
                 {quizHistory.length > 0 && quizHistory[0].completedAt 
-                  ? new Date(quizHistory[0].completedAt.toDate()).toLocaleDateString('id-ID') 
-                  : '-'}
+                  ? new Date(quizHistory[0].completedAt.toDate()).toLocaleDateString('id-ID') : '-'}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1">Kuis Terakhir</div>
             </div>
           </div>
         </div>
 
-        {/* Riwayat Skor */}
+        {/* ⚡ GRAFIK LINE CHART (Skor per Waktu) */}
+        {lineChartData.length > 0 && (
+          <div className="card-elevated rounded-2xl p-5 sm:p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-cyan-600 flex items-center justify-center shadow-lg shadow-teal-500/30">
+                <TrendingUp className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-900 dark:text-white">Grafik Skor Kuis</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Lihat perkembangan skormu seiring waktu</p>
+              </div>
+            </div>
+
+            <div className="w-full h-64 -ml-3">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={lineChartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" className="dark:opacity-20" vertical={false} />
+                  <XAxis 
+                    dataKey="name" 
+                    tick={{ fontSize: 11, fill: '#94a3b8' }}
+                    axisLine={{ stroke: '#cbd5e1' }}
+                    tickLine={false}
+                  />
+                  <YAxis 
+                    domain={[0, 100]} 
+                    tick={{ fontSize: 11, fill: '#94a3b8' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip 
+                    content={<CustomTooltip />} 
+                    animationDuration={200}
+                    cursor={{ stroke: '#14b8a6', strokeWidth: 1, strokeDasharray: '4 4' }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="skor" 
+                    stroke="#14b8a6" 
+                    strokeWidth={3}
+                    dot={{ fill: '#14b8a6', strokeWidth: 2, r: 5, stroke: '#ffffff' }}
+                    activeDot={{ r: 7, fill: '#0d9488', strokeWidth: 2, stroke: '#ffffff' }}
+                    animationDuration={800}
+                    animationEasing="ease-out"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {/* ⚡ BAR CHART (Kemampuan per Topik) — hanya kalau ≥ 2 topik */}
+        {barChartData.length >= 2 && (
+          <div className="card-elevated rounded-2xl p-5 sm:p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
+                <BarChart3 className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-900 dark:text-white">Kemampuan per Topik</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Rata-rata skor kamu di setiap topik</p>
+              </div>
+            </div>
+
+            <div className="w-full h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart 
+                  data={barChartData} 
+                  margin={{ top: 5, right: 10, left: -20, bottom: 5 }}
+                >
+                  <CartesianGrid 
+                    strokeDasharray="3 3" 
+                    stroke="#e2e8f0" 
+                    className="dark:opacity-20" 
+                    vertical={false}
+                  />
+                  <XAxis 
+                    dataKey="topik" 
+                    tick={{ fontSize: 11, fill: '#94a3b8' }}
+                    axisLine={{ stroke: '#cbd5e1' }}
+                    tickLine={false}
+                  />
+                  <YAxis 
+                    domain={[0, 100]} 
+                    tick={{ fontSize: 11, fill: '#94a3b8' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip 
+                    content={<BarTooltip />} 
+                    cursor={{ fill: 'rgba(20, 184, 166, 0.08)' }}
+                    animationDuration={200}
+                  />
+                  <Bar 
+                    dataKey="rataRata" 
+                    radius={[8, 8, 0, 0]}
+                    maxBarSize={80}
+                    animationDuration={800}
+                    animationEasing="ease-out"
+                  >
+                    {barChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={getBarColor(entry.rataRata)} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Legend */}
+            <div className="mt-3 flex flex-wrap gap-3 text-xs justify-center">
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full" style={{ background: '#14b8a6' }}></span> ≥ 85 (Sangat Baik)
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full" style={{ background: '#06b6d4' }}></span> 70-84 (Baik)
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full" style={{ background: '#f59e0b' }}></span> 50-69 (Cukup)
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full" style={{ background: '#ef4444' }}></span> &lt; 50 (Perlu Belajar)
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* ⚡ Kalau cuma 1 topik → tampil pesan ajakan */}
+        {barChartData.length === 1 && (
+          <div className="card-elevated rounded-2xl p-5 sm:p-6 text-center">
+            <div className="w-12 h-12 mx-auto bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/30 mb-3">
+              <BarChart3 className="w-6 h-6 text-white" />
+            </div>
+            <h3 className="font-bold text-gray-900 dark:text-white mb-1">Kemampuan per Topik</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+              Kerjakan kuis dari topik lain untuk melihat grafik kemampuanmu!
+            </p>
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-100 to-purple-100 dark:from-violet-900/30 dark:to-purple-900/30 px-3 py-2 rounded-lg text-sm font-bold text-violet-700 dark:text-violet-400">
+              📚 Saat ini baru: {barChartData[0].topik} ({barChartData[0].rataRata})
+            </div>
+          </div>
+        )}
+
+        {/* RIWAYAT SKOR */}
         <div className="card-elevated rounded-2xl p-5 sm:p-8">
           <div className="mb-4">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
@@ -264,6 +596,51 @@ const Profile = () => {
           )}
         </div>
       </div>
+
+      {/* MODAL CROP */}
+      {showCropModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl">
+            <div className="p-5 border-b border-gray-100 dark:border-slate-700">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <Camera className="w-5 h-5 text-teal-600" /> Atur Posisi Foto
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Drag untuk menggeser, zoom untuk memperbesar</p>
+            </div>
+            <div className="relative w-full h-[300px] bg-slate-900">
+              <Cropper
+                image={cropImage}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                cropShape="rect"
+                showGrid={true}
+                onCropChange={setCrop}
+                onCropComplete={onCropComplete}
+                onZoomChange={setZoom}
+              />
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="flex items-center gap-3">
+                <ZoomOut className="w-5 h-5 text-gray-400" />
+                <input type="range" min={1} max={3} step={0.1} value={zoom}
+                  onChange={(e) => setZoom(Number(e.target.value))} className="flex-1 accent-teal-600" />
+                <ZoomIn className="w-5 h-5 text-gray-400" />
+              </div>
+              <div className="flex gap-3">
+                <button type="button" onClick={() => { setShowCropModal(false); setCropImage(''); }}
+                  className="flex-1 flex items-center justify-center gap-2 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 font-semibold py-3 rounded-xl hover:bg-gray-200 dark:hover:bg-slate-600 transition-all">
+                  <X className="w-4 h-4" /> Batal
+                </button>
+                <button type="button" onClick={createCroppedImage}
+                  className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-teal-500 via-cyan-600 to-teal-600 hover:from-teal-600 hover:to-cyan-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-teal-500/30 transition-all">
+                  <Check className="w-4 h-4" /> Terapkan
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

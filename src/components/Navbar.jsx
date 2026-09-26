@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, Moon, Sun, Calculator, LayoutDashboard, LogOut, Settings, User, Trophy } from 'lucide-react';
+import { Menu, X, Moon, Sun, LayoutDashboard, LogOut, Settings, User, Trophy } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import Logo from './Logo';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -80,11 +81,13 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           
-          <Link to="/" className="flex items-center gap-2 cursor-pointer group">
-            <div className="w-10 h-10 bg-gradient-to-br from-teal-400 via-teal-600 to-cyan-600 rounded-xl flex items-center justify-center shadow-lg shadow-teal-500/30 group-hover:scale-105 transition-transform">
-              <Calculator className="w-5 h-5 text-white" />
+          <Link to="/" className="flex items-center gap-2.5 cursor-pointer group">
+            <div className="group-hover:scale-105 transition-transform">
+              <Logo size={40} />
             </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 dark:from-teal-400 dark:via-cyan-400 dark:to-blue-400 bg-clip-text text-transparent">GhiMath</span>
+            <span className="text-xl font-bold bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 dark:from-teal-400 dark:via-cyan-400 dark:to-blue-400 bg-clip-text text-transparent">
+              GhiMath
+            </span>
           </Link>
 
           <div className="hidden md:flex items-center gap-6">
