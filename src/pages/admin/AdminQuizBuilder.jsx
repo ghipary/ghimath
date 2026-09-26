@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import { db } from '../../firebase';
 import { collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp } from 'firebase/firestore';
-import { ArrowLeft, Plus, Trash2, Save, Loader, CheckCircle, Upload } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Save, Loader, CheckCircle, Upload, AlertTriangle, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const AdminQuizBuilder = () => {
@@ -12,6 +12,8 @@ const AdminQuizBuilder = () => {
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const [formData, setFormData] = useState({
     question: '',
@@ -76,6 +78,24 @@ const AdminQuizBuilder = () => {
     }
   };
 
+  // ⚡ FITUR BARU: Hapus semua soal
+  const handleDeleteAll = async () => {
+    try {
+      setDeletingAll(true);
+      // Loop hapus semua soal satu per satu
+      const deletePromises = questions.map((q) => deleteDoc(doc(db, 'quizQuestions', q.id)));
+      await Promise.all(deletePromises);
+      
+      setQuestions([]);
+      setShowConfirm(false);
+      toast.success(`${deletePromises.length} soal berhasil dihapus! 🗑️`);
+    } catch (error) {
+      console.error(error);
+      toast.error('Gagal menghapus semua soal: ' + error.message);
+    }
+    setDeletingAll(false);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors pb-20">
       <Navbar />
@@ -89,18 +109,30 @@ const AdminQuizBuilder = () => {
               <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Kelola Soal Kuis</h1>
               <p className="text-gray-500 dark:text-gray-400 mt-1">Total: {questions.length} soal</p>
             </div>
-            <Link 
-              to={`/admin/materi/${materialId}/import`}
-              className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 rounded-xl font-medium transition-colors shadow-md"
-            >
-              <Upload className="w-4 h-4" /> Import Soal 📥
-            </Link>
+            <div className="flex gap-2 flex-wrap">
+              {/* TOMBOL HAPUS SEMUA (muncul kalau ada soal) */}
+              {questions.length > 0 && (
+                <button
+                  onClick={() => setShowConfirm(true)}
+                  className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2.5 rounded-xl font-medium transition-colors shadow-md"
+                >
+                  <Trash2 className="w-4 h-4" /> Hapus Semua
+                </button>
+              )}
+              <Link 
+                to={`/admin/materi/${materialId}/import`}
+                className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 rounded-xl font-medium transition-colors shadow-md"
+              >
+                <Upload className="w-4 h-4" /> Import Soal 📥
+              </Link>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
         
+        {/* Banner Import */}
         <div className="bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl p-5 text-white shadow-lg">
           <div className="flex items-start gap-3">
             <Upload className="w-6 h-6 flex-shrink-0 mt-0.5" />
@@ -119,6 +151,7 @@ const AdminQuizBuilder = () => {
           </div>
         </div>
 
+        {/* Form Tambah Soal Manual */}
         <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border dark:border-slate-800 p-6 md:p-8 space-y-5">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <Plus className="w-5 h-5 text-teal-600" /> Tambah Soal Manual
@@ -163,30 +196,55 @@ const AdminQuizBuilder = () => {
           </button>
         </form>
 
+        {/* Daftar Soal */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border dark:border-slate-800 p-6 md:p-8">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Daftar Soal</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+              Daftar Soal ({questions.length})
+            </h2>
+            {questions.length > 0 && (
+              <button
+                onClick={() => setShowConfirm(true)}
+                className="flex items-center gap-1.5 text-red-500 hover:text-red-600 text-sm font-medium hover:underline"
+              >
+                <Trash2 className="w-4 h-4" /> Hapus Semua
+              </button>
+            )}
+          </div>
+
           {loading ? (
             <div className="text-center py-10"><Loader className="w-8 h-8 text-teal-600 animate-spin mx-auto" /></div>
           ) : questions.length === 0 ? (
-            <p className="text-gray-500 text-center py-6">Belum ada soal. Tambahkan soal di atas.</p>
+            <p className="text-gray-500 text-center py-6">Belum ada soal. Tambahkan soal di atas atau import dari teks.</p>
           ) : (
             <div className="space-y-4">
               {questions.map((q, idx) => (
                 <div key={q.id} className="p-4 bg-gray-50 dark:bg-slate-800 rounded-xl">
                   <div className="flex justify-between items-start gap-3">
-                    <div className="flex-1">
-                      <p className="font-semibold text-gray-900 dark:text-white mb-2">{idx + 1}. {q.question}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900 dark:text-white mb-2">
+                        {idx + 1}. {q.question}
+                      </p>
                       <ul className="space-y-1 text-sm">
                         {q.options.map((opt, i) => (
-                          <li key={i} className={`flex items-center gap-2 ${i === q.correctAnswer ? 'text-teal-600 dark:text-teal-400 font-semibold' : 'text-gray-600 dark:text-gray-400'}`}>
-                            <span>{String.fromCharCode(65 + i)}.</span> {opt}
-                            {i === q.correctAnswer && <CheckCircle className="w-4 h-4" />}
+                          <li key={i} className={`flex items-start gap-2 ${i === q.correctAnswer ? 'text-teal-600 dark:text-teal-400 font-semibold' : 'text-gray-600 dark:text-gray-400'}`}>
+                            <span className="flex-shrink-0">{String.fromCharCode(65 + i)}.</span>
+                            <span className="flex-1">{opt}</span>
+                            {i === q.correctAnswer && <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />}
                           </li>
                         ))}
                       </ul>
-                      {q.explanation && <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 italic">Pembahasan: {q.explanation}</p>}
+                      {q.explanation && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 italic">
+                          Pembahasan: {q.explanation}
+                        </p>
+                      )}
                     </div>
-                    <button onClick={() => handleDelete(q.id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                    <button 
+                      onClick={() => handleDelete(q.id)} 
+                      className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors flex-shrink-0"
+                      title="Hapus soal ini"
+                    >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -196,6 +254,63 @@ const AdminQuizBuilder = () => {
           )}
         </div>
       </div>
+
+      {/* MODAL KONFIRMASI HAPUS SEMUA */}
+      {showConfirm && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+          onClick={() => !deletingAll && setShowConfirm(false)}
+        >
+          <div 
+            className="bg-white dark:bg-slate-900 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button 
+              onClick={() => setShowConfirm(false)}
+              disabled={deletingAll}
+              className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
+            >
+              <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+            </button>
+
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-2xl flex items-center justify-center mx-auto mb-5">
+              <AlertTriangle className="w-8 h-8 text-red-600 dark:text-red-400" />
+            </div>
+
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white text-center mb-2">
+              Hapus Semua Soal?
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 text-center mb-6 leading-relaxed">
+              Kamu akan menghapus <strong className="text-red-600 dark:text-red-400">{questions.length} soal</strong> dari kuis ini. Tindakan ini <strong>tidak bisa dibatalkan</strong>.
+            </p>
+
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={handleDeleteAll}
+                disabled={deletingAll}
+                className="w-full flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 disabled:bg-red-400 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg"
+              >
+                {deletingAll ? (
+                  <>
+                    <Loader className="w-5 h-5 animate-spin" /> Menghapus...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-5 h-5" /> Ya, Hapus Semua ({questions.length} soal)
+                  </>
+                )}
+              </button>
+              <button 
+                onClick={() => setShowConfirm(false)}
+                disabled={deletingAll}
+                className="w-full bg-white dark:bg-slate-800 text-gray-700 dark:text-white border-2 border-gray-200 dark:border-slate-700 hover:border-teal-600 font-semibold py-3.5 rounded-xl transition-all disabled:opacity-50"
+              >
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
