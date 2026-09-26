@@ -13,13 +13,11 @@ const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Cek apakah link sedang aktif
   const isActive = (path) => {
     if (path === '/') return location.pathname === '/';
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
-  // Style untuk link aktif / non-aktif
   const linkClass = (path) => {
     const base = "font-medium transition-colors relative";
     if (isActive(path)) {
@@ -78,16 +76,17 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md shadow-sm">
+    <nav className="sticky top-0 z-50 bg-white/70 dark:bg-slate-900/70 backdrop-blur-lg border-b border-gray-200/50 dark:border-slate-700/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           
           <Link to="/" className="flex items-center gap-2 cursor-pointer">
-            <Calculator className="w-8 h-8 text-teal-600" />
-            <span className="text-2xl font-bold text-gray-900 dark:text-white">GhiMath</span>
+            <div className="w-9 h-9 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl flex items-center justify-center shadow-md">
+              <Calculator className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-xl font-bold bg-gradient-to-r from-teal-600 to-cyan-600 dark:from-teal-400 dark:to-cyan-400 bg-clip-text text-transparent">GhiMath</span>
           </Link>
 
-          {/* Menu Desktop */}
           <div className="hidden md:flex items-center gap-6">
             <Link to="/" className={linkClass('/')}>Beranda</Link>
             <Link to="/materi" className={linkClass('/materi')}>Materi</Link>
@@ -101,7 +100,7 @@ const Navbar = () => {
               </Link>
             )}
 
-            <button onClick={toggleDarkMode} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
+            <button onClick={toggleDarkMode} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
               {darkMode ? <Sun className="w-5 h-5 text-yellow-400" /> : <Moon className="w-5 h-5 text-gray-600" />}
             </button>
 
@@ -120,12 +119,11 @@ const Navbar = () => {
             ) : (
               <>
                 <Link to="/login" className="text-teal-600 dark:text-teal-400 font-medium hover:underline">Masuk</Link>
-                <Link to="/register" className="bg-teal-600 hover:bg-teal-700 text-white px-5 py-2 rounded-xl font-medium transition-colors">Daftar</Link>
+                <Link to="/register" className="bg-gradient-to-r from-teal-500 to-teal-700 hover:from-teal-600 hover:to-teal-800 text-white px-5 py-2 rounded-xl font-medium transition-all shadow-md">Daftar</Link>
               </>
             )}
           </div>
 
-          {/* Menu Mobile */}
           <div className="md:hidden flex items-center gap-4">
             <button onClick={toggleDarkMode} className="p-2">
               {darkMode ? <Sun className="w-5 h-5 text-yellow-400" /> : <Moon className="w-5 h-5 text-gray-600" />}
@@ -137,9 +135,8 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* Menu Mobile Dropdown */}
       {isOpen && (
-        <div className="md:hidden bg-white dark:bg-slate-950 border-t dark:border-slate-800 px-4 pt-2 pb-4 space-y-2 shadow-lg">
+        <div className="md:hidden bg-white dark:bg-slate-900 border-t dark:border-slate-700 px-4 pt-2 pb-4 space-y-2 shadow-lg">
           <Link to="/" className={`block px-3 py-2 rounded-lg ${isActive('/') ? 'bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 font-bold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>Beranda</Link>
           <Link to="/materi" className={`block px-3 py-2 rounded-lg ${isActive('/materi') ? 'bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 font-bold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>Materi</Link>
           <Link to="/leaderboard" className={`block px-3 py-2 rounded-lg ${isActive('/leaderboard') ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 font-bold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>
@@ -152,7 +149,7 @@ const Navbar = () => {
             </Link>
           )}
 
-          <div className="pt-2 border-t dark:border-slate-800">
+          <div className="pt-2 border-t dark:border-slate-700">
             {user ? (
               <>
                 <Link to="/dashboard" className={`block px-3 py-2 rounded-lg ${isActive('/dashboard') ? 'bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 font-bold' : 'text-teal-600 font-medium'}`}>Dashboard</Link>
@@ -162,7 +159,7 @@ const Navbar = () => {
             ) : (
               <>
                 <Link to="/login" className="block px-3 py-2 text-teal-600 font-medium">Masuk</Link>
-                <Link to="/register" className="block px-3 py-2 mt-1 bg-teal-600 text-white text-center rounded-xl font-medium">Daftar</Link>
+                <Link to="/register" className="block px-3 py-2 mt-1 bg-gradient-to-r from-teal-500 to-teal-700 text-white text-center rounded-xl font-medium shadow-md">Daftar</Link>
               </>
             )}
           </div>

@@ -39,42 +39,29 @@ const Dashboard = () => {
           return;
         }
 
-        // Ambil semua materi published
         const matQuery = query(collection(db, 'materials'), where('published', '==', true));
         const matSnap = await getDocs(matQuery);
         const allMaterials = matSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
         const totalPublished = allMaterials.length;
         const publishedIds = new Set(allMaterials.map((m) => m.id));
 
-        // Ambil progress user
-        const progressQuery = query(
-          collection(db, 'progress'),
-          where('userId', '==', user.uid)
-        );
+        const progressQuery = query(collection(db, 'progress'), where('userId', '==', user.uid));
         const progressSnap = await getDocs(progressQuery);
         const progressList = progressSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-        // ⚡ Filter: hanya hitung progress materi yang MASIH published
         const validProgress = progressList.filter((p) => publishedIds.has(p.materialId));
         const completedList = validProgress.filter((p) => p.completed === true);
         const inProgressList = validProgress.filter((p) => p.completed !== true && (p.readingSeconds || 0) > 0);
         const completedCount = completedList.length;
         const inProgressCount = inProgressList.length;
 
-        // ⚡ Cap percent di 100
         let progressPercent = 0;
         if (totalPublished > 0) {
           progressPercent = Math.min(100, Math.round((completedCount / totalPublished) * 100));
         }
 
-        setStats({
-          totalPublished,
-          completedCount,
-          inProgressCount,
-          progressPercent,
-        });
+        setStats({ totalPublished, completedCount, inProgressCount, progressPercent });
 
-        // Materi terakhir dibuka (dari progress valid)
         const sortedProgress = [...validProgress]
           .filter((p) => p.lastOpenedAt)
           .sort((a, b) => {
@@ -83,22 +70,15 @@ const Dashboard = () => {
             return dateB - dateA;
           });
 
-        if (sortedProgress.length > 0) {
-          setLastMaterial(sortedProgress[0]);
-        }
+        if (sortedProgress.length > 0) setLastMaterial(sortedProgress[0]);
 
-        // Rekomendasi: materi level sama, belum selesai
         const completedIds = new Set(completedList.map((p) => p.materialId));
         const recs = allMaterials
           .filter((m) => m.level === uData.level && !completedIds.has(m.id))
           .slice(0, 3);
         setRecommendations(recs);
 
-        // Ambil quiz results user
-        const quizQuery = query(
-          collection(db, 'quizResults'),
-          where('userId', '==', user.uid)
-        );
+        const quizQuery = query(collection(db, 'quizResults'), where('userId', '==', user.uid));
         const quizSnap = await getDocs(quizQuery);
         const allResults = quizSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
@@ -108,7 +88,6 @@ const Dashboard = () => {
           return dateA - dateB;
         });
 
-        // Dedupe: 1 skor pertama per materi
         const seenMaterials = new Map();
         allResults.forEach((r) => {
           if (!seenMaterials.has(r.materialId)) {
@@ -126,7 +105,7 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-950">
+      <div className="page-bg flex items-center justify-center">
         <Loader className="w-10 h-10 text-teal-600 animate-spin" />
       </div>
     );
@@ -136,11 +115,13 @@ const Dashboard = () => {
   const quizCount = quizHistory.length;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors pb-20">
+    <div className="page-bg transition-colors pb-20">
       <Navbar />
 
-      <div className="bg-white dark:bg-slate-900 border-b dark:border-slate-800 pt-8 pb-12 px-4">
-        <div className="max-w-5xl mx-auto">
+      <div className="max-w-5xl mx-auto px-3 sm:px-4 pt-8 sm:pt-12 pb-8">
+        
+        {/* Header Sapaan */}
+        <div className="mb-6 sm:mb-8">
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">
             Halo, {userData?.name || 'Siswa'}! 👋
           </h1>
@@ -148,23 +129,23 @@ const Dashboard = () => {
             Jenjang: <span className="font-semibold text-teal-600 dark:text-teal-400">{userData?.level || 'Belum dipilih'}</span>
           </p>
         </div>
-      </div>
 
-      <div className="max-w-5xl mx-auto px-3 sm:px-4 -mt-6">
-        
         {/* PROGRESS CARD */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg p-4 sm:p-6 mb-6 sm:mb-8 border dark:border-slate-800">
+        <div className="card-elevated rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8">
           <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
             <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-amber-500" /> Progress Belajarmu
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-md">
+                <Trophy className="w-5 h-5 text-white" />
+              </div>
+              Progress Belajarmu
             </h2>
-            <span className="text-xs sm:text-sm font-semibold text-teal-600 dark:text-teal-400">
-              {stats.completedCount} dari {stats.totalPublished} materi selesai
+            <span className="text-xs sm:text-sm font-semibold text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30 px-3 py-1.5 rounded-full">
+              {stats.completedCount} / {stats.totalPublished} materi
             </span>
           </div>
-          <div className="w-full bg-gray-200 dark:bg-slate-800 rounded-full h-4 mb-2">
+          <div className="w-full bg-gray-200 dark:bg-slate-700/50 rounded-full h-4 mb-2 overflow-hidden">
             <div 
-              className="bg-gradient-to-r from-teal-500 to-teal-600 h-4 rounded-full transition-all duration-500" 
+              className="bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 h-4 rounded-full transition-all duration-500 shadow-md" 
               style={{ width: `${stats.progressPercent}%` }}
             ></div>
           </div>
@@ -176,7 +157,7 @@ const Dashboard = () => {
                 </span>
               )}
             </span>
-            <span className="text-gray-500 dark:text-gray-400 font-semibold">
+            <span className="text-gray-600 dark:text-gray-300 font-bold">
               {stats.progressPercent}% Selesai
             </span>
           </div>
@@ -186,16 +167,19 @@ const Dashboard = () => {
           
           <div className="md:col-span-2 space-y-4 sm:space-y-6">
             {/* Lanjutkan Belajar */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm p-4 sm:p-6 border dark:border-slate-800">
+            <div className="card-elevated rounded-2xl p-4 sm:p-6">
               <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                <Clock className="w-5 h-5 text-teal-600" /> Lanjutkan Belajar
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-500 to-teal-700 flex items-center justify-center shadow-md">
+                  <Clock className="w-5 h-5 text-white" />
+                </div>
+                Lanjutkan Belajar
               </h2>
               {lastMaterial ? (
                 <Link 
                   to={`/materi/${lastMaterial.materialId}`}
-                  className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-gray-50 dark:bg-slate-800 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                  className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-slate-800 dark:to-slate-800/50 rounded-xl hover:from-teal-100 hover:to-cyan-100 dark:hover:from-slate-700 dark:hover:to-slate-700/50 transition-all border border-teal-100 dark:border-slate-700"
                 >
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-teal-100 dark:bg-teal-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white dark:bg-slate-700 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
                     <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-teal-600 dark:text-teal-400" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -207,7 +191,7 @@ const Dashboard = () => {
                     </p>
                     {lastMaterial.percentage > 0 && !lastMaterial.completed && (
                       <div className="mt-2">
-                        <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-1.5">
+                        <div className="w-full bg-white dark:bg-slate-800 rounded-full h-1.5">
                           <div 
                             className="bg-gradient-to-r from-amber-400 to-amber-500 h-1.5 rounded-full" 
                             style={{ width: `${Math.min(100, lastMaterial.percentage)}%` }}
@@ -226,9 +210,12 @@ const Dashboard = () => {
             </div>
 
             {/* Rekomendasi */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm p-4 sm:p-6 border dark:border-slate-800">
+            <div className="card-elevated rounded-2xl p-4 sm:p-6">
               <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                <PlayCircle className="w-5 h-5 text-amber-500" /> Rekomendasi Untukmu
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-md">
+                  <PlayCircle className="w-5 h-5 text-white" />
+                </div>
+                Rekomendasi Untukmu
               </h2>
               {recommendations.length > 0 ? (
                 <div className="space-y-2 sm:space-y-3">
@@ -236,9 +223,9 @@ const Dashboard = () => {
                     <Link 
                       key={mat.id}
                       to={`/materi/${mat.id}`}
-                      className="flex items-center gap-3 p-2.5 sm:p-3 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                      className="flex items-center gap-3 p-2.5 sm:p-3 hover:bg-teal-50 dark:hover:bg-slate-800 rounded-lg transition-colors border border-transparent hover:border-teal-100 dark:hover:border-slate-700"
                     >
-                      <div className="w-2 h-2 rounded-full bg-teal-500 flex-shrink-0"></div>
+                      <div className="w-2 h-2 rounded-full bg-gradient-to-r from-teal-400 to-teal-600 flex-shrink-0"></div>
                       <span className="text-sm text-gray-700 dark:text-gray-300 flex-1 truncate">{mat.title}</span>
                       <span className="text-xs text-gray-400 flex-shrink-0">{mat.level} {mat.grade}</span>
                     </Link>
@@ -255,14 +242,16 @@ const Dashboard = () => {
           <div className="space-y-4 sm:space-y-6">
             <Link 
               to="/leaderboard"
-              className="block bg-white dark:bg-slate-900 rounded-2xl shadow-sm p-4 sm:p-6 border dark:border-slate-800 hover:border-amber-500 hover:shadow-md transition-all group"
+              className="block card-elevated rounded-2xl p-4 sm:p-6 hover:shadow-xl transition-all group"
             >
               <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center justify-between">
                 Total Skor Kuis
-                <Trophy className="w-5 h-5 text-amber-500 group-hover:scale-110 transition-transform" />
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
+                  <Trophy className="w-5 h-5 text-white" />
+                </div>
               </h2>
               <div className="text-center py-3 sm:py-4">
-                <div className="text-4xl sm:text-5xl font-extrabold text-teal-600 dark:text-teal-400">
+                <div className="text-4xl sm:text-5xl font-extrabold bg-gradient-to-r from-teal-500 to-teal-700 dark:from-teal-400 dark:to-teal-500 bg-clip-text text-transparent">
                   {totalScore}
                 </div>
                 <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-2">
@@ -276,13 +265,17 @@ const Dashboard = () => {
             
             <Link 
               to="/materi"
-              className="block bg-gradient-to-br from-teal-500 to-teal-700 rounded-2xl shadow-lg p-4 sm:p-6 text-white hover:shadow-xl transition-all"
+              className="block relative overflow-hidden bg-gradient-to-br from-teal-500 via-teal-600 to-cyan-700 rounded-2xl shadow-lg p-4 sm:p-6 text-white hover:shadow-2xl transition-all group"
             >
-              <Target className="w-7 h-7 sm:w-8 sm:h-8 mb-3" />
-              <h3 className="font-bold text-base sm:text-lg mb-2">Mau uji kemampuan?</h3>
-              <p className="text-teal-100 text-xs sm:text-sm mb-4">Pilih materi dan kerjakan kuisnya.</p>
-              <div className="w-full bg-white text-teal-700 font-semibold py-2 rounded-lg text-center text-sm">
-                Pilih Materi
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-amber-400/20 rounded-full blur-2xl"></div>
+              <div className="relative z-10">
+                <Target className="w-7 h-7 sm:w-8 sm:h-8 mb-3" />
+                <h3 className="font-bold text-base sm:text-lg mb-2">Mau uji kemampuan?</h3>
+                <p className="text-teal-100 text-xs sm:text-sm mb-4">Pilih materi dan kerjakan kuisnya.</p>
+                <div className="w-full bg-white text-teal-700 font-semibold py-2 rounded-lg text-center text-sm">
+                  Pilih Materi
+                </div>
               </div>
             </Link>
           </div>

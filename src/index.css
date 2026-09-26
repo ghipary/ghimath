@@ -2,7 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ===== ANIMASI CUSTOM ===== */
+/* ============================================= */
+/* ===== BACKGROUND GRADIENT GLOBAL ========== */
+/* ============================================= */
+
+/* Light mode: gradient subtle, tidak polos */
+.page-bg {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f8fafc 0%, #f0fdfa 35%, #f5f3ff 70%, #f8fafc 100%);
+}
+
+/* Dark mode: slate-900 (bukan 950) — lebih soft */
+.dark .page-bg {
+  background: linear-gradient(135deg, #0f172a 0%, #0d1b2a 50%, #0f172a 100%);
+}
+
+/* ============================================= */
+/* ===== ANIMASI ============================= */
+/* ============================================= */
 @keyframes floatY {
   0%, 100% { transform: translateY(0px); }
   50% { transform: translateY(-30px); }
@@ -31,39 +48,30 @@ button:focus-visible, a[class*="rounded"]:focus-visible {
 }
 
 /* ============================================= */
-/* ===== HYBRID FONT: Angka Matematika ======== */
+/* ===== CARD STYLE (lebih berkarakter) ======= */
 /* ============================================= */
-/* Huruf tetap Plus Jakarta Sans, angka & simbol pakai STIX Two Math */
 
-@font-face {
-  font-family: 'MathHybrid';
-  src: local('STIX Two Math'), local('STIXTwoMath-Regular');
-  unicode-range:
-    U+0030-0039,  /* 0-9 */
-    U+002B,       /* + */
-    U+002D,       /* - */
-    U+003D,       /* = */
-    U+00D7,       /* × */
-    U+00F7,       /* ÷ */
-    U+00B1,       /* ± */
-    U+2212,       /* − minus matematika */
-    U+2260,       /* ≠ */
-    U+2264,       /* ≤ */
-    U+2265,       /* ≥ */
-    U+221A,       /* √ */
-    U+221E,       /* ∞ */
-    U+03C0,       /* π */
-    U+2026,       /* … */
-    U+00B2,       /* ² */
-    U+00B3,       /* ³ */
-    U+00B9,       /* ¹ */
-    U+00BC-00BE,  /* ¼ ½ ¾ */
-    U+2150-215F,  /* pecahan lain */
-    U+2070-2079,  /* superscript 0-9 */
-    U+2080-2089;  /* subscript 0-9 */
+.card-elevated {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: 
+    0 1px 2px rgba(15, 23, 42, 0.03),
+    0 4px 12px rgba(15, 23, 42, 0.04),
+    0 0 0 1px rgba(255, 255, 255, 0.5) inset;
 }
 
-/* ===== QUILL EDITOR ===== */
+.dark .card-elevated {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(51, 65, 85, 0.5);
+  box-shadow: 
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* ============================================= */
+/* ===== QUILL EDITOR ========================= */
+/* ============================================= */
 .ql-container {
   font-family: 'MathHybrid', 'Plus Jakarta Sans', system-ui, sans-serif;
   font-size: 1rem;
@@ -111,7 +119,7 @@ button:focus-visible, a[class*="rounded"]:focus-visible {
 }
 
 .dark .ql-toolbar { background: #1e293b; border-color: #334155; }
-.dark .ql-container { background: #0f172a; border-color: #334155; color: #e2e8f0; }
+.dark .ql-container { background: #1e293b; border-color: #334155; color: #e2e8f0; }
 .dark .ql-editor.ql-blank::before { color: #64748b; }
 .dark .ql-toolbar .ql-stroke { stroke: #cbd5e1; }
 .dark .ql-toolbar .ql-fill { fill: #cbd5e1; }
@@ -123,9 +131,20 @@ button:focus-visible, a[class*="rounded"]:focus-visible {
 .dark .ql-toolbar button.ql-active .ql-fill { fill: #14b8a6; }
 
 /* ============================================= */
-/* ==== KONTEN MATERI — PAKSA WRAP NORMAL ===== */
+/* ===== HYBRID FONT: Angka Matematika ======== */
 /* ============================================= */
+@font-face {
+  font-family: 'MathHybrid';
+  src: local('STIX Two Math'), local('STIXTwoMath-Regular');
+  unicode-range:
+    U+0030-0039, U+002B, U+002D, U+003D, U+00D7, U+00F7, U+00B1,
+    U+2212, U+2260, U+2264, U+2265, U+221A, U+221E, U+03C0, U+2026,
+    U+00B2, U+00B3, U+00B9, U+00BC-00BE, U+2150-215F, U+2070-2079, U+2080-2089;
+}
 
+/* ============================================= */
+/* ===== KONTEN MATERI ======================== */
+/* ============================================= */
 .material-content {
   line-height: 1.8;
   color: #1e293b;
@@ -139,16 +158,13 @@ button:focus-visible, a[class*="rounded"]:focus-visible {
   hyphens: none !important;
   font-family: 'MathHybrid', 'Plus Jakarta Sans', system-ui, sans-serif;
 }
-.dark .material-content { color: #e2e8f0; }
+.dark .material-content { color: #cbd5e1; }
 
-/* ⚡ SELECTOR SUPER AGRESIF — semua elemen */
 .material-content * {
   white-space: normal !important;
   word-break: normal !important;
   overflow-wrap: break-word !important;
   hyphens: none !important;
-  -webkit-hyphens: none !important;
-  -ms-hyphens: none !important;
   max-width: 100% !important;
   box-sizing: border-box;
   font-family: 'MathHybrid', 'Plus Jakarta Sans', system-ui, sans-serif;
@@ -178,9 +194,7 @@ button:focus-visible, a[class*="rounded"]:focus-visible {
 }
 .dark .material-content h3 { color: #f1f5f9; }
 
-.material-content p {
-  margin: 0.6rem 0;
-}
+.material-content p { margin: 0.6rem 0; }
 
 .material-content ul {
   list-style-type: disc !important;
@@ -236,38 +250,19 @@ button:focus-visible, a[class*="rounded"]:focus-visible {
 }
 .dark .material-content a { color: #2dd4bf; }
 
-/* ===== EXTRA SMALL (iPhone SE) ===== */
 @media (max-width: 375px) {
-  .material-content {
-    font-size: 0.9rem;
-    line-height: 1.75;
-  }
+  .material-content { font-size: 0.9rem; line-height: 1.75; }
   .material-content h1 { font-size: 1.15rem; }
   .material-content h2 { font-size: 1.05rem; }
   .material-content h3 { font-size: 0.98rem; }
-  .material-content ul,
-  .material-content ol {
-    padding-left: 1.15rem !important;
-  }
+  .material-content ul, .material-content ol { padding-left: 1.15rem !important; }
 }
-
 @media (min-width: 376px) and (max-width: 640px) {
-  .material-content {
-    font-size: 0.95rem;
-    line-height: 1.75;
-  }
+  .material-content { font-size: 0.95rem; line-height: 1.75; }
 }
-
 @media (min-width: 641px) and (max-width: 1024px) {
-  .material-content {
-    font-size: 1rem;
-    line-height: 1.8;
-  }
+  .material-content { font-size: 1rem; line-height: 1.8; }
 }
-
 @media (min-width: 1025px) {
-  .material-content {
-    font-size: 1.05rem;
-    line-height: 1.85;
-  }
+  .material-content { font-size: 1.05rem; line-height: 1.85; }
 }

@@ -20,10 +20,9 @@ const MaterialList = () => {
   const topics = ['Semua', 'Aljabar', 'Geometri', 'Statistika', 'Trigonometri', 'Kalkulus', 'Bilangan'];
   const grades = ['Semua', 7, 8, 9, 10, 11, 12];
 
-  // Strip HTML tag untuk preview di card
   const stripHtml = (html) => {
     if (!html) return '';
-    return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    return html.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
   };
 
   useEffect(() => {
@@ -35,10 +34,7 @@ const MaterialList = () => {
         setMaterials(data);
 
         if (user) {
-          const progressQuery = query(
-            collection(db, 'progress'),
-            where('userId', '==', user.uid)
-          );
+          const progressQuery = query(collection(db, 'progress'), where('userId', '==', user.uid));
           const progressSnap = await getDocs(progressQuery);
           const progressData = {};
           progressSnap.forEach((d) => {
@@ -74,25 +70,31 @@ const MaterialList = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors pb-20">
+    <div className="page-bg transition-colors pb-20 min-h-screen">
       <Navbar />
-      <div className="bg-white dark:bg-slate-900 border-b dark:border-slate-800 pt-8 pb-8 px-4">
+      
+      {/* Header */}
+      <div className="pt-8 pb-6 px-4">
         <div className="max-w-6xl mx-auto">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2">Daftar Materi</h1>
+          <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-teal-600 to-cyan-600 dark:from-teal-400 dark:to-cyan-400 bg-clip-text text-transparent mb-2">
+            Daftar Materi
+          </h1>
           <p className="text-gray-600 dark:text-gray-400">
             {user ? 'Pilih materi yang ingin kamu pelajari hari ini.' : 'Lihat-lihat dulu, login untuk membaca selengkapnya.'}
           </p>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border dark:border-slate-800 p-4 md:p-6 mb-8">
+      <div className="max-w-6xl mx-auto px-4 py-4">
+        
+        {/* Filter */}
+        <div className="card-elevated rounded-2xl p-4 md:p-6 mb-8">
           <div className="relative mb-4">
             <Search className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
             <input 
               type="text" placeholder="Cari materi... (misal: Pythagoras)"
               value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 outline-none"
+              className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 outline-none transition-all"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -101,7 +103,7 @@ const MaterialList = () => {
                 <Filter className="w-4 h-4" /> Topik
               </label>
               <select value={selectedTopic} onChange={(e) => setSelectedTopic(e.target.value)}
-                className="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 outline-none">
+                className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 outline-none">
                 {topics.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
@@ -110,7 +112,7 @@ const MaterialList = () => {
                 <Filter className="w-4 h-4" /> Kelas
               </label>
               <select value={selectedGrade} onChange={(e) => setSelectedGrade(e.target.value === 'Semua' ? 'Semua' : Number(e.target.value))}
-                className="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 outline-none">
+                className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 outline-none">
                 {grades.map((g) => <option key={g} value={g}>{g === 'Semua' ? 'Semua Kelas' : `Kelas ${g}`}</option>)}
               </select>
             </div>
@@ -123,13 +125,13 @@ const MaterialList = () => {
             <p className="text-gray-500">Memuat materi...</p>
           </div>
         ) : filteredMaterials.length === 0 ? (
-          <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-2xl border dark:border-slate-800">
+          <div className="text-center py-20 card-elevated rounded-2xl">
             <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-xl font-bold text-gray-700 dark:text-gray-300">Materi tidak ditemukan</h3>
             <p className="text-gray-500 mt-2">Coba ubah kata kunci atau filter pencarianmu.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
             {filteredMaterials.map((mat) => {
               const progress = progressMap[mat.id];
               const isCompleted = progress?.completed === true;
@@ -142,33 +144,42 @@ const MaterialList = () => {
                   key={mat.id} 
                   to={`/materi/${mat.id}`}
                   onClick={handleCardClick}
-                  className={`group bg-white dark:bg-slate-900 rounded-2xl shadow-sm border-2 transition-all overflow-hidden relative ${
+                  className={`group card-elevated rounded-2xl transition-all overflow-hidden relative hover:-translate-y-1 hover:shadow-xl ${
                     isCompleted 
-                      ? 'border-teal-500 dark:border-teal-500 hover:shadow-lg hover:-translate-y-1' 
+                      ? '!border-teal-400 dark:!border-teal-500' 
                       : isOpened
-                        ? 'border-amber-400 dark:border-amber-500 hover:shadow-lg hover:-translate-y-1'
-                        : 'border-gray-100 dark:border-slate-800 hover:shadow-lg hover:-translate-y-1 hover:border-teal-300'
+                        ? '!border-amber-300 dark:!border-amber-500'
+                        : ''
                   }`}
                 >
+                  {/* Top accent bar */}
+                  <div className={`h-1.5 ${
+                    isCompleted 
+                      ? 'bg-gradient-to-r from-teal-400 to-teal-600' 
+                      : isOpened
+                        ? 'bg-gradient-to-r from-amber-400 to-orange-500'
+                        : 'bg-gradient-to-r from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600'
+                  }`}></div>
+
                   {isCompleted && (
-                    <div className="absolute top-3 right-3 bg-teal-500 text-white text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-lg z-10">
+                    <div className="absolute top-4 right-3 bg-gradient-to-r from-teal-500 to-teal-600 text-white text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-md z-10">
                       <CheckCircle className="w-3.5 h-3.5" /> Selesai
                     </div>
                   )}
                   {!isCompleted && isOpened && (
-                    <div className="absolute top-3 right-3 bg-amber-500 text-white text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-lg z-10">
+                    <div className="absolute top-4 right-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-md z-10">
                       <BookMarked className="w-3.5 h-3.5" /> {percent}%
                     </div>
                   )}
                   {!user && (
-                    <div className="absolute top-3 right-3 bg-amber-100 dark:bg-amber-900/30 p-1.5 rounded-lg z-10">
+                    <div className="absolute top-4 right-3 bg-amber-100 dark:bg-amber-900/30 p-1.5 rounded-lg z-10">
                       <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                     </div>
                   )}
 
-                  <div className="p-6">
+                  <div className="p-5 sm:p-6">
                     <div className="flex items-center gap-2 mb-4 flex-wrap">
-                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${mat.level === 'SMP' ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}>
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${mat.level === 'SMP' ? 'bg-gradient-to-r from-teal-100 to-cyan-100 text-teal-700 dark:from-teal-900/40 dark:to-cyan-900/40 dark:text-teal-400' : 'bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 dark:from-amber-900/40 dark:to-orange-900/40 dark:text-amber-400'}`}>
                         {mat.level}
                       </span>
                       <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Kelas {mat.grade}</span>
@@ -176,59 +187,45 @@ const MaterialList = () => {
                       <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{mat.topic}</span>
                     </div>
                     <div className="flex items-start gap-3 mb-3">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm ${
                         isCompleted 
-                          ? 'bg-teal-100 dark:bg-teal-900/30' 
+                          ? 'bg-gradient-to-br from-teal-400 to-teal-600' 
                           : isOpened 
-                            ? 'bg-amber-50 dark:bg-amber-900/20'
+                            ? 'bg-gradient-to-br from-amber-400 to-orange-500'
                             : mat.level === 'SMP' 
-                              ? 'bg-teal-50 dark:bg-teal-900/20' 
-                              : 'bg-amber-50 dark:bg-amber-900/20'
+                              ? 'bg-gradient-to-br from-teal-400 to-cyan-500' 
+                              : 'bg-gradient-to-br from-amber-400 to-orange-500'
                       }`}>
                         {isCompleted ? (
-                          <CheckCircle className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                          <CheckCircle className="w-5 h-5 text-white" />
                         ) : (
-                          <BookOpen className={`w-5 h-5 ${
-                            isOpened 
-                              ? 'text-amber-600 dark:text-amber-400'
-                              : mat.level === 'SMP' 
-                                ? 'text-teal-600 dark:text-teal-400' 
-                                : 'text-amber-600 dark:text-amber-400'
-                          }`} />
+                          <BookOpen className="w-5 h-5 text-white" />
                         )}
                       </div>
-                      <h3 className="font-bold text-lg text-gray-900 dark:text-white leading-tight group-hover:text-teal-600 transition-colors">
+                      <h3 className="font-bold text-base sm:text-lg text-gray-900 dark:text-white leading-tight group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
                         {mat.title}
                       </h3>
                     </div>
                     <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-4">{descPreview}</p>
 
                     {isOpened && !isCompleted && (
-                      <div className="mb-4">
+                      <div className="mb-3">
                         <div className="flex items-center justify-between text-xs text-amber-600 dark:text-amber-400 mb-1">
                           <span className="flex items-center gap-1">
                             <TrendingUp className="w-3 h-3" /> Progress
                           </span>
                           <span className="font-bold">{percent}%</span>
                         </div>
-                        <div className="w-full bg-gray-200 dark:bg-slate-800 rounded-full h-1.5">
+                        <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-1.5">
                           <div 
-                            className="bg-gradient-to-r from-amber-400 to-amber-500 h-1.5 rounded-full transition-all duration-500" 
+                            className="bg-gradient-to-r from-amber-400 to-orange-500 h-1.5 rounded-full transition-all duration-500" 
                             style={{ width: `${percent}%` }}
                           ></div>
                         </div>
                       </div>
                     )}
 
-                    {isCompleted && (
-                      <div className="mb-4">
-                        <div className="w-full bg-teal-100 dark:bg-teal-900/30 rounded-full h-1.5">
-                          <div className="bg-teal-600 h-1.5 rounded-full" style={{ width: '100%' }}></div>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 pt-3 border-t dark:border-slate-800">
+                    <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 pt-3 border-t dark:border-slate-700/50">
                       <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> 15 menit</span>
                       <span className={`font-medium ${
                         isCompleted 
@@ -250,22 +247,22 @@ const MaterialList = () => {
 
       {showLoginModal && (
         <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
           onClick={() => setShowLoginModal(false)}
         >
           <div 
-            className="bg-white dark:bg-slate-900 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative animate-slide-up-delay-1"
+            className="bg-white dark:bg-slate-800 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative"
             onClick={(e) => e.stopPropagation()}
           >
             <button 
               onClick={() => setShowLoginModal(false)}
-              className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+              className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
             >
               <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
             </button>
 
-            <div className="w-16 h-16 bg-teal-100 dark:bg-teal-900/30 rounded-2xl flex items-center justify-center mx-auto mb-5">
-              <Lock className="w-8 h-8 text-teal-600 dark:text-teal-400" />
+            <div className="w-16 h-16 bg-gradient-to-br from-teal-400 to-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg">
+              <Lock className="w-8 h-8 text-white" />
             </div>
 
             <h3 className="text-2xl font-bold text-gray-900 dark:text-white text-center mb-2">
@@ -278,13 +275,13 @@ const MaterialList = () => {
             <div className="flex flex-col gap-3">
               <Link 
                 to="/register"
-                className="w-full flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg hover:shadow-xl"
+                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-teal-500 to-teal-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg hover:shadow-xl"
               >
                 Daftar Gratis Sekarang
               </Link>
               <Link 
                 to="/login"
-                className="w-full flex items-center justify-center gap-2 bg-white dark:bg-slate-800 text-gray-700 dark:text-white border-2 border-gray-200 dark:border-slate-700 hover:border-teal-600 font-semibold py-3.5 rounded-xl transition-all"
+                className="w-full flex items-center justify-center gap-2 bg-white dark:bg-slate-700 text-gray-700 dark:text-white border-2 border-gray-200 dark:border-slate-600 hover:border-teal-600 font-semibold py-3.5 rounded-xl transition-all"
               >
                 Sudah Punya Akun? Masuk
               </Link>
