@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Calculator, Mail, Lock, AlertCircle, Globe, Sparkles } from 'lucide-react';
+import { Calculator, Mail, Lock, AlertCircle, Globe, Sparkles, Eye, EyeOff } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
@@ -98,14 +99,23 @@ const Login = () => {
                 <div className="relative">
                   <Lock className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
                   <input 
-                    type="password" 
+                    type={showPassword ? 'text' : 'password'}
                     required
                     autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
+                    className="w-full pl-10 pr-12 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
                     placeholder="Password kamu"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-3 p-1 text-gray-400 hover:text-teal-600 dark:hover:text-teal-400 transition-colors rounded-lg"
+                    title={showPassword ? 'Sembunyikan password' : 'Lihat password'}
+                    aria-label={showPassword ? 'Sembunyikan password' : 'Lihat password'}
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
                 </div>
               </div>
 

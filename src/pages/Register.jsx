@@ -1,18 +1,40 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Calculator, Mail, Lock, User, AlertCircle, Sparkles } from 'lucide-react';
+import { Calculator, Mail, Lock, User, AlertCircle, Sparkles, Eye, EyeOff, Check } from 'lucide-react';
 
 const Register = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
   const { register } = useAuth();
   const navigate = useNavigate();
+
+  // ⚡ Hitung kekuatan password
+  const getPasswordStrength = (pwd) => {
+    if (!pwd) return { score: 0, label: '', color: '', bg: '' };
+    let score = 0;
+    if (pwd.length >= 6) score++;
+    if (pwd.length >= 10) score++;
+    if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd)) score++;
+    if (/\d/.test(pwd)) score++;
+    if (/[^A-Za-z0-9]/.test(pwd)) score++;
+
+    if (score <= 1) return { score: 1, label: 'Lemah', color: 'text-red-600 dark:text-red-400', bg: 'from-red-400 to-red-500' };
+    if (score === 2) return { score: 2, label: 'Cukup', color: 'text-amber-600 dark:text-amber-400', bg: 'from-amber-400 to-orange-500' };
+    if (score === 3) return { score: 3, label: 'Sedang', color: 'text-yellow-600 dark:text-yellow-400', bg: 'from-yellow-400 to-yellow-500' };
+    if (score === 4) return { score: 4, label: 'Kuat', color: 'text-teal-600 dark:text-teal-400', bg: 'from-teal-400 to-cyan-500' };
+    return { score: 5, label: 'Sangat Kuat', color: 'text-emerald-600 dark:text-emerald-400', bg: 'from-emerald-400 to-teal-500' };
+  };
+
+  const strength = getPasswordStrength(password);
+  const passwordMatch = confirmPassword && password === confirmPassword;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -102,36 +124,94 @@ const Register = () => {
                 </div>
               </div>
 
+              {/* Password dengan Toggle + Strength Indicator */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Password</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
                   <input 
-                    type="password" 
+                    type={showPassword ? 'text' : 'password'}
                     required
                     autoComplete="new-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none transition-all"
+                    className="w-full pl-10 pr-12 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none transition-all"
                     placeholder="Minimal 6 karakter"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-3 p-1 text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors rounded-lg"
+                    title={showPassword ? 'Sembunyikan password' : 'Lihat password'}
+                    aria-label={showPassword ? 'Sembunyikan password' : 'Lihat password'}
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
                 </div>
+
+                {/* Strength Indicator */}
+                {password && (
+                  <div className="mt-2">
+                    <div className="flex gap-1 mb-1">
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <div
+                          key={i}
+                          className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
+                            i <= strength.score
+                              ? `bg-gradient-to-r ${strength.bg}`
+                              : 'bg-gray-200 dark:bg-slate-700'
+                          }`}
+                        ></div>
+                      ))}
+                    </div>
+                    <p className={`text-xs font-semibold ${strength.color}`}>
+                      Kekuatan password: {strength.label}
+                    </p>
+                  </div>
+                )}
               </div>
 
+              {/* Konfirmasi Password dengan Toggle */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Konfirmasi Password</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
                   <input 
-                    type="password" 
+                    type={showConfirmPassword ? 'text' : 'password'}
                     required
                     autoComplete="new-password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none transition-all"
+                    className={`w-full pl-10 pr-12 py-3 rounded-xl border bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white focus:ring-2 outline-none transition-all ${
+                      confirmPassword
+                        ? passwordMatch
+                          ? 'border-teal-500 focus:ring-teal-500 focus:border-teal-500'
+                          : 'border-red-400 focus:ring-red-400 focus:border-red-400'
+                        : 'border-gray-200 dark:border-slate-700 focus:ring-violet-500 focus:border-violet-500'
+                    }`}
                     placeholder="Ulangi password"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-3 p-1 text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors rounded-lg"
+                    title={showConfirmPassword ? 'Sembunyikan password' : 'Lihat password'}
+                    aria-label={showConfirmPassword ? 'Sembunyikan password' : 'Lihat password'}
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
                 </div>
+                {confirmPassword && (
+                  <p className={`text-xs font-semibold mt-1.5 flex items-center gap-1 ${
+                    passwordMatch ? 'text-teal-600 dark:text-teal-400' : 'text-red-500'
+                  }`}>
+                    {passwordMatch ? (
+                      <><Check className="w-3.5 h-3.5" /> Password cocok!</>
+                    ) : (
+                      <><AlertCircle className="w-3.5 h-3.5" /> Password tidak cocok</>
+                    )}
+                  </p>
+                )}
               </div>
 
               <button 
