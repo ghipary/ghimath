@@ -2,15 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import { db } from '../../firebase';
-import { collection, getDocs, doc, addDoc, updateDoc, deleteDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, doc, addDoc, deleteDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
-import { ArrowLeft, Sparkles, Loader, Trash2, Edit, Plus, Wand2, CheckCircle, X, AlertTriangle, CheckSquare, Square } from 'lucide-react';
+import { ArrowLeft, Sparkles, Loader, Trash2, Wand2, CheckCircle, X, AlertTriangle, CheckSquare, Square } from 'lucide-react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import toast from 'react-hot-toast';
 
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+// URL Groq sudah dihapus, diganti dengan endpoint lokal /api/groq
 const GROQ_MODELS = ['openai/gpt-oss-120b', 'qwen/qwen3.6-27b'];
 
 const fixLatex = (s) => {
@@ -41,7 +40,6 @@ const AdminFormulaManager = () => {
   const [selectedMaterialIds, setSelectedMaterialIds] = useState([]);
   const [saving, setSaving] = useState(false);
 
-  // ⚡ STATE BARU: Bulk Selection & Delete All
   const [selectedFormulaIds, setSelectedFormulaIds] = useState([]);
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
   const [deleteAllConfirm, setDeleteAllConfirm] = useState('');
@@ -64,7 +62,6 @@ const AdminFormulaManager = () => {
 
   useEffect(() => { fetchData(); }, []);
 
-  // ⚡ TOGGLE SELECT
   const toggleSelect = (id) => {
     setSelectedFormulaIds((prev) => 
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
@@ -79,14 +76,12 @@ const AdminFormulaManager = () => {
     }
   };
 
-  // ⚡ HAPUS TERPILIH (bulk)
   const handleDeleteSelected = async () => {
     if (selectedFormulaIds.length === 0) return;
     if (!window.confirm(`Hapus ${selectedFormulaIds.length} rumus yang dipilih?`)) return;
 
     setDeletingBulk(true);
     try {
-      // Firestore max 500 per batch
       const chunks = [];
       for (let i = 0; i < selectedFormulaIds.length; i += 500) {
         chunks.push(selectedFormulaIds.slice(i, i + 500));
@@ -108,7 +103,6 @@ const AdminFormulaManager = () => {
     setDeletingBulk(false);
   };
 
-  // ⚡ HAPUS SEMUA (nuke)
   const handleDeleteAll = async () => {
     if (deleteAllConfirm !== 'HAPUS') {
       toast.error('Ketik "HAPUS" (kapital) untuk konfirmasi');
@@ -175,9 +169,10 @@ Ambil 3-8 rumus penting. Output HANYA JSON.`;
       response_format: { type: 'json_object' },
     };
 
-    const res = await fetch(GROQ_URL, {
+    // UBAH: fetch ke /api/groq, hapus Authorization header
+    const res = await fetch('/api/groq', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_API_KEY}` },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
 
@@ -211,7 +206,7 @@ Ambil 3-8 rumus penting. Output HANYA JSON.`;
 
   const handleExtractAll = async () => {
     if (selectedMaterialIds.length === 0) return toast.error('Pilih materi dulu!');
-    if (!GROQ_API_KEY) return toast.error('API Key Groq belum di-setup');
+    // UBAH: Baris pengecekan API Key dihapus, karena sudah dicek di server
 
     setExtracting(true);
     setExtractedPreview([]);
@@ -311,7 +306,6 @@ Ambil 3-8 rumus penting. Output HANYA JSON.`;
           </div>
         </div>
 
-        {/* Toolbar */}
         {formulas.length > 0 && (
           <div className="card-elevated rounded-2xl p-4 mb-6 flex items-center gap-3 flex-wrap">
             <button
@@ -403,7 +397,6 @@ Ambil 3-8 rumus penting. Output HANYA JSON.`;
         )}
       </div>
 
-      {/* ═══ MODAL HAPUS SEMUA ═══ */}
       {showDeleteAllModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[110] flex items-center justify-center p-4" onClick={() => !deletingBulk && setShowDeleteAllModal(false)}>
           <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -449,7 +442,6 @@ Ambil 3-8 rumus penting. Output HANYA JSON.`;
         </div>
       )}
 
-      {/* ═══ MODAL AUTO-EXTRACT (sama seperti sebelumnya) ═══ */}
       {showExtractModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4 overflow-y-auto" onClick={() => !extracting && !saving && setShowExtractModal(false)}>
           <div className="bg-white dark:bg-slate-800 rounded-3xl max-w-3xl w-full shadow-2xl my-8 relative" onClick={(e) => e.stopPropagation()}>
