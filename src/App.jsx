@@ -22,6 +22,8 @@ const MaterialDetail = lazy(() => import('./pages/MaterialDetail'))
 const Quiz = lazy(() => import('./pages/Quiz'))
 const Leaderboard = lazy(() => import('./pages/Leaderboard'))
 const Profile = lazy(() => import('./pages/Profile'))
+const Certificate = lazy(() => import('./pages/Certificate'))
+const DailyChallenge = lazy(() => import('./pages/DailyChallenge')) // ⚡ BARU
 
 // Admin Pages
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'))
@@ -53,7 +55,6 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        {/* Notifikasi Toast */}
         <Toaster 
           position="top-right"
           toastOptions={{
@@ -70,7 +71,6 @@ function App() {
           }}
         />
 
-        {/* Suspense membungkus Routes untuk menampilkan PageLoader saat halaman sedang di-load */}
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/" element={<LandingPage />} />
@@ -80,10 +80,12 @@ function App() {
             
             <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/kuis-harian" element={<ProtectedRoute><DailyChallenge /></ProtectedRoute>} />
             <Route path="/materi" element={<MaterialList />} />
             <Route path="/materi/:id" element={<ProtectedRoute><MaterialDetail /></ProtectedRoute>} />
             <Route path="/materi/:id/kuis" element={<ProtectedRoute><Quiz /></ProtectedRoute>} />
             <Route path="/profil" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="/sertifikat" element={<ProtectedRoute><Certificate /></ProtectedRoute>} />
             <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
 
             <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
@@ -97,7 +99,6 @@ function App() {
           </Routes>
         </Suspense>
 
-        {/* Banner PWA (Sekarang sudah dipanggil di sini) */}
         <PWAInstallBanner />
         
       </Router>

@@ -5,8 +5,16 @@ import Navbar from '../components/Navbar';
 import StreakBadge from '../components/StreakBadge';
 import { db } from '../firebase';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { BookOpen, Trophy, Clock, ChevronRight, PlayCircle, Loader, Target, TrendingUp, Sparkles, Zap, BarChart3 } from 'lucide-react';
+import { BookOpen, Trophy, Clock, ChevronRight, PlayCircle, Loader, Target, TrendingUp, Sparkles, Zap, BarChart3, Flame, CheckCircle } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+
+const getTodayDate = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 const Dashboard = () => {
   const { user, streakData, updateStreak } = useAuth();
@@ -22,12 +30,12 @@ const Dashboard = () => {
   const [lastMaterial, setLastMaterial] = useState(null);
   const [recommendations, setRecommendations] = useState([]);
   const [quizHistory, setQuizHistory] = useState([]);
+  const [dailyStatus, setDailyStatus] = useState(undefined); // undefined = loading, null = belum ada, obj = ada
 
   useEffect(() => {
     const fetchDashboard = async () => {
       if (!user) return;
       try {
-        // ⚡ UPDATE STREAK saat buka dashboard
         await updateStreak();
 
         const userSnap = await getDoc(doc(db, 'users', user.uid));
@@ -42,6 +50,17 @@ const Dashboard = () => {
           navigate('/onboarding');
           setLoading(false);
           return;
+        }
+
+        // ⚡ CEK STATUS KUIS HARIAN (dibungkus try-catch sendiri biar gak ganggu data lain)
+        try {
+          const today = getTodayDate();
+          const dailyRef = doc(db, 'dailyChallenges', `${user.uid}_${today}`);
+          const dailySnap = await getDoc(dailyRef);
+          setDailyStatus(dailySnap.exists() ? dailySnap.data() : null);
+        } catch (dailyErr) {
+          console.warn('Gagal cek kuis harian:', dailyErr.message);
+          setDailyStatus(null); // treat sebagai "belum dikerjakan"
         }
 
         const matQuery = query(collection(db, 'materials'), where('published', '==', true));
@@ -149,6 +168,10 @@ const Dashboard = () => {
   };
   const trend = getTrend();
 
+  // ⚡ Status kuis harian
+  const dailyDone = dailyStatus?.completed === true;
+  const dailyAvailable = dailyStatus !== undefined;
+
   return (
     <div className="page-bg transition-colors pb-20 min-h-screen">
       <div className="grid-pattern"></div>
@@ -170,6 +193,55 @@ const Dashboard = () => {
             {userData?.grade && <> • Kelas <span className="font-semibold text-teal-600 dark:text-teal-400">{userData.grade}</span></>}
           </p>
         </div>
+
+        {/* ⚡ KUIS HARIAN CARD (PROMINENT) */}
+        {dailyAvailable && (
+          <Link
+            to="/kuis-harian"
+            className={`block relative overflow-hidden rounded-2xl p-5 sm:p-6 mb-6 transition-all group hover:-translate-y-1 shadow-xl hover:shadow-2xl ${
+              dailyDone
+                ? 'bg-gradient-to-br from-teal-500 via-emerald-600 to-teal-700'
+                : 'bg-gradient-to-br from-amber-400 via-orange-500 to-pink-500'
+            }`}
+          >
+            {/* Background decoration */}
+            <div className="absolute top-0 right-0 w-40 h-40 bg-white/15 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700"></div>
+            <div className="absolute bottom-0 left-0 w-32 h-32 bg-yellow-300/20 rounded-full blur-2xl"></div>
+            
+            <div className="relative z-10 flex items-center justify-between gap-4 text-white">
+              <div className="flex-1 min-w-0">
+                <div className="inline-flex items-center gap-1.5 bg-white/25 backdrop-blur-sm border border-white/30 text-white text-[10px] font-bold px-2.5 py-1 rounded-full mb-2">
+                  <Flame className="w-3 h-3" />
+                  KUIS HARIAN
+                </div>
+                <h3 className="text-lg sm:text-xl font-bold mb-1">
+                  {dailyDone ? 'Sudah Dikerjakan Hari Ini! ✅' : 'Tantang Dirimu Hari Ini! 🎯'}
+                </h3>
+                <p className="text-white/90 text-xs sm:text-sm leading-relaxed">
+                  {dailyDone 
+                    ? 'Kembali besok untuk kuis baru dengan soal berbeda.'
+                    : '5 soal acak dari materi jenjangmu. Bisa menambah nilai rata-rata kuis kamu!'}
+                </p>
+              </div>
+
+              <div className="flex-shrink-0 text-center">
+                {dailyDone ? (
+                  <>
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white/20 backdrop-blur-sm border-2 border-white/40 flex items-center justify-center mb-1">
+                      <CheckCircle className="w-8 h-8 sm:w-10 sm:h-10" />
+                    </div>
+                    <div className="text-2xl sm:text-3xl font-extrabold">{dailyStatus.score}</div>
+                    <div className="text-[10px] text-white/80 font-semibold">SKOR</div>
+                  </>
+                ) : (
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white/20 backdrop-blur-sm border-2 border-white/40 flex items-center justify-center group-hover:bg-white/30 group-hover:scale-110 transition-all">
+                    <Target className="w-8 h-8 sm:w-10 sm:h-10" />
+                  </div>
+                )}
+              </div>
+            </div>
+          </Link>
+        )}
 
         {/* 🔥 STREAK BADGE */}
         {streakData.current > 0 && (

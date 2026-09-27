@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { db } from '../firebase';
 import { doc, getDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { User, Mail, GraduationCap, Trophy, Clock, Edit2, Save, X, LogOut, Loader, BookOpen, Sparkles, School, Camera, ZoomIn, ZoomOut, Check, TrendingUp, BarChart3 } from 'lucide-react';
+import { User, Mail, GraduationCap, Trophy, Clock, Edit2, Save, X, LogOut, Loader, BookOpen, Sparkles, School, Camera, ZoomIn, ZoomOut, Check, TrendingUp, BarChart3, Award } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import Cropper from 'react-easy-crop';
 import toast from 'react-hot-toast';
@@ -34,12 +34,11 @@ const Profile = () => {
 
   const fileInputRef = useRef(null);
 
-  // ⚡ Cek apakah foto valid (base64 image)
   const isValidPhoto = (photo) => {
     if (!photo) return false;
     if (typeof photo !== 'string') return false;
     if (!photo.startsWith('data:image')) return false;
-    if (photo.length < 100) return false; // Terlalu pendek = kemungkinan rusak
+    if (photo.length < 100) return false;
     return true;
   };
 
@@ -57,7 +56,6 @@ const Profile = () => {
           setEditGrade(data.grade || 7);
           setEditSchool(data.school || '');
           
-          // ⚡ Hanya set foto jika valid
           if (isValidPhoto(data.photoURL)) {
             setEditPhoto(data.photoURL);
             setPhotoError(false);
@@ -99,7 +97,6 @@ const Profile = () => {
     fetchData();
   }, [user]);
 
-  // ⚡ LINE CHART DATA
   const lineChartData = [...quizHistory]
     .reverse()
     .map((q, idx) => ({
@@ -108,7 +105,6 @@ const Profile = () => {
       skor: q.score || 0,
     }));
 
-  // ⚡ BAR CHART DATA
   const getTopicFromTitle = (title) => {
     if (!title) return 'Lainnya';
     const t = title.toLowerCase();
@@ -209,7 +205,7 @@ const Profile = () => {
       });
 
       const canvas = document.createElement('canvas');
-      const SIZE = 180; // ⚡ Diperkecil dari 200 → 180
+      const SIZE = 180;
       canvas.width = SIZE;
       canvas.height = SIZE;
       const ctx = canvas.getContext('2d');
@@ -220,7 +216,6 @@ const Profile = () => {
         0, 0, SIZE, SIZE
       );
 
-      // ⚡ Quality 0.7 → hasil ~15-25KB (aman di Firestore)
       const base64 = canvas.toDataURL('image/jpeg', 0.7);
       setEditPhoto(base64);
       setPhotoError(false);
@@ -287,7 +282,6 @@ const Profile = () => {
     );
   }
 
-  // ⚡ Cek apakah foto final valid untuk ditampilkan
   const showPhoto = isValidPhoto(editPhoto) && !photoError;
   const initial = (userData?.name || 'S')[0].toUpperCase();
 
@@ -313,7 +307,6 @@ const Profile = () => {
         <div className="card-elevated rounded-2xl p-5 sm:p-8">
           <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
             
-            {/* ⚡ FOTO PROFIL dengan FALLBACK */}
             <div className="relative flex-shrink-0">
               {showPhoto ? (
                 <img 
@@ -401,11 +394,19 @@ const Profile = () => {
                       <School className="w-4 h-4" /> <span className="text-sm">{userData.school}</span>
                     </div>
                   )}
-                  <div className="flex gap-3 mt-4">
-                    <button onClick={() => setIsEditing(true)} className="flex items-center gap-2 text-sm text-teal-600 dark:text-teal-400 font-medium hover:underline">
+                  
+                  {/* ⚡ TOMBOL AKSI */}
+                  <div className="flex flex-wrap items-center gap-3 mt-5">
+                    <Link 
+                      to="/sertifikat"
+                      className="flex items-center gap-2 bg-gradient-to-r from-amber-400 via-orange-500 to-pink-500 hover:from-amber-500 hover:to-pink-600 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-orange-500/30 hover:-translate-y-0.5"
+                    >
+                      <Award className="w-4 h-4" /> Sertifikat Saya
+                    </Link>
+                    <button onClick={() => setIsEditing(true)} className="flex items-center gap-2 text-sm text-teal-600 dark:text-teal-400 font-medium hover:underline px-2 py-2.5">
                       <Edit2 className="w-4 h-4" /> Edit Profil
                     </button>
-                    <button onClick={handleLogout} className="flex items-center gap-2 text-sm text-red-500 font-medium hover:underline">
+                    <button onClick={handleLogout} className="flex items-center gap-2 text-sm text-red-500 font-medium hover:underline px-2 py-2.5">
                       <LogOut className="w-4 h-4" /> Keluar
                     </button>
                   </div>
