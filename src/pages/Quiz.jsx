@@ -4,7 +4,7 @@ import Navbar from '../components/Navbar';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { Clock, RotateCcw, ArrowLeft, ListChecks, Loader, AlertTriangle, Trophy, TrendingUp, Sparkles } from 'lucide-react';
+import { Clock, RotateCcw, ArrowLeft, ListChecks, Loader, AlertTriangle, Trophy, TrendingUp, Sparkles, CheckCircle, XCircle, Award, PartyPopper } from 'lucide-react';
 
 const Quiz = () => {
   const { id } = useParams();
@@ -87,7 +87,6 @@ const Quiz = () => {
       const oldTime = bestResult?.bestTime ?? Infinity;
       
       const isHigher = newScore > oldScore;
-      // Waktu dihitung hanya kalau nilai >= 50 (biar gak bisa curang asal klik cepat)
       const canRecordTime = newScore >= 50;
       const isFaster = canRecordTime && newTime < oldTime;
 
@@ -183,43 +182,60 @@ const Quiz = () => {
         ? elapsedTime
         : oldBestTime;
 
+    const isPerfect = result.score === 100;
+
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-slate-950 pb-20">
         <Navbar />
         <div className="max-w-2xl mx-auto px-4 py-8">
           
-          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl border dark:border-slate-800 p-8 text-center mb-6 relative overflow-hidden">
+          <div className={`rounded-3xl shadow-xl border p-8 text-center mb-6 relative overflow-hidden ${
+            isPerfect
+              ? 'bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-900/20 dark:via-yellow-900/10 dark:to-orange-900/20 border-amber-300 dark:border-amber-700'
+              : 'bg-white dark:bg-slate-900 dark:border-slate-800'
+          }`}>
             <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-teal-400/10 to-cyan-500/5 rounded-full blur-3xl"></div>
             
             <div className="relative">
-              {isNewRecord && oldBest !== null && (
+              {/* Badge khusus 100 */}
+              {isPerfect && (
+                <div className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-500 text-white text-xs font-bold px-4 py-2 rounded-full mb-4 shadow-lg shadow-amber-500/40 animate-pulse">
+                  <PartyPopper className="w-4 h-4" /> SEMPURNA! NILAI 100!
+                </div>
+              )}
+              {!isPerfect && isNewRecord && oldBest !== null && (
                 <div className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold px-3 py-1.5 rounded-full mb-4 shadow-lg shadow-orange-500/30">
                   <Sparkles className="w-3.5 h-3.5" /> Rekor Nilai Baru!
                 </div>
               )}
-              {isNewRecord && oldBest === null && (
+              {!isPerfect && isNewRecord && oldBest === null && (
                 <div className="inline-flex items-center gap-1.5 bg-gradient-to-r from-teal-400 to-cyan-500 text-white text-xs font-bold px-3 py-1.5 rounded-full mb-4 shadow-lg shadow-teal-500/30">
                   <Sparkles className="w-3.5 h-3.5" /> Kuis Selesai!
                 </div>
               )}
-              {isNewFastest && !isNewRecord && (
+              {!isPerfect && isNewFastest && !isNewRecord && (
                 <div className="inline-flex items-center gap-1.5 bg-gradient-to-r from-violet-400 to-fuchsia-500 text-white text-xs font-bold px-3 py-1.5 rounded-full mb-4 shadow-lg shadow-fuchsia-500/30">
                   <Clock className="w-3.5 h-3.5" /> Waktu Tercepat Baru!
                 </div>
               )}
 
-              <div className={`w-32 h-32 rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl ${
-                result.score >= 70 
-                  ? 'bg-gradient-to-br from-teal-400 via-teal-500 to-cyan-600 shadow-teal-500/40' 
-                  : 'bg-gradient-to-br from-amber-400 via-orange-500 to-red-500 shadow-orange-500/40'
+              <div className={`w-32 h-32 rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl relative ${
+                isPerfect
+                  ? 'bg-gradient-to-br from-amber-400 via-yellow-500 to-orange-600 shadow-amber-500/50'
+                  : result.score >= 70 
+                    ? 'bg-gradient-to-br from-teal-400 via-teal-500 to-cyan-600 shadow-teal-500/40' 
+                    : 'bg-gradient-to-br from-amber-400 via-orange-500 to-red-500 shadow-orange-500/40'
               }`}>
+                {isPerfect && (
+                  <Award className="w-10 h-10 text-white absolute -top-3 -right-3 bg-white rounded-full p-1.5 shadow-lg" />
+                )}
                 <span className="text-5xl font-extrabold text-white">
                   {result.score}
                 </span>
               </div>
 
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                {result.score >= 70 ? 'Hebat! 🎉' : result.score >= 50 ? 'Lumayan! 💪' : 'Ayo Coba Lagi! 📚'}
+                {isPerfect ? 'Luar Biasa! Sempurna! 🏆' : result.score >= 70 ? 'Hebat! 🎉' : result.score >= 50 ? 'Lumayan! 💪' : 'Ayo Coba Lagi! 📚'}
               </h2>
               <p className="text-gray-600 dark:text-gray-400 mb-1">
                 Kamu menjawab benar <strong className="text-teal-600 dark:text-teal-400">{result.correct}</strong> dari <strong>{result.total}</strong> soal
@@ -250,15 +266,105 @@ const Quiz = () => {
             </div>
           </div>
 
-          <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/10 border border-amber-200/60 dark:border-amber-800/50 rounded-2xl p-4 mb-6 flex gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-amber-800 dark:text-amber-300">
-              <p className="font-bold mb-1">Nilai tertinggi & waktu tercepat yang disimpan 📊</p>
-              <p className="text-xs leading-relaxed">
-                Kamu bisa mengulang kuis ini berkali-kali. Yang tercatat adalah <strong>nilai tertinggi</strong> dan <strong>waktu tercepat</strong> kamu (minimal nilai 50).
-              </p>
+          {/* ⚡ PEMBAHASAN KHUSUS NILAI 100 */}
+          {isPerfect && (
+            <div className="bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-900/10 dark:via-yellow-900/5 dark:to-orange-900/10 border-2 border-amber-300 dark:border-amber-700/60 rounded-3xl p-6 mb-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-amber-400/20 to-orange-500/10 rounded-full blur-3xl"></div>
+              
+              <div className="relative">
+                {/* Header Pembahasan */}
+                <div className="flex items-center gap-3 mb-5 pb-4 border-b border-amber-200 dark:border-amber-800/50">
+                  <div className="w-12 h-12 bg-gradient-to-br from-amber-400 via-yellow-500 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-500/40">
+                    <Award className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-amber-900 dark:text-amber-200 flex items-center gap-2">
+                      🎁 Hadiah Spesial: Pembahasan Lengkap!
+                    </h3>
+                    <p className="text-xs text-amber-700 dark:text-amber-400">
+                      Karena kamu dapat nilai sempurna, ini jawaban & pembahasan lengkapnya!
+                    </p>
+                  </div>
+                </div>
+
+                {/* List Pembahasan */}
+                <div className="space-y-5">
+                  {questions.map((q, idx) => {
+                    const userAnswer = answers[q.id];
+                    const isCorrect = userAnswer === q.correctAnswer;
+                    return (
+                      <div key={q.id} className="bg-white/70 dark:bg-slate-800/50 rounded-2xl p-4 border border-amber-200/60 dark:border-amber-800/30">
+                        <div className="flex items-start gap-2 mb-3">
+                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-teal-400 to-cyan-600 flex items-center justify-center flex-shrink-0 shadow-md">
+                            <CheckCircle className="w-4 h-4 text-white" />
+                          </div>
+                          <p className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base leading-relaxed">
+                            {idx + 1}. {q.question}
+                          </p>
+                        </div>
+
+                        <div className="ml-9 space-y-1.5">
+                          {q.options.map((opt, i) => {
+                            const isRightAnswer = i === q.correctAnswer;
+                            return (
+                              <div 
+                                key={i} 
+                                className={`flex items-start gap-2 p-2 rounded-lg text-sm ${
+                                  isRightAnswer 
+                                    ? 'bg-teal-50 dark:bg-teal-900/30 border border-teal-200 dark:border-teal-800/50' 
+                                    : 'text-gray-500 dark:text-gray-500'
+                                }`}
+                              >
+                                <span className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${
+                                  isRightAnswer 
+                                    ? 'bg-teal-600 text-white' 
+                                    : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-400'
+                                }`}>
+                                  {String.fromCharCode(65 + i)}
+                                </span>
+                                <span className={isRightAnswer ? 'font-semibold text-teal-700 dark:text-teal-300' : ''}>
+                                  {opt}
+                                  {isRightAnswer && (
+                                    <span className="ml-2 text-[10px] bg-teal-100 dark:bg-teal-800/50 text-teal-700 dark:text-teal-300 px-1.5 py-0.5 rounded-full font-bold">
+                                      JAWABAN BENAR
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {q.explanation && (
+                          <div className="ml-9 mt-3 p-3 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 border border-blue-200 dark:border-blue-800/50 rounded-xl">
+                            <p className="text-xs font-bold text-blue-700 dark:text-blue-300 mb-1 flex items-center gap-1">
+                              💡 Pembahasan:
+                            </p>
+                            <p className="text-sm text-blue-900 dark:text-blue-200 leading-relaxed">
+                              {q.explanation}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Info nilai tersimpan */}
+          {!isPerfect && (
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/10 border border-amber-200/60 dark:border-amber-800/50 rounded-2xl p-4 mb-6 flex gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-amber-800 dark:text-amber-300">
+                <p className="font-bold mb-1">Dapatkan nilai 100 untuk melihat pembahasan! 🎁</p>
+                <p className="text-xs leading-relaxed">
+                  Nilai tertinggi & waktu tercepat tetap tersimpan. Kumpulkan <strong>nilai sempurna (100)</strong> untuk membuka pembahasan lengkap!
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="flex flex-col sm:flex-row gap-3">
             <button 
@@ -306,9 +412,9 @@ const Quiz = () => {
         )}
 
         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 mb-4 flex items-start gap-2 text-xs text-amber-700 dark:text-amber-300">
-          <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <Sparkles className="w-4 h-4 flex-shrink-0 mt-0.5" />
           <span>
-            <strong>Tips:</strong> Jawaban tidak akan ditampilkan setelah selesai. Kamu bisa mengulang kuis ini kapan saja untuk memperbaiki nilai & waktu!
+            <strong>Bonus:</strong> Dapatkan <strong>nilai 100</strong> untuk membuka pembahasan lengkap! 🔓
           </span>
         </div>
 

@@ -4,7 +4,105 @@ import Navbar from '../components/Navbar';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
-import { Search, BookOpen, Clock, Loader, Lock, X, CheckCircle, BookMarked, TrendingUp, Sparkles, ChevronDown, FolderOpen, Folder, GraduationCap, Layers, Trophy, Target, ShieldAlert } from 'lucide-react';
+import { Search, BookOpen, Clock, Loader, Lock, X, CheckCircle, BookMarked, TrendingUp, Sparkles, ChevronDown, FolderOpen, Folder, GraduationCap, Layers, Trophy, Target, ShieldAlert, Star } from 'lucide-react';
+
+// ⚡ Warna BASIC per kelas
+const getGradeStyle = (grade) => {
+  const g = Number(grade);
+  const styles = {
+    7: {
+      bg: 'from-teal-400 via-teal-500 to-cyan-600',
+      shadow: 'shadow-teal-500/30',
+      badgeBg: 'bg-gradient-to-r from-teal-100 to-cyan-100 text-teal-700 dark:from-teal-900/40 dark:to-cyan-900/40 dark:text-teal-400',
+      iconBg: 'from-teal-400 to-cyan-500',
+    },
+    8: {
+      bg: 'from-blue-500 via-blue-600 to-indigo-600',
+      shadow: 'shadow-blue-500/30',
+      badgeBg: 'bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 dark:from-blue-900/40 dark:to-indigo-900/40 dark:text-blue-400',
+      iconBg: 'from-blue-400 to-indigo-500',
+    },
+    9: {
+      bg: 'from-violet-500 via-purple-600 to-fuchsia-600',
+      shadow: 'shadow-purple-500/30',
+      badgeBg: 'bg-gradient-to-r from-violet-100 to-purple-100 text-violet-700 dark:from-violet-900/40 dark:to-purple-900/40 dark:text-violet-400',
+      iconBg: 'from-violet-400 to-purple-500',
+    },
+    10: {
+      bg: 'from-orange-500 via-orange-600 to-red-600',
+      shadow: 'shadow-orange-500/30',
+      badgeBg: 'bg-gradient-to-r from-orange-100 to-red-100 text-orange-700 dark:from-orange-900/40 dark:to-red-900/40 dark:text-orange-400',
+      iconBg: 'from-orange-500 to-red-500',
+    },
+    11: {
+      bg: 'from-fuchsia-500 via-purple-500 to-violet-600',
+      shadow: 'shadow-purple-500/30',
+      badgeBg: 'bg-gradient-to-r from-fuchsia-100 to-purple-100 text-purple-700 dark:from-fuchsia-900/40 dark:to-purple-900/40 dark:text-purple-400',
+      iconBg: 'from-fuchsia-500 to-purple-500',
+    },
+    12: {
+      bg: 'from-yellow-300 via-yellow-400 to-amber-500',
+      shadow: 'shadow-yellow-500/30',
+      badgeBg: 'bg-gradient-to-r from-yellow-100 to-amber-100 text-amber-800 dark:from-yellow-900/40 dark:to-amber-900/40 dark:text-yellow-400',
+      iconBg: 'from-yellow-300 to-amber-500',
+    },
+  };
+  return styles[g] || styles[7];
+};
+
+// ⚡ Warna PREMIUM untuk Matematika Tingkat Lanjut (deep color + glow mewah)
+const getAdvancedGradeStyle = (grade) => {
+  const g = Number(grade);
+  const styles = {
+    7: {
+      bg: 'from-teal-500 via-cyan-600 to-blue-700',
+      shadow: 'shadow-teal-500/60',
+      badgeBg: 'bg-gradient-to-r from-teal-200 to-cyan-200 text-teal-900 dark:from-teal-800/60 dark:to-cyan-800/60 dark:text-teal-200',
+      iconBg: 'from-teal-500 via-cyan-500 to-blue-600',
+    },
+    8: {
+      bg: 'from-blue-600 via-indigo-600 to-purple-700',
+      shadow: 'shadow-blue-500/60',
+      badgeBg: 'bg-gradient-to-r from-blue-200 to-indigo-200 text-blue-900 dark:from-blue-800/60 dark:to-indigo-800/60 dark:text-blue-200',
+      iconBg: 'from-blue-500 via-indigo-500 to-purple-600',
+    },
+    9: {
+      bg: 'from-violet-600 via-purple-700 to-fuchsia-700',
+      shadow: 'shadow-purple-500/60',
+      badgeBg: 'bg-gradient-to-r from-violet-200 to-purple-200 text-violet-900 dark:from-violet-800/60 dark:to-purple-800/60 dark:text-violet-200',
+      iconBg: 'from-violet-500 via-purple-500 to-fuchsia-600',
+    },
+    10: {
+      bg: 'from-orange-600 via-red-600 to-rose-700',
+      shadow: 'shadow-orange-500/60',
+      badgeBg: 'bg-gradient-to-r from-orange-200 to-red-200 text-orange-900 dark:from-orange-800/60 dark:to-red-800/60 dark:text-orange-200',
+      iconBg: 'from-orange-500 via-red-500 to-rose-600',
+    },
+    // ⚡ KELAS 11 TINGKAT LANJUT — Ungu MEWAH
+    11: {
+      bg: 'from-purple-700 via-violet-700 to-indigo-800',
+      shadow: 'shadow-purple-500/70',
+      badgeBg: 'bg-gradient-to-r from-purple-200 via-violet-200 to-indigo-200 text-purple-900 dark:from-purple-800/60 dark:to-indigo-800/60 dark:text-purple-200',
+      iconBg: 'from-purple-600 via-violet-600 to-indigo-700',
+      isPremium: true,
+    },
+    // ⚡ KELAS 12 TINGKAT LANJUT — Emas MEWAH
+    12: {
+      bg: 'from-amber-400 via-yellow-500 to-orange-600',
+      shadow: 'shadow-amber-500/70',
+      badgeBg: 'bg-gradient-to-r from-amber-200 via-yellow-200 to-orange-200 text-amber-900 dark:from-amber-800/60 dark:to-orange-800/60 dark:text-yellow-200',
+      iconBg: 'from-amber-400 via-yellow-500 to-orange-600',
+      isPremium: true,
+    },
+  };
+  return styles[g] || styles[7];
+};
+
+// ⚡ Helper: cek apakah materi tingkat lanjut
+const isAdvancedMath = (title) => {
+  if (!title) return false;
+  return /matematika\s+tingkat\s+lanjut/i.test(title);
+};
 
 const MaterialList = () => {
   const { user } = useAuth();
@@ -62,7 +160,7 @@ const MaterialList = () => {
     fetchData();
   }, [user]);
 
-  // ⚡ CEK UNLOCK STATUS (50% materi + 50% kuis dari jenjang sendiri)
+  // ⚡ CEK UNLOCK STATUS
   useEffect(() => {
     const checkUnlockStatus = async () => {
       if (!user || !userProfile?.level || materials.length === 0) return;
@@ -86,7 +184,6 @@ const MaterialList = () => {
         const r = d.data();
         if (ownMaterialIds.has(r.materialId)) uniqueQuizMaterials.add(r.materialId);
       });
-      // Karena 1 user = 1 dokumen per materi, hitung langsung
       const completedQuizzes = uniqueQuizMaterials.size;
 
       const materialsPercent = Math.round((completedMaterials / totalMaterials) * 100);
@@ -103,7 +200,7 @@ const MaterialList = () => {
     checkUnlockStatus();
   }, [user, userProfile, materials, progressMap]);
 
-  // ⚡ GROUP MATERIALS
+  // ⚡ GROUP MATERIALS — Folder SMP & SMA (jenjang tetap)
   const groupedMaterials = useMemo(() => {
     const groups = {};
 
@@ -120,7 +217,7 @@ const MaterialList = () => {
       if (viewMode === 'jenjang') {
         key = mat.level;
         displayLevel = mat.level;
-        displayGrade = mat.level; 
+        displayGrade = mat.level;
       } else {
         key = mat.topic || 'Lainnya';
         displayLevel = 'Topik';
@@ -138,8 +235,17 @@ const MaterialList = () => {
       groups[key].materials.push(mat);
     });
 
+    // ⚡ SORT: kelas dulu (7→12), lalu biasa dulu, baru tingkat lanjut, lalu nomor bab
     Object.values(groups).forEach((group) => {
       group.materials.sort((a, b) => {
+        const gradeA = Number(a.grade) || 0;
+        const gradeB = Number(b.grade) || 0;
+        if (gradeA !== gradeB) return gradeA - gradeB;
+
+        const advA = isAdvancedMath(a.title) ? 1 : 0;
+        const advB = isAdvancedMath(b.title) ? 1 : 0;
+        if (advA !== advB) return advA - advB;
+
         const getBabNumber = (title) => {
           if (!title) return 999;
           const match = title.match(/Bab\s+(\d+)/i);
@@ -185,7 +291,6 @@ const MaterialList = () => {
     }
   };
 
-  // ⚡ Cek apakah FOLDER (jenjang) terkunci
   const isFolderLocked = (group) => {
     if (viewMode !== 'jenjang') return false;
     if (!user) return false;
@@ -196,7 +301,6 @@ const MaterialList = () => {
     return !unlockStatus.unlocked;
   };
 
-  // ⚡ Cek apakah MATERI (individu) terkunci (untuk mode Topik)
   const isMaterialLocked = (mat) => {
     if (!user) return false;
     if (!userProfile?.level) return false;
@@ -482,9 +586,14 @@ const MaterialList = () => {
                           const percent = isCompleted ? 100 : (progress?.percentage || 0);
                           const descPreview = stripHtml(mat.description);
                           const matLocked = isMaterialLocked(mat);
+                          const isAdvanced = isAdvancedMath(mat.title);
+                          
+                          // ⚡ Pilih style: basic vs premium (advanced)
+                          const gradeStyle = isAdvanced 
+                            ? getAdvancedGradeStyle(mat.grade) 
+                            : getGradeStyle(mat.grade);
 
                           if (matLocked) {
-                            // Kartu terkunci
                             return (
                               <button
                                 key={mat.id}
@@ -525,65 +634,103 @@ const MaterialList = () => {
                             );
                           }
 
-                          // Kartu normal (unlocked)
+                          // ⚡ KARTU MATERI — basic atau premium (advanced)
                           return (
                             <Link 
                               key={mat.id} 
                               to={`/materi/${mat.id}`}
                               onClick={handleCardClick}
-                              className={`group/card bg-white dark:bg-slate-800/50 rounded-xl border-2 transition-all overflow-hidden relative hover:-translate-y-1 hover:shadow-xl ${
-                                isCompleted 
-                                  ? 'border-teal-300 dark:border-teal-500/70' 
-                                  : isOpened
-                                    ? 'border-amber-300 dark:border-amber-500/70'
-                                    : 'border-gray-100 dark:border-slate-700/50'
+                              className={`group/card bg-white dark:bg-slate-800/50 rounded-xl transition-all overflow-hidden relative hover:-translate-y-1 ${
+                                isAdvanced
+                                  ? `border-[3px] ${
+                                      isCompleted 
+                                        ? (Number(mat.grade) === 12 
+                                            ? 'border-amber-400 dark:border-amber-500/70' 
+                                            : Number(mat.grade) === 11
+                                              ? 'border-purple-400 dark:border-purple-500/70'
+                                              : 'border-purple-400 dark:border-purple-500/70')
+                                        : (Number(mat.grade) === 12
+                                            ? 'border-amber-300 dark:border-amber-700/60'
+                                            : 'border-purple-300 dark:border-purple-700/60')
+                                    } ${gradeStyle.shadow} shadow-lg hover:shadow-2xl`
+                                  : `border-2 ${
+                                      isCompleted 
+                                        ? 'border-teal-300 dark:border-teal-500/70' 
+                                        : isOpened
+                                          ? 'border-amber-300 dark:border-amber-500/70'
+                                          : 'border-gray-100 dark:border-slate-700/50'
+                                    } hover:shadow-xl`
                               }`}
                             >
-                              <div className={`h-1 ${
-                                isCompleted 
-                                  ? 'bg-gradient-to-r from-teal-400 via-cyan-500 to-teal-600' 
-                                  : isOpened
-                                    ? 'bg-gradient-to-r from-amber-400 via-orange-500 to-amber-500'
-                                    : 'bg-gradient-to-r from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600'
-                              }`}></div>
+                              {/* Top bar dengan warna kelas — advanced pakai shimmer */}
+                              <div className={`h-1.5 bg-gradient-to-r ${gradeStyle.bg} relative overflow-hidden`}>
+                                {isAdvanced && (
+                                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/70 to-transparent animate-pulse"></div>
+                                )}
+                              </div>
 
+                              {/* Shimmer overlay saat hover untuk advanced */}
+                              {isAdvanced && (
+                                <div className="absolute inset-0 pointer-events-none bg-gradient-to-tr from-transparent via-white/5 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-700"></div>
+                              )}
+
+                              {/* Badge TINGKAT LANJUT + Kelas untuk advanced, atau Kelas saja untuk basic */}
+                              {isAdvanced ? (
+                                <div className="absolute top-3 right-3 flex flex-col items-end gap-1 z-10">
+                                  <div className="text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-600 text-white flex items-center gap-1 ring-1 ring-white/40">
+                                    <Star className="w-2.5 h-2.5 fill-white" />
+                                    TINGKAT LANJUT
+                                  </div>
+                                  <div className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm ${gradeStyle.badgeBg}`}>
+                                    Kelas {mat.grade}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className={`absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md z-10 ${gradeStyle.badgeBg}`}>
+                                  Kelas {mat.grade}
+                                </div>
+                              )}
+
+                              {/* Status badge */}
                               {isCompleted && (
-                                <div className="absolute top-3 right-3 bg-gradient-to-r from-teal-500 to-cyan-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-md z-10">
+                                <div className="absolute top-3 left-3 bg-gradient-to-r from-teal-500 to-cyan-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-md z-10">
                                   <CheckCircle className="w-3 h-3" /> Selesai
                                 </div>
                               )}
                               {!isCompleted && isOpened && (
-                                <div className="absolute top-3 right-3 bg-gradient-to-r from-amber-500 to-orange-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-md z-10">
+                                <div className="absolute top-3 left-3 bg-gradient-to-r from-amber-500 to-orange-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-md z-10">
                                   <BookMarked className="w-3 h-3" /> {percent}%
                                 </div>
                               )}
-                              {!user && (
-                                <div className="absolute top-3 right-3 bg-amber-100 dark:bg-amber-900/40 p-1 rounded-md z-10">
-                                  <Lock className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-                                </div>
-                              )}
 
-                              <div className="p-4">
+                              <div className="p-4 pt-8">
                                 <div className="flex items-start gap-2.5 mb-2">
-                                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md group-hover/card:scale-110 transition-transform ${
-                                    isCompleted 
-                                      ? 'bg-gradient-to-br from-teal-400 to-cyan-600 shadow-teal-500/30' 
-                                      : isOpened 
-                                        ? 'bg-gradient-to-br from-amber-400 to-orange-600 shadow-orange-500/30'
-                                        : 'bg-gradient-to-br from-teal-400 to-cyan-500 shadow-teal-500/30'
+                                  {/* Icon dengan warna kelas — advanced ada ring putih */}
+                                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 group-hover/card:scale-110 transition-transform bg-gradient-to-br ${gradeStyle.iconBg} ${
+                                    isAdvanced 
+                                      ? `${gradeStyle.shadow} shadow-lg ring-2 ring-white/40 dark:ring-white/20` 
+                                      : `${gradeStyle.shadow} shadow-md`
                                   }`}>
                                     {isCompleted ? (
                                       <CheckCircle className="w-4 h-4 text-white" />
+                                    ) : isAdvanced ? (
+                                      <Star className="w-4 h-4 text-white fill-white" />
                                     ) : (
                                       <BookOpen className="w-4 h-4 text-white" />
                                     )}
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <h3 className="font-bold text-sm text-gray-900 dark:text-white leading-tight group-hover/card:text-teal-600 dark:group-hover/card:text-teal-400 transition-colors line-clamp-2">
+                                    <h3 className={`font-bold text-sm leading-tight transition-colors line-clamp-2 ${
+                                      isAdvanced
+                                        ? Number(mat.grade) === 12
+                                          ? 'text-gray-900 dark:text-white group-hover/card:text-amber-600 dark:group-hover/card:text-amber-400'
+                                          : 'text-gray-900 dark:text-white group-hover/card:text-purple-600 dark:group-hover/card:text-purple-400'
+                                        : 'text-gray-900 dark:text-white group-hover/card:text-teal-600 dark:group-hover/card:text-teal-400'
+                                    }`}>
                                       {mat.title}
                                     </h3>
                                     <span className="text-[10px] text-gray-400 mt-0.5 block">
-                                      {mat.topic} • Kelas {mat.grade}
+                                      {mat.topic} • {mat.level}
                                     </span>
                                   </div>
                                 </div>
@@ -612,11 +759,15 @@ const MaterialList = () => {
                                     <Clock className="w-3 h-3" /> 15 menit
                                   </span>
                                   <span className={`font-bold ${
-                                    isCompleted 
-                                      ? 'text-teal-600 dark:text-teal-400' 
-                                      : isOpened 
+                                    isAdvanced
+                                      ? Number(mat.grade) === 12
                                         ? 'text-amber-600 dark:text-amber-400'
-                                        : 'text-teal-600 dark:text-teal-400'
+                                        : 'text-purple-600 dark:text-purple-400'
+                                      : isCompleted 
+                                        ? 'text-teal-600 dark:text-teal-400' 
+                                        : isOpened 
+                                          ? 'text-amber-600 dark:text-amber-400'
+                                          : 'text-teal-600 dark:text-teal-400'
                                   }`}>
                                     {isCompleted ? 'Baca Ulang →' : isOpened ? 'Lanjutkan →' : 'Baca →'}
                                   </span>
