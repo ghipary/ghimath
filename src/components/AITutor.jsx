@@ -3,8 +3,7 @@ import { Sparkles, Send, X, Loader, Bot, User, Lightbulb, Trash2, AlertTriangle 
 import toast from 'react-hot-toast';
 import MathRenderer from './MathRenderer';
 
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+// GROQ_API_KEY dan GROQ_URL sudah dihapus (dipindah ke server)
 
 const GROQ_MODELS = [
   'openai/gpt-oss-120b',
@@ -99,7 +98,6 @@ ${historyContext}
 Pertanyaan siswa: ${userMsg}`;
 
       console.log('🚀 [AI Tutor Groq] Mengirim request...');
-      console.log('🔑 API Key prefix:', GROQ_API_KEY?.slice(0, 8) + '...');
 
       let successData = null;
       let lastError = null;
@@ -109,11 +107,11 @@ Pertanyaan siswa: ${userMsg}`;
         console.log(`🧪 [AI Tutor Groq] Mencoba model: ${model}`);
 
         try {
-          const response = await fetch(GROQ_URL, {
+          // UBAH: fetch ke /api/groq, hapus Authorization header
+          const response = await fetch('/api/groq', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${GROQ_API_KEY}`,
             },
             body: JSON.stringify({
               model: model,
@@ -198,9 +196,7 @@ Pertanyaan siswa: ${userMsg}`;
     }
   };
 
-  if (!GROQ_API_KEY) {
-    return null;
-  }
+  // Blok if (!GROQ_API_KEY) return null; DIHAPUS agar tombol AI selalu muncul
 
   return (
     <>
