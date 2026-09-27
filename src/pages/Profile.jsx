@@ -24,6 +24,7 @@ const Profile = () => {
   const [editGrade, setEditGrade] = useState('');
   const [editSchool, setEditSchool] = useState('');
   const [editPhoto, setEditPhoto] = useState('');
+  const [photoError, setPhotoError] = useState(false);
 
   const [showCropModal, setShowCropModal] = useState(false);
   const [cropImage, setCropImage] = useState('');
@@ -32,6 +33,15 @@ const Profile = () => {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
 
   const fileInputRef = useRef(null);
+
+  // ⚡ Cek apakah foto valid (base64 image)
+  const isValidPhoto = (photo) => {
+    if (!photo) return false;
+    if (typeof photo !== 'string') return false;
+    if (!photo.startsWith('data:image')) return false;
+    if (photo.length < 100) return false; // Terlalu pendek = kemungkinan rusak
+    return true;
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -46,7 +56,15 @@ const Profile = () => {
           setEditLevel(data.level || 'SMP');
           setEditGrade(data.grade || 7);
           setEditSchool(data.school || '');
-          setEditPhoto(data.photoURL || '');
+          
+          // ⚡ Hanya set foto jika valid
+          if (isValidPhoto(data.photoURL)) {
+            setEditPhoto(data.photoURL);
+            setPhotoError(false);
+          } else {
+            setEditPhoto('');
+            setPhotoError(true);
+          }
         }
 
         const q = query(collection(db, 'quizResults'), where('userId', '==', user.uid));
@@ -90,7 +108,7 @@ const Profile = () => {
       skor: q.score || 0,
     }));
 
-  // ⚡ BAR CHART DATA — deteksi topik dari judul materi
+  // ⚡ BAR CHART DATA
   const getTopicFromTitle = (title) => {
     if (!title) return 'Lainnya';
     const t = title.toLowerCase();
@@ -124,7 +142,6 @@ const Profile = () => {
     return '#ef4444';
   };
 
-  // Custom Tooltips
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
@@ -192,7 +209,7 @@ const Profile = () => {
       });
 
       const canvas = document.createElement('canvas');
-      const SIZE = 200;
+      const SIZE = 180; // ⚡ Diperkecil dari 200 → 180
       canvas.width = SIZE;
       canvas.height = SIZE;
       const ctx = canvas.getContext('2d');
@@ -203,7 +220,10 @@ const Profile = () => {
         0, 0, SIZE, SIZE
       );
 
-      setEditPhoto(canvas.toDataURL('image/jpeg', 0.85));
+      // ⚡ Quality 0.7 → hasil ~15-25KB (aman di Firestore)
+      const base64 = canvas.toDataURL('image/jpeg', 0.7);
+      setEditPhoto(base64);
+      setPhotoError(false);
       setShowCropModal(false);
       setCropImage('');
       toast.success('Foto di-crop! Klik Simpan untuk menerapkan. 📸');
@@ -216,10 +236,20 @@ const Profile = () => {
     try {
       setSaving(true);
       await updateDoc(doc(db, 'users', user.uid), {
-        name: editName, level: editLevel, grade: Number(editGrade),
-        school: editSchool, photoURL: editPhoto
+        name: editName, 
+        level: editLevel, 
+        grade: Number(editGrade),
+        school: editSchool, 
+        photoURL: editPhoto
       });
-      setUserData({ ...userData, name: editName, level: editLevel, grade: Number(editGrade), school: editSchool, photoURL: editPhoto });
+      setUserData({ 
+        ...userData, 
+        name: editName, 
+        level: editLevel, 
+        grade: Number(editGrade), 
+        school: editSchool, 
+        photoURL: editPhoto 
+      });
       setIsEditing(false);
       toast.success('Profil diperbarui! ✅');
     } catch (error) {
@@ -233,7 +263,7 @@ const Profile = () => {
     setEditLevel(userData?.level || 'SMP');
     setEditGrade(userData?.grade || 7);
     setEditSchool(userData?.school || '');
-    setEditPhoto(userData?.photoURL || '');
+    setEditPhoto(isValidPhoto(userData?.photoURL) ? userData.photoURL : '');
     setIsEditing(false);
   };
 
@@ -257,6 +287,10 @@ const Profile = () => {
     );
   }
 
+  // ⚡ Cek apakah foto final valid untuk ditampilkan
+  const showPhoto = isValidPhoto(editPhoto) && !photoError;
+  const initial = (userData?.name || 'S')[0].toUpperCase();
+
   return (
     <div className="page-bg transition-colors pb-20 min-h-screen">
       <div className="grid-pattern"></div>
@@ -279,12 +313,21 @@ const Profile = () => {
         <div className="card-elevated rounded-2xl p-5 sm:p-8">
           <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
             
+            {/* ⚡ FOTO PROFIL dengan FALLBACK */}
             <div className="relative flex-shrink-0">
-              {editPhoto ? (
-                <img src={editPhoto} alt="Foto" className="w-24 h-24 rounded-2xl object-cover shadow-lg shadow-teal-500/30 border-4 border-white dark:border-slate-700" />
+              {showPhoto ? (
+                <img 
+                  src={editPhoto} 
+                  alt={userData?.name || 'Foto Profil'} 
+                  className="w-24 h-24 rounded-2xl object-cover shadow-lg shadow-teal-500/30 border-4 border-white dark:border-slate-700"
+                  onError={() => {
+                    console.warn('Foto gagal dimuat, fallback ke inisial');
+                    setPhotoError(true);
+                  }}
+                />
               ) : (
                 <div className="w-24 h-24 bg-gradient-to-br from-teal-400 via-teal-600 to-cyan-600 rounded-2xl flex items-center justify-center shadow-lg shadow-teal-500/30">
-                  <User className="w-12 h-12 text-white" />
+                  <span className="text-4xl font-bold text-white">{initial}</span>
                 </div>
               )}
               
@@ -409,7 +452,7 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* ⚡ GRAFIK LINE CHART (Skor per Waktu) */}
+        {/* LINE CHART */}
         {lineChartData.length > 0 && (
           <div className="card-elevated rounded-2xl p-5 sm:p-6">
             <div className="flex items-center gap-3 mb-4">
@@ -459,7 +502,7 @@ const Profile = () => {
           </div>
         )}
 
-        {/* ⚡ BAR CHART (Kemampuan per Topik) — hanya kalau ≥ 2 topik */}
+        {/* BAR CHART */}
         {barChartData.length >= 2 && (
           <div className="card-elevated rounded-2xl p-5 sm:p-6">
             <div className="flex items-center gap-3 mb-4">
@@ -516,7 +559,6 @@ const Profile = () => {
               </ResponsiveContainer>
             </div>
 
-            {/* Legend */}
             <div className="mt-3 flex flex-wrap gap-3 text-xs justify-center">
               <span className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full" style={{ background: '#14b8a6' }}></span> ≥ 85 (Sangat Baik)
@@ -534,7 +576,7 @@ const Profile = () => {
           </div>
         )}
 
-        {/* ⚡ Kalau cuma 1 topik → tampil pesan ajakan */}
+        {/* Cuma 1 topik */}
         {barChartData.length === 1 && (
           <div className="card-elevated rounded-2xl p-5 sm:p-6 text-center">
             <div className="w-12 h-12 mx-auto bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/30 mb-3">

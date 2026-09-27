@@ -1,31 +1,59 @@
-import React from 'react'
+import React, { Suspense, lazy } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-import { AuthProvider, useAuth } from './context/AuthContext'
-import LandingPage from './pages/LandingPage'
-import Login from './pages/Login'
-import Register from './pages/Register'
-import Onboarding from './pages/Onboarding'
-import Dashboard from './pages/Dashboard'
-import MaterialList from './pages/MaterialList'
-import MaterialDetail from './pages/MaterialDetail'
-import Quiz from './pages/Quiz'
-import Leaderboard from './pages/Leaderboard'
+import { AuthProvider } from './context/AuthContext'
+import { Toaster } from 'react-hot-toast'
+
+// Komponen yang langsung di-load (karena dibutuhkan di awal)
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminRoute from './components/AdminRoute'
-import AdminDashboard from './pages/admin/AdminDashboard'
-import AdminMaterialList from './pages/admin/AdminMaterialList'
-import AdminMaterialForm from './pages/admin/AdminMaterialForm'
-import AdminQuizBuilder from './pages/admin/AdminQuizBuilder'
-import AdminQuizImport from './pages/admin/AdminQuizImport'
-import AdminUsers from './pages/admin/AdminUsers'
-import Profile from './pages/Profile'
-import ResetPassword from './pages/ResetPassword'
-import { Toaster } from 'react-hot-toast'
+import PWAInstallBanner from './components/PWAInstallBanner'
+
+// ==========================================
+// LAZY LOADING: Halaman di-load hanya saat dibutuhkan
+// ==========================================
+const LandingPage = lazy(() => import('./pages/LandingPage'))
+const Login = lazy(() => import('./pages/Login'))
+const Register = lazy(() => import('./pages/Register'))
+const ResetPassword = lazy(() => import('./pages/ResetPassword'))
+const Onboarding = lazy(() => import('./pages/Onboarding'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const MaterialList = lazy(() => import('./pages/MaterialList'))
+const MaterialDetail = lazy(() => import('./pages/MaterialDetail'))
+const Quiz = lazy(() => import('./pages/Quiz'))
+const Leaderboard = lazy(() => import('./pages/Leaderboard'))
+const Profile = lazy(() => import('./pages/Profile'))
+
+// Admin Pages
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'))
+const AdminMaterialList = lazy(() => import('./pages/admin/AdminMaterialList'))
+const AdminMaterialForm = lazy(() => import('./pages/admin/AdminMaterialForm'))
+const AdminQuizBuilder = lazy(() => import('./pages/admin/AdminQuizBuilder'))
+const AdminQuizImport = lazy(() => import('./pages/admin/AdminQuizImport'))
+const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'))
+const AdminAnalytics = lazy(() => import('./pages/admin/AdminAnalytics'))
+
+// ==========================================
+// LOADING FALLBACK (Tampilan pas pindah halaman)
+// ==========================================
+const PageLoader = () => (
+  <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
+    <div className="relative">
+      <div className="w-12 h-12 border-4 border-teal-500/30 border-t-teal-500 rounded-full animate-spin"></div>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="w-2 h-2 bg-teal-500 rounded-full animate-pulse"></div>
+      </div>
+    </div>
+    <p className="mt-4 text-sm font-medium text-slate-500 dark:text-slate-400 animate-pulse">
+      Memuat halaman...
+    </p>
+  </div>
+);
 
 function App() {
   return (
     <AuthProvider>
       <Router>
+        {/* Notifikasi Toast */}
         <Toaster 
           position="top-right"
           toastOptions={{
@@ -42,32 +70,36 @@ function App() {
           }}
         />
 
-        <Routes>
-          {/* ⚡ Beranda = SELALU Landing Page (promosi) */}
-          <Route path="/" element={<LandingPage />} />
-          
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          
-          {/* Rute Privat */}
-          <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/materi" element={<MaterialList />} />
-          <Route path="/materi/:id" element={<ProtectedRoute><MaterialDetail /></ProtectedRoute>} />
-          <Route path="/materi/:id/kuis" element={<ProtectedRoute><Quiz /></ProtectedRoute>} />
-          <Route path="/profil" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-          <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
+        {/* Suspense membungkus Routes untuk menampilkan PageLoader saat halaman sedang di-load */}
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            
+            <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/materi" element={<MaterialList />} />
+            <Route path="/materi/:id" element={<ProtectedRoute><MaterialDetail /></ProtectedRoute>} />
+            <Route path="/materi/:id/kuis" element={<ProtectedRoute><Quiz /></ProtectedRoute>} />
+            <Route path="/profil" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
 
-          {/* Rute Admin */}
-          <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-          <Route path="/admin/materi" element={<AdminRoute><AdminMaterialList /></AdminRoute>} />
-          <Route path="/admin/materi/baru" element={<AdminRoute><AdminMaterialForm /></AdminRoute>} />
-          <Route path="/admin/materi/:id/edit" element={<AdminRoute><AdminMaterialForm /></AdminRoute>} />
-          <Route path="/admin/materi/:id/soal" element={<AdminRoute><AdminQuizBuilder /></AdminRoute>} />
-          <Route path="/admin/materi/:id/import" element={<AdminRoute><AdminQuizImport /></AdminRoute>} />
-          <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
-        </Routes>
+            <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+            <Route path="/admin/materi" element={<AdminRoute><AdminMaterialList /></AdminRoute>} />
+            <Route path="/admin/materi/baru" element={<AdminRoute><AdminMaterialForm /></AdminRoute>} />
+            <Route path="/admin/materi/:id/edit" element={<AdminRoute><AdminMaterialForm /></AdminRoute>} />
+            <Route path="/admin/materi/:id/soal" element={<AdminRoute><AdminQuizBuilder /></AdminRoute>} />
+            <Route path="/admin/materi/:id/import" element={<AdminRoute><AdminQuizImport /></AdminRoute>} />
+            <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
+            <Route path="/admin/analytics" element={<AdminRoute><AdminAnalytics /></AdminRoute>} />
+          </Routes>
+        </Suspense>
+
+        {/* Banner PWA (Sekarang sudah dipanggil di sini) */}
+        <PWAInstallBanner />
+        
       </Router>
     </AuthProvider>
   )

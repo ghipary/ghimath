@@ -3,8 +3,29 @@ import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import { db } from '../firebase';
 import { collection, getDocs } from 'firebase/firestore';
-import { Trophy, Medal, Crown, Loader, User, ChevronLeft, Sparkles, School, GraduationCap } from 'lucide-react';
+import { Trophy, Medal, Crown, Loader, ChevronLeft, Sparkles, School, GraduationCap, Flame, Sprout, Zap, Rocket, Gem } from 'lucide-react';
 import { Link } from 'react-router-dom';
+
+// ⚡ Helper: warna + ICON per level streak
+const getStreakConfig = (streak) => {
+  if (streak >= 100) return { gradient: 'from-fuchsia-500 to-pink-500', Icon: Crown };
+  if (streak >= 30) return { gradient: 'from-violet-500 to-purple-600', Icon: Gem };
+  if (streak >= 14) return { gradient: 'from-amber-400 to-red-500', Icon: Rocket };
+  if (streak >= 7) return { gradient: 'from-yellow-400 to-orange-500', Icon: Zap };
+  if (streak >= 3) return { gradient: 'from-cyan-400 to-teal-500', Icon: Flame };
+  return { gradient: 'from-teal-400 to-cyan-500', Icon: Sprout };
+};
+
+const StreakChip = ({ streak }) => {
+  if (!streak || streak <= 0) return null;
+  const config = getStreakConfig(streak);
+  return (
+    <div className={`inline-flex items-center gap-1 bg-gradient-to-r ${config.gradient} text-white px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm flex-shrink-0`}>
+      <config.Icon className="w-3 h-3" />
+      {streak}
+    </div>
+  );
+};
 
 const Leaderboard = () => {
   const { user } = useAuth();
@@ -54,6 +75,8 @@ const Leaderboard = () => {
             grade: usersMap[uid]?.grade || null,
             school: usersMap[uid]?.school || '',
             photoURL: usersMap[uid]?.photoURL || '',
+            currentStreak: usersMap[uid]?.currentStreak || 0,
+            longestStreak: usersMap[uid]?.longestStreak || 0,
             totalScore: total,
             quizCount: counts[uid],
           }))
@@ -72,7 +95,7 @@ const Leaderboard = () => {
     if (user) fetchLeaderboard();
   }, [user]);
 
-  // ⚡ AVATAR COMPONENT (reusable)
+  // Avatar reusable
   const Avatar = ({ photoURL, name, size = 'md', rank }) => {
     const sizeClasses = {
       sm: 'w-10 h-10 text-sm',
@@ -81,7 +104,6 @@ const Leaderboard = () => {
       xl: 'w-20 h-20 text-2xl',
     };
 
-    // Rank badge
     const rankBadge = rank ? (
       <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold border-2 border-white dark:border-slate-800 shadow-md ${
         rank === 1 ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-white' :
@@ -93,22 +115,24 @@ const Leaderboard = () => {
       </div>
     ) : null;
 
-    if (photoURL) {
-      return (
-        <div className="relative flex-shrink-0">
+    const hasValidPhoto = photoURL && typeof photoURL === 'string' && photoURL.startsWith('data:image');
+
+    return (
+      <div className="relative flex-shrink-0">
+        {hasValidPhoto ? (
           <img 
             src={photoURL} 
             alt={name}
             className={`${sizeClasses[size]} rounded-full object-cover border-2 border-white dark:border-slate-700 shadow-md`}
+            onError={(e) => {
+              e.target.style.display = 'none';
+              e.target.nextSibling.style.display = 'flex';
+            }}
           />
-          {rankBadge}
-        </div>
-      );
-    }
-
-    return (
-      <div className="relative flex-shrink-0">
-        <div className={`${sizeClasses[size]} bg-gradient-to-br from-teal-400 via-teal-600 to-cyan-600 rounded-full flex items-center justify-center shadow-md border-2 border-white dark:border-slate-700`}>
+        ) : null}
+        <div 
+          className={`${sizeClasses[size]} bg-gradient-to-br from-teal-400 via-teal-600 to-cyan-600 rounded-full flex items-center justify-center shadow-md border-2 border-white dark:border-slate-700 ${hasValidPhoto ? 'hidden' : 'flex'}`}
+        >
           <span className="font-bold text-white">{name?.[0]?.toUpperCase() || 'S'}</span>
         </div>
         {rankBadge}
@@ -159,29 +183,19 @@ const Leaderboard = () => {
             <div className="absolute bottom-0 left-0 w-32 h-32 bg-cyan-300/20 rounded-full blur-2xl"></div>
             <div className="relative z-10 flex items-center gap-4 flex-wrap">
               
-              {/* Foto Profil */}
-              <div className="flex-shrink-0">
-                {myRank.photoURL ? (
-                  <img 
-                    src={myRank.photoURL} 
-                    alt={myRank.name}
-                    className="w-16 h-16 rounded-full object-cover border-4 border-white/50 shadow-lg"
-                  />
-                ) : (
-                  <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border-4 border-white/50 shadow-lg">
-                    <span className="text-2xl font-bold text-white">{myRank.name?.[0]?.toUpperCase() || 'S'}</span>
-                  </div>
-                )}
-              </div>
+              <Avatar photoURL={myRank.photoURL} name={myRank.name} size="lg" />
 
               <div className="flex-1 min-w-0">
                 <p className="text-teal-100 text-sm mb-1 flex items-center gap-1.5 font-medium">
                   <Sparkles className="w-4 h-4" /> Peringkat Kamu
                 </p>
                 <h2 className="text-3xl sm:text-4xl font-bold mb-1">#{myRank.rank}</h2>
-                <p className="text-teal-100 text-xs sm:text-sm">
-                  Total Skor: <span className="font-bold text-white">{myRank.totalScore}</span> • {myRank.quizCount} kuis
-                </p>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <p className="text-teal-100 text-xs sm:text-sm">
+                    Total Skor: <span className="font-bold text-white">{myRank.totalScore}</span> • {myRank.quizCount} kuis
+                  </p>
+                  <StreakChip streak={myRank.currentStreak} />
+                </div>
               </div>
               <div className="text-right">
                 <div className="text-5xl sm:text-6xl font-extrabold drop-shadow-lg">{myRank.totalScore}</div>
@@ -195,51 +209,24 @@ const Leaderboard = () => {
         {leaderboard.length >= 3 && (
           <div className="grid grid-cols-3 gap-3 md:gap-4 items-end">
             
-            {/* Rank 2 */}
             <div className="flex flex-col items-center pt-8">
               <div className="relative mb-2">
-                {top2.photoURL ? (
-                  <img 
-                    src={top2.photoURL} 
-                    alt={top2.name}
-                    className="w-16 h-16 md:w-20 md:h-20 rounded-full object-cover border-4 border-slate-300 dark:border-slate-600 shadow-lg"
-                  />
-                ) : (
-                  <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-slate-300 to-slate-500 rounded-full flex items-center justify-center border-4 border-slate-200 dark:border-slate-600 shadow-lg">
-                    <span className="text-xl md:text-2xl font-bold text-white">{top2.name?.[0]?.toUpperCase() || 'S'}</span>
-                  </div>
-                )}
+                <Avatar photoURL={top2.photoURL} name={top2.name} size="lg" />
               </div>
               <Medal className="w-5 h-5 text-slate-400 mb-1" />
               <p className="text-xs md:text-sm font-bold text-gray-900 dark:text-white text-center truncate w-full">
                 {top2.name}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold">{top2.totalScore}</p>
-              {top2.school && (
-                <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate w-full text-center mt-0.5" title={top2.school}>
-                  {top2.school}
-                </p>
-              )}
+              <div className="mt-1">
+                <StreakChip streak={top2.currentStreak} />
+              </div>
             </div>
 
-            {/* Rank 1 */}
             <div className="flex flex-col items-center">
               <Crown className="w-8 h-8 text-amber-500 mb-1 animate-bounce" />
               <div className="relative mb-2">
-                {top1.photoURL ? (
-                  <img 
-                    src={top1.photoURL} 
-                    alt={top1.name}
-                    className="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-4 border-amber-300 dark:border-amber-500 shadow-2xl shadow-orange-500/40"
-                  />
-                ) : (
-                  <div className="w-20 h-20 md:w-24 md:h-24 bg-gradient-to-br from-amber-400 via-orange-500 to-pink-500 rounded-full flex items-center justify-center border-4 border-amber-300 dark:border-amber-500 shadow-2xl shadow-orange-500/40">
-                    <span className="text-2xl md:text-3xl font-bold text-white">{top1.name?.[0]?.toUpperCase() || 'S'}</span>
-                  </div>
-                )}
-                <div className="absolute -bottom-1 -right-1 w-7 h-7 md:w-8 md:h-8 bg-gradient-to-br from-yellow-300 to-amber-500 rounded-full flex items-center justify-center text-xs md:text-sm font-bold text-white border-2 border-white shadow-md">
-                  1
-                </div>
+                <Avatar photoURL={top1.photoURL} name={top1.name} size="xl" rank={1} />
               </div>
               <p className="text-sm md:text-base font-bold text-gray-900 dark:text-white text-center truncate w-full">
                 {top1.name}
@@ -247,38 +234,23 @@ const Leaderboard = () => {
               <p className="text-xs md:text-sm font-bold bg-gradient-to-r from-amber-600 to-orange-600 dark:from-amber-400 dark:to-orange-400 bg-clip-text text-transparent">
                 {top1.totalScore} ⭐
               </p>
-              {top1.school && (
-                <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate w-full text-center mt-0.5" title={top1.school}>
-                  {top1.school}
-                </p>
-              )}
+              <div className="mt-1">
+                <StreakChip streak={top1.currentStreak} />
+              </div>
             </div>
 
-            {/* Rank 3 */}
             <div className="flex flex-col items-center pt-8">
               <div className="relative mb-2">
-                {top3.photoURL ? (
-                  <img 
-                    src={top3.photoURL} 
-                    alt={top3.name}
-                    className="w-16 h-16 md:w-20 md:h-20 rounded-full object-cover border-4 border-orange-300 dark:border-orange-700 shadow-lg"
-                  />
-                ) : (
-                  <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-orange-400 to-amber-700 rounded-full flex items-center justify-center border-4 border-orange-300 dark:border-orange-700 shadow-lg">
-                    <span className="text-xl md:text-2xl font-bold text-white">{top3.name?.[0]?.toUpperCase() || 'S'}</span>
-                  </div>
-                )}
+                <Avatar photoURL={top3.photoURL} name={top3.name} size="lg" />
               </div>
               <Medal className="w-5 h-5 text-orange-400 mb-1" />
               <p className="text-xs md:text-sm font-bold text-gray-900 dark:text-white text-center truncate w-full">
                 {top3.name}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold">{top3.totalScore}</p>
-              {top3.school && (
-                <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate w-full text-center mt-0.5" title={top3.school}>
-                  {top3.school}
-                </p>
-              )}
+              <div className="mt-1">
+                <StreakChip streak={top3.currentStreak} />
+              </div>
             </div>
 
           </div>
@@ -303,11 +275,6 @@ const Leaderboard = () => {
             <div className="divide-y divide-gray-100 dark:divide-slate-700/50">
               {leaderboard.map((item) => {
                 const isMe = item.uid === user.uid;
-                const rankStyle = 
-                  item.rank === 1 ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-white' :
-                  item.rank === 2 ? 'bg-gradient-to-br from-slate-300 to-slate-500 text-white' :
-                  item.rank === 3 ? 'bg-gradient-to-br from-orange-400 to-amber-700 text-white' :
-                  'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-400';
                 
                 return (
                   <div 
@@ -318,34 +285,15 @@ const Leaderboard = () => {
                         : 'hover:bg-gray-50 dark:hover:bg-slate-800/30'
                     }`}
                   >
-                    {/* Avatar dengan foto */}
-                    <div className="relative flex-shrink-0">
-                      {item.photoURL ? (
-                        <img 
-                          src={item.photoURL} 
-                          alt={item.name}
-                          className="w-11 h-11 sm:w-12 sm:h-12 rounded-full object-cover border-2 border-white dark:border-slate-700 shadow-md"
-                        />
-                      ) : (
-                        <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-bold text-white text-sm shadow-md ${rankStyle}`}>
-                          {item.name?.[0]?.toUpperCase() || 'S'}
-                        </div>
-                      )}
-                      {item.rank <= 3 && (
-                        <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] border-2 border-white dark:border-slate-800 shadow-sm ${
-                          item.rank === 1 ? 'bg-gradient-to-br from-amber-400 to-orange-500' :
-                          item.rank === 2 ? 'bg-gradient-to-br from-slate-300 to-slate-500' :
-                          'bg-gradient-to-br from-orange-400 to-amber-700'
-                        }`}>
-                          {item.rank === 1 ? '🥇' : item.rank === 2 ? '🥈' : '🥉'}
-                        </div>
-                      )}
-                    </div>
+                    <Avatar photoURL={item.photoURL} name={item.name} size="md" rank={item.rank <= 3 ? item.rank : null} />
 
                     <div className="flex-1 min-w-0">
-                      <p className={`font-semibold truncate text-sm sm:text-base ${isMe ? 'text-teal-700 dark:text-teal-400' : 'text-gray-900 dark:text-white'}`}>
-                        {item.name} {isMe && <span className="text-xs bg-teal-100 dark:bg-teal-900/40 px-1.5 py-0.5 rounded ml-1">Kamu</span>}
-                      </p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className={`font-semibold truncate text-sm sm:text-base ${isMe ? 'text-teal-700 dark:text-teal-400' : 'text-gray-900 dark:text-white'}`}>
+                          {item.name} {isMe && <span className="text-xs bg-teal-100 dark:bg-teal-900/40 px-1.5 py-0.5 rounded ml-1">Kamu</span>}
+                        </p>
+                        <StreakChip streak={item.currentStreak} />
+                      </div>
                       <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex-wrap">
                         {item.level !== '-' && (
                           <span className="flex items-center gap-1">

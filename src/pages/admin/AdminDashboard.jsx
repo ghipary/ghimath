@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import { db } from '../../firebase';
 import { collection, getCountFromServer, query, orderBy, getDocs, limit } from 'firebase/firestore';
-import { BookOpen, Users, FileText, PlusCircle, Settings, ListChecks, Loader, ChevronRight, Trophy, Sparkles, Upload } from 'lucide-react';
+import { BookOpen, Users, FileText, PlusCircle, Settings, ListChecks, Loader, ChevronRight, Trophy, Sparkles, Upload, BarChart3 } from 'lucide-react';
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
@@ -125,49 +125,52 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Menu Cepat - 3 KARTU */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        {/* Menu Cepat - 4 KARTU */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
           
-          <Link 
-            to="/admin/materi" 
-            className="card-elevated rounded-2xl p-5 sm:p-6 hover:-translate-y-1 hover:shadow-xl transition-all flex items-center gap-4 group"
-          >
+          <Link to="/admin/materi" className="card-elevated rounded-2xl p-5 hover:-translate-y-1 hover:shadow-xl transition-all flex items-center gap-4 group">
             <div className="w-12 h-12 bg-gradient-to-br from-teal-400 to-cyan-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-teal-500/30 group-hover:scale-110 transition-transform">
               <BookOpen className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-gray-900 dark:text-white text-sm sm:text-base">Kelola Materi</h3>
-              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Edit, hapus, publish.</p>
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm">Kelola Materi</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Edit, hapus, publish.</p>
             </div>
-            <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0 group-hover:text-teal-600 dark:group-hover:text-teal-400 group-hover:translate-x-1 transition-all" />
+            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-teal-600 group-hover:translate-x-1 transition-all" />
           </Link>
 
-          <Link 
-            to="/admin/materi" 
-            className="card-elevated rounded-2xl p-5 sm:p-6 hover:-translate-y-1 hover:shadow-xl transition-all flex items-center gap-4 group"
-          >
+          <Link to="/admin/materi" className="card-elevated rounded-2xl p-5 hover:-translate-y-1 hover:shadow-xl transition-all flex items-center gap-4 group">
             <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-orange-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-orange-500/30 group-hover:scale-110 transition-transform">
               <ListChecks className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-gray-900 dark:text-white text-sm sm:text-base">Kelola Soal</h3>
-              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Atur soal kuis.</p>
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm">Kelola Soal</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Atur soal kuis.</p>
             </div>
-            <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0 group-hover:text-amber-600 dark:group-hover:text-amber-400 group-hover:translate-x-1 transition-all" />
+            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-amber-600 group-hover:translate-x-1 transition-all" />
           </Link>
 
-          <Link 
-            to="/admin/users" 
-            className="card-elevated rounded-2xl p-5 sm:p-6 hover:-translate-y-1 hover:shadow-xl transition-all flex items-center gap-4 group"
-          >
+          <Link to="/admin/users" className="card-elevated rounded-2xl p-5 hover:-translate-y-1 hover:shadow-xl transition-all flex items-center gap-4 group">
             <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform">
               <Users className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-gray-900 dark:text-white text-sm sm:text-base">Daftar User</h3>
-              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Lihat semua siswa.</p>
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm">Daftar User</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Lihat semua siswa.</p>
             </div>
-            <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0 group-hover:text-violet-600 dark:group-hover:text-violet-400 group-hover:translate-x-1 transition-all" />
+            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-violet-600 group-hover:translate-x-1 transition-all" />
+          </Link>
+
+          {/* ⚡ KARTU BARU: ANALYTICS */}
+          <Link to="/admin/analytics" className="card-elevated rounded-2xl p-5 hover:-translate-y-1 hover:shadow-xl transition-all flex items-center gap-4 group">
+            <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-rose-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-pink-500/30 group-hover:scale-110 transition-transform">
+              <BarChart3 className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm">Statistik</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Insight & analytics.</p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-pink-600 group-hover:translate-x-1 transition-all" />
           </Link>
         </div>
 

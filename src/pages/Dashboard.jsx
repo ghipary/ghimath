@@ -2,13 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import StreakBadge from '../components/StreakBadge';
 import { db } from '../firebase';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { BookOpen, Trophy, Clock, ChevronRight, PlayCircle, Loader, Target, TrendingUp, Sparkles, Zap, BarChart3 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, streakData, updateStreak } = useAuth();
   const navigate = useNavigate();
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -26,6 +27,9 @@ const Dashboard = () => {
     const fetchDashboard = async () => {
       if (!user) return;
       try {
+        // ⚡ UPDATE STREAK saat buka dashboard
+        await updateStreak();
+
         const userSnap = await getDoc(doc(db, 'users', user.uid));
         if (!userSnap.exists()) {
           setLoading(false);
@@ -102,6 +106,7 @@ const Dashboard = () => {
       setLoading(false);
     };
     fetchDashboard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, navigate]);
 
   if (loading) {
@@ -115,7 +120,6 @@ const Dashboard = () => {
   const totalScore = quizHistory.reduce((sum, q) => sum + (q.score || 0), 0);
   const quizCount = quizHistory.length;
 
-  // ⚡ Data untuk mini chart (5 kuis terakhir)
   const miniChartData = [...quizHistory]
     .slice(-5)
     .map((q, idx) => ({
@@ -124,7 +128,6 @@ const Dashboard = () => {
       skor: q.score || 0,
     }));
 
-  // ⚡ Custom tooltip mini
   const MiniTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
       return (
@@ -137,17 +140,12 @@ const Dashboard = () => {
     return null;
   };
 
-  // ⚡ Hitung tren (naik/turun)
   const getTrend = () => {
     if (miniChartData.length < 2) return null;
     const first = miniChartData[0].skor;
     const last = miniChartData[miniChartData.length - 1].skor;
     const diff = last - first;
-    return {
-      diff,
-      isUp: diff > 0,
-      isFlat: diff === 0,
-    };
+    return { diff, isUp: diff > 0, isFlat: diff === 0 };
   };
   const trend = getTrend();
 
@@ -172,6 +170,16 @@ const Dashboard = () => {
             {userData?.grade && <> • Kelas <span className="font-semibold text-teal-600 dark:text-teal-400">{userData.grade}</span></>}
           </p>
         </div>
+
+        {/* 🔥 STREAK BADGE */}
+        {streakData.current > 0 && (
+          <div className="mb-6 sm:mb-8">
+            <StreakBadge 
+              current={streakData.current} 
+              longest={streakData.longest} 
+            />
+          </div>
+        )}
 
         {/* PROGRESS CARD */}
         <div className="card-elevated card-accent rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8">
@@ -256,7 +264,7 @@ const Dashboard = () => {
               )}
             </div>
 
-            {/* ⚡ MINI CHART: Tren Skor */}
+            {/* MINI CHART */}
             {miniChartData.length >= 2 && (
               <div className="card-elevated rounded-2xl p-4 sm:p-6">
                 <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
@@ -267,7 +275,6 @@ const Dashboard = () => {
                     Tren Skor Kuis
                   </h2>
                   
-                  {/* Badge Trend */}
                   {trend && !trend.isFlat && (
                     <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
                       trend.isUp 

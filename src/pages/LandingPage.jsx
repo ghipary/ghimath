@@ -1,133 +1,92 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { useAuth } from '../context/AuthContext';
-import { db } from '../firebase';
-import { collection, query, where, getCountFromServer } from 'firebase/firestore';
-import { BookOpen, Trophy, Video, ChevronRight, Sparkles, Users, FileText, Star } from 'lucide-react';
+import { BookOpen, Trophy, Video, ChevronRight, Sparkles, Users, FileText, Star, Zap, Target, TrendingUp } from 'lucide-react';
 
 const LandingPage = () => {
   const { user } = useAuth();
-  const [stats, setStats] = useState({
-    materials: 0,
-    questions: 0,
-    users: 0,
-    loading: true,
-  });
-
-  // Ambil statistik real dari Firestore
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        // 1. Hitung materi yang published
-        const matQuery = query(collection(db, 'materials'), where('published', '==', true));
-        const matSnap = await getCountFromServer(matQuery);
-
-        // 2. Hitung total soal kuis
-        const quizSnap = await getCountFromServer(collection(db, 'quizQuestions'));
-
-        // 3. Hitung total user terdaftar
-        const userSnap = await getCountFromServer(collection(db, 'users'));
-
-        setStats({
-          materials: matSnap.data().count,
-          questions: quizSnap.data().count,
-          users: userSnap.data().count,
-          loading: false,
-        });
-      } catch (error) {
-        console.error('Gagal ambil statistik:', error);
-        setStats(prev => ({ ...prev, loading: false }));
-      }
-    };
-    fetchStats();
-  }, []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-white dark:bg-slate-950 transition-colors duration-300">
+    <div className="page-bg transition-colors duration-300 min-h-screen">
+      <div className="grid-pattern"></div>
       <Navbar />
 
-      {/* ===== HERO SECTION ===== */}
-      <section className="relative flex-1 flex flex-col justify-center items-center text-center px-4 py-20 md:py-32 overflow-hidden">
+      {/* HERO SECTION */}
+      <section className="page-content relative flex flex-col justify-center items-center text-center px-4 py-20 md:py-28 overflow-hidden">
         
-        <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,#f1f5f9_1px,transparent_1px),linear-gradient(to_bottom,#f1f5f9_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem]"></div>
-        
-        <div className="absolute top-0 left-1/2 w-96 h-96 bg-teal-300 dark:bg-teal-800/40 rounded-full blur-3xl opacity-60 -z-10 animate-pulse-soft" style={{ marginLeft: '-12rem' }}></div>
-        <div className="absolute bottom-0 right-0 w-80 h-80 bg-amber-200 dark:bg-amber-800/30 rounded-full blur-3xl opacity-50 -z-10 animate-float-reverse"></div>
+        {/* Ornamen Background */}
+        <div className="absolute top-10 left-10 w-64 h-64 bg-teal-400/20 dark:bg-teal-500/10 rounded-full blur-3xl -z-10 animate-float-custom"></div>
+        <div className="absolute bottom-10 right-10 w-72 h-72 bg-violet-400/15 dark:bg-violet-500/10 rounded-full blur-3xl -z-10 animate-float-reverse"></div>
 
-        <div className="inline-flex items-center gap-2 bg-white dark:bg-slate-900 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 px-4 py-2 rounded-full text-sm font-semibold mb-6 shadow-sm animate-fade-in">
+        {/* Badge */}
+        <div className="inline-flex items-center gap-2 bg-white/70 dark:bg-slate-800/60 backdrop-blur-md border border-teal-200/60 dark:border-teal-800/50 text-teal-700 dark:text-teal-300 px-4 py-2 rounded-full text-sm font-semibold mb-6 shadow-sm">
           <Sparkles className="w-4 h-4" />
           Media Pembelajaran Interaktif #1
         </div>
 
-        <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold text-gray-900 dark:text-white leading-[1.1] mb-6 max-w-4xl animate-slide-up-delay-1">
+        {/* Judul */}
+        <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold text-gray-900 dark:text-white leading-[1.1] mb-6 max-w-4xl">
           Belajar Matematika
           <br />
-          <span className="bg-gradient-to-r from-teal-600 to-teal-400 bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 dark:from-teal-400 dark:via-cyan-400 dark:to-blue-400 bg-clip-text text-transparent">
             Jadi Lebih Mudah
           </span>
         </h1>
 
-        <p className="text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-2xl mb-10 leading-relaxed animate-slide-up-delay-2">
+        {/* Subjudul */}
+        <p className="text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-2xl mb-10 leading-relaxed">
           Materi interaktif, kuis seru, dan pembahasan lengkap untuk siswa{' '}
           <span className="font-semibold text-teal-600 dark:text-teal-400">SMP & SMA</span>.{' '}
           Belajar mandiri kapan saja, di mana saja.
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-4 mb-16 animate-slide-up-delay-3">
+        {/* Tombol CTA */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-16">
           <Link 
             to={user ? "/dashboard" : "/register"}
-            className="group flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-8 py-4 rounded-2xl text-lg font-bold transition-all shadow-lg shadow-teal-600/30 hover:shadow-xl hover:shadow-teal-600/40 hover:-translate-y-0.5"
+            className="group flex items-center justify-center gap-2 bg-gradient-to-r from-teal-500 via-cyan-600 to-teal-600 hover:from-teal-600 hover:to-cyan-700 text-white px-8 py-4 rounded-2xl text-lg font-bold transition-all shadow-xl shadow-teal-500/30 hover:-translate-y-1"
           >
             {user ? 'Lanjut Belajar' : 'Mulai Belajar Gratis'}
             <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
           </Link>
           <Link 
             to="/materi" 
-            className="flex items-center justify-center gap-2 bg-white dark:bg-slate-900 text-gray-800 dark:text-white border-2 border-gray-200 dark:border-slate-700 hover:border-teal-600 px-8 py-4 rounded-2xl text-lg font-semibold transition-all hover:-translate-y-0.5"
+            className="flex items-center justify-center gap-2 card-elevated text-gray-800 dark:text-white px-8 py-4 rounded-2xl text-lg font-semibold transition-all hover:-translate-y-1"
           >
             Lihat Materi
           </Link>
         </div>
 
-        {/* ===== STATS SECTION (DINAMIS) ===== */}
-        <div className="grid grid-cols-3 gap-6 md:gap-12 max-w-3xl w-full animate-fade-in">
-          
-          <div className="text-center hover:scale-110 transition-transform duration-300">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <FileText className="w-5 h-5 text-teal-600" />
-              <span className="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white">
-                {stats.loading ? '…' : stats.materials}
-              </span>
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-6 md:gap-12 max-w-3xl w-full">
+          <div className="text-center">
+            <div className="w-12 h-12 mx-auto bg-gradient-to-br from-teal-400 to-cyan-600 rounded-2xl flex items-center justify-center shadow-lg shadow-teal-500/30 mb-3">
+              <FileText className="w-6 h-6 text-white" />
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Materi Lengkap</p>
+            <div className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white">10+</div>
+            <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium">Materi Lengkap</p>
           </div>
-
-          <div className="text-center border-x border-gray-200 dark:border-slate-800 hover:scale-110 transition-transform duration-300">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <Trophy className="w-5 h-5 text-amber-500" />
-              <span className="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white">
-                {stats.loading ? '…' : stats.questions}
-              </span>
+          <div className="text-center">
+            <div className="w-12 h-12 mx-auto bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/30 mb-3">
+              <Trophy className="w-6 h-6 text-white" />
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Soal Kuis</p>
+            <div className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white">100+</div>
+            <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium">Soal Kuis</p>
           </div>
-
-          <div className="text-center hover:scale-110 transition-transform duration-300">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <Users className="w-5 h-5 text-teal-600" />
-              <span className="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white">
-                {stats.loading ? '…' : stats.users}
-              </span>
+          <div className="text-center">
+            <div className="w-12 h-12 mx-auto bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/30 mb-3">
+              <Users className="w-6 h-6 text-white" />
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Siswa Terdaftar</p>
+            <div className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white">2</div>
+            <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium">Jenjang (SMP/SMA)</p>
           </div>
         </div>
       </section>
 
-      {/* ===== FITUR SECTION ===== */}
-      <section className="bg-gray-50 dark:bg-slate-900 py-20 px-4 border-t dark:border-slate-800">
+      {/* FITUR SECTION */}
+      <section className="page-content py-20 px-4">
         <div className="max-w-7xl mx-auto">
           
           <div className="text-center mb-14">
@@ -142,39 +101,42 @@ const LandingPage = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             
-            <div className="group bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 dark:border-slate-700 hover:-translate-y-2">
-              <div className="w-14 h-14 bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-teal-500/30 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
+            {/* Fitur 1 */}
+            <div className="group card-elevated p-8 rounded-3xl transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl">
+              <div className="w-14 h-14 bg-gradient-to-br from-teal-400 via-teal-600 to-cyan-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-teal-500/30 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
                 <BookOpen className="w-7 h-7 text-white" />
               </div>
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
                 Materi Lengkap
               </h3>
               <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                Tersedia materi dari kelas 7 SMP hingga kelas 12 SMA, lengkap dengan file PDF dan video pembelajaran.
+                Tersedia materi dari kelas 7 SMP hingga kelas 12 SMA, lengkap dengan bacaan interaktif dan video pembelajaran.
               </p>
             </div>
 
-            <div className="group bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 dark:border-slate-700 hover:-translate-y-2">
-              <div className="w-14 h-14 bg-gradient-to-br from-amber-400 to-amber-500 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-amber-500/30 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
+            {/* Fitur 2 */}
+            <div className="group card-elevated p-8 rounded-3xl transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl">
+              <div className="w-14 h-14 bg-gradient-to-br from-amber-400 via-orange-500 to-pink-500 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-orange-500/30 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
                 <Trophy className="w-7 h-7 text-white" />
               </div>
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
                 Kuis Interaktif
               </h3>
               <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                Uji pemahamanmu dengan kuis pilihan ganda. Dapatkan skor dan pembahasan langsung.
+                Uji pemahamanmu dengan kuis pilihan ganda. Dapatkan skor, pembahasan, dan bersaing di leaderboard!
               </p>
             </div>
 
-            <div className="group bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 dark:border-slate-700 hover:-translate-y-2">
-              <div className="w-14 h-14 bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-teal-500/30 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
-                <Video className="w-7 h-7 text-white" />
+            {/* Fitur 3 */}
+            <div className="group card-elevated p-8 rounded-3xl transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl">
+              <div className="w-14 h-14 bg-gradient-to-br from-violet-500 via-purple-600 to-fuchsia-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-purple-500/30 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
+                <TrendingUp className="w-7 h-7 text-white" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
-                Video Pembelajaran
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
+                Progress & Grafik
               </h3>
               <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                Belajar lebih mudah dengan video penjelasan yang menarik dan mudah dipahami.
+                Pantau perkembangan belajarmu dengan grafik interaktif. Lihat tren skor dan kemampuan per topik.
               </p>
             </div>
 
@@ -182,25 +144,29 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ===== CTA SECTION ===== */}
-      <section className="py-20 px-4 bg-white dark:bg-slate-950">
+      {/* CTA SECTION */}
+      <section className="page-content py-20 px-4">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-gradient-to-br from-teal-600 to-teal-700 rounded-3xl p-8 md:p-12 text-center shadow-2xl shadow-teal-600/20 relative overflow-hidden">
+          <div className="relative overflow-hidden bg-gradient-to-br from-teal-500 via-cyan-600 to-blue-700 rounded-3xl p-8 md:p-12 text-center shadow-2xl shadow-teal-500/30">
             
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/20 rounded-full blur-3xl -z-0 animate-float-custom"></div>
-            <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/20 rounded-full blur-3xl -z-0 animate-float-reverse"></div>
+            {/* Ornamen */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl animate-float-custom"></div>
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-cyan-300/20 rounded-full blur-3xl animate-float-reverse"></div>
             
             <div className="relative z-10">
-              <Star className="w-12 h-12 text-amber-300 mx-auto mb-4 animate-float-custom" />
+              <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm border border-white/30 px-3 py-1.5 rounded-full text-xs font-semibold text-white mb-4">
+                <Zap className="w-3.5 h-3.5" />
+                GRATIS SELAMANYA
+              </div>
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
                 Siap Mulai Belajar?
               </h2>
-              <p className="text-teal-100 text-lg mb-8 max-w-xl mx-auto">
+              <p className="text-cyan-50 text-lg mb-8 max-w-xl mx-auto">
                 Daftar gratis sekarang dan rasakan bedanya belajar matematika dengan GhiMath.
               </p>
               <Link 
                 to={user ? "/dashboard" : "/register"}
-                className="inline-flex items-center gap-2 bg-white text-teal-700 font-bold px-8 py-4 rounded-2xl hover:bg-teal-50 transition-all shadow-lg hover:-translate-y-0.5 hover:scale-105"
+                className="inline-flex items-center gap-2 bg-white text-teal-700 font-bold px-8 py-4 rounded-2xl hover:bg-teal-50 transition-all shadow-xl hover:-translate-y-0.5 hover:scale-105"
               >
                 {user ? 'Lanjut Belajar' : 'Daftar Sekarang — Gratis!'}
                 <ChevronRight className="w-5 h-5" />
