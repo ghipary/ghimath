@@ -1,12 +1,58 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { useAuth } from '../context/AuthContext';
-import { BookOpen, Trophy, Video, ChevronRight, Sparkles, Users, FileText, Star, Zap, Target, TrendingUp } from 'lucide-react';
+import { db } from '../firebase';
+import { collection, getDocs } from 'firebase/firestore';
+import { BookOpen, Trophy, Video, ChevronRight, Sparkles, Users, FileText, Star, Zap, Target, TrendingUp, GraduationCap } from 'lucide-react';
 
 const LandingPage = () => {
   const { user } = useAuth();
+  const [userCount, setUserCount] = useState(0);
+  const [materialCount, setMaterialCount] = useState(0);
+  const [quizCount, setQuizCount] = useState(0);
+
+  // ⚡ Fetch stats dari Firestore (users, materials, quizQuestions)
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const [usersSnap, materialsSnap, quizSnap] = await Promise.all([
+          getDocs(collection(db, 'users')),
+          getDocs(collection(db, 'materials')),
+          getDocs(collection(db, 'quizQuestions')),
+        ]);
+
+        // Hitung user non-admin saja
+        const realUsers = usersSnap.docs.filter(
+          (d) => d.data().role !== 'admin'
+        );
+        setUserCount(realUsers.length);
+
+        // Hitung materi yang published
+        const publishedMaterials = materialsSnap.docs.filter(
+          (d) => d.data().published === true
+        );
+        setMaterialCount(publishedMaterials.length);
+
+        // Hitung soal kuis
+        setQuizCount(quizSnap.size);
+      } catch (error) {
+        console.error('Gagal ambil stats:', error);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  // ⚡ Format angka biar keren (10+, 50+, 100+)
+  const formatCount = (num) => {
+    if (num === 0) return '—';
+    if (num < 10) return `${num}`;
+    if (num < 50) return `${num}+`;
+    if (num < 100) return `${Math.floor(num / 10) * 10}+`;
+    if (num < 1000) return `${Math.floor(num / 50) * 50}+`;
+    return `${Math.floor(num / 100) * 100}+`;
+  };
 
   return (
     <div className="page-bg transition-colors duration-300 min-h-screen">
@@ -59,30 +105,61 @@ const LandingPage = () => {
           </Link>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-6 md:gap-12 max-w-3xl w-full">
-          <div className="text-center">
-            <div className="w-12 h-12 mx-auto bg-gradient-to-br from-teal-400 to-cyan-600 rounded-2xl flex items-center justify-center shadow-lg shadow-teal-500/30 mb-3">
+        {/* Stats — 4 KOLOM */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 max-w-4xl w-full">
+          
+          {/* Materi */}
+          <div className="text-center group">
+            <div className="w-12 h-12 mx-auto bg-gradient-to-br from-teal-400 to-cyan-600 rounded-2xl flex items-center justify-center shadow-lg shadow-teal-500/30 mb-3 group-hover:scale-110 transition-transform">
               <FileText className="w-6 h-6 text-white" />
             </div>
-            <div className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white">10+</div>
+            <div className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white">
+              {formatCount(materialCount)}
+            </div>
             <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium">Materi Lengkap</p>
           </div>
-          <div className="text-center">
-            <div className="w-12 h-12 mx-auto bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/30 mb-3">
+
+          {/* Soal Kuis */}
+          <div className="text-center group">
+            <div className="w-12 h-12 mx-auto bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/30 mb-3 group-hover:scale-110 transition-transform">
               <Trophy className="w-6 h-6 text-white" />
             </div>
-            <div className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white">100+</div>
+            <div className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white">
+              {formatCount(quizCount)}
+            </div>
             <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium">Soal Kuis</p>
           </div>
-          <div className="text-center">
-            <div className="w-12 h-12 mx-auto bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/30 mb-3">
-              <Users className="w-6 h-6 text-white" />
+
+          {/* Jenjang */}
+          <div className="text-center group">
+            <div className="w-12 h-12 mx-auto bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/30 mb-3 group-hover:scale-110 transition-transform">
+              <GraduationCap className="w-6 h-6 text-white" />
             </div>
             <div className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white">2</div>
             <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium">Jenjang (SMP/SMA)</p>
           </div>
+
+          {/* ⚡ SISWA (BARU) */}
+          <div className="text-center group">
+            <div className="w-12 h-12 mx-auto bg-gradient-to-br from-pink-500 to-rose-600 rounded-2xl flex items-center justify-center shadow-lg shadow-pink-500/30 mb-3 group-hover:scale-110 transition-transform">
+              <Users className="w-6 h-6 text-white" />
+            </div>
+            <div className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white">
+              {formatCount(userCount)}
+            </div>
+            <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium">Siswa Terdaftar</p>
+          </div>
         </div>
+
+        {/* Subtle text di bawah stats */}
+        {userCount > 0 && (
+          <p className="mt-8 text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+            <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+            <span className="font-medium">
+              {userCount} siswa sudah bergabung dari seluruh Indonesia
+            </span>
+          </p>
+        )}
       </section>
 
       {/* FITUR SECTION */}
@@ -162,7 +239,10 @@ const LandingPage = () => {
                 Siap Mulai Belajar?
               </h2>
               <p className="text-cyan-50 text-lg mb-8 max-w-xl mx-auto">
-                Daftar gratis sekarang dan rasakan bedanya belajar matematika dengan GhiMath.
+                {userCount > 0 
+                  ? `Bergabung dengan ${userCount}+ siswa lainnya dan rasakan bedanya belajar matematika dengan GhiMath.`
+                  : 'Daftar gratis sekarang dan rasakan bedanya belajar matematika dengan GhiMath.'
+                }
               </p>
               <Link 
                 to={user ? "/dashboard" : "/register"}
