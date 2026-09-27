@@ -4,8 +4,9 @@ import Navbar from '../components/Navbar';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { ArrowLeft, CheckCircle, BookOpen, Video, ListChecks, Loader, Clock, TrendingUp, PauseCircle, Lock, FileText, Sparkles } from 'lucide-react';
+import { ArrowLeft, CheckCircle, BookOpen, Video, ListChecks, Loader, Clock, TrendingUp, PauseCircle, Lock, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
+import AITutor from '../components/AITutor';
 
 const TARGET_SECONDS = 900;
 const AUTO_SAVE_INTERVAL = 30000;
@@ -20,9 +21,7 @@ const sanitizeHtml = (html) => {
     .replace(/\sdata-[a-z-]+="[^"]*"/gi, '')
     .replace(/[\u200B-\u200D\uFEFF]/g, '')
     .replace(/\u00AD/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/<span[^>]*>/gi, '')
-    .replace(/<\/span>/gi, '');
+    .replace(/&nbsp;/g, ' ');
 };
 
 const MaterialDetail = () => {
@@ -199,13 +198,13 @@ const MaterialDetail = () => {
     <div className="page-bg transition-colors pb-20 min-h-screen">
       <div className="grid-pattern"></div>
       <Navbar />
+      <AITutor material={material} />
 
       <div className="page-content max-w-5xl mx-auto px-3 sm:px-4 pt-6 sm:pt-8">
         <button onClick={() => navigate('/materi')} className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-teal-600 mb-4 transition-colors font-medium">
           <ArrowLeft className="w-4 h-4" /> Kembali ke Daftar Materi
         </button>
 
-        {/* Header */}
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-3 flex-wrap">
             <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
@@ -224,7 +223,6 @@ const MaterialDetail = () => {
           </h1>
         </div>
 
-        {/* PROGRESS BAR */}
         {user && (
           <div className="card-elevated rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6">
             <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
@@ -261,7 +259,6 @@ const MaterialDetail = () => {
           </div>
         )}
 
-        {/* DESKRIPSI */}
         {cleanDescription && (
           <div className="card-elevated rounded-2xl overflow-hidden mb-4 sm:mb-6">
             <div className="flex items-center gap-3 px-5 sm:px-6 py-4 border-b border-gray-100 dark:border-slate-700/50">
@@ -280,7 +277,6 @@ const MaterialDetail = () => {
           </div>
         )}
 
-        {/* KONTEN MATERI */}
         {hasContent && (
           <div className="card-elevated rounded-2xl overflow-hidden mb-4 sm:mb-6">
             <div className="flex items-center gap-3 px-5 sm:px-6 py-4 border-b border-gray-100 dark:border-slate-700/50">
@@ -295,7 +291,6 @@ const MaterialDetail = () => {
           </div>
         )}
 
-        {/* PDF FALLBACK */}
         {!hasContent && hasPdf && (
           <div className="card-elevated rounded-2xl overflow-hidden mb-4 sm:mb-6">
             <div className="flex items-center gap-3 px-5 sm:px-6 py-4 border-b border-gray-100 dark:border-slate-700/50">
@@ -308,7 +303,6 @@ const MaterialDetail = () => {
           </div>
         )}
 
-        {/* VIDEO */}
         {material.videoUrl && (
           <div className="card-elevated rounded-2xl overflow-hidden mb-4 sm:mb-6">
             <div className="flex items-center gap-3 px-5 sm:px-6 py-4 border-b border-gray-100 dark:border-slate-700/50">
@@ -323,7 +317,6 @@ const MaterialDetail = () => {
           </div>
         )}
 
-        {/* TOMBOL AKSI */}
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
           <button 
             onClick={handleTandaiSelesai} 

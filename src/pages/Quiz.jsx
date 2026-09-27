@@ -4,7 +4,7 @@ import Navbar from '../components/Navbar';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { Clock, RotateCcw, ArrowLeft, ListChecks, Loader, AlertTriangle, Trophy, TrendingUp, Sparkles, CheckCircle, XCircle, Award, PartyPopper } from 'lucide-react';
+import { Clock, RotateCcw, ArrowLeft, ListChecks, Loader, AlertTriangle, Trophy, TrendingUp, Sparkles, CheckCircle, XCircle, Award, PartyPopper, Lightbulb, X, RefreshCw } from 'lucide-react';
 
 const Quiz = () => {
   const { id } = useParams();
@@ -22,6 +22,12 @@ const Quiz = () => {
   const [saving, setSaving] = useState(false);
   const [isNewRecord, setIsNewRecord] = useState(false);
   const [isNewFastest, setIsNewFastest] = useState(false);
+
+  // ⚡ STATE RETRY (Salah Saya)
+  const [retryingQuestion, setRetryingQuestion] = useState(null);
+  const [retryAnswer, setRetryAnswer] = useState(null);
+  const [retryResult, setRetryResult] = useState(null);
+  const [retryCompleted, setRetryCompleted] = useState({}); // { qId: true }
 
   useEffect(() => {
     const fetchData = async () => {
@@ -139,7 +145,32 @@ const Quiz = () => {
     setElapsedTime(0);
     setIsNewRecord(false);
     setIsNewFastest(false);
+    setRetryCompleted({});
+    setRetryingQuestion(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // ⚡ Buka soal salah untuk retry
+  const openRetry = (question) => {
+    setRetryingQuestion(question);
+    setRetryAnswer(null);
+    setRetryResult(null);
+  };
+
+  // ⚡ Submit jawaban retry
+  const submitRetry = () => {
+    if (retryAnswer === null) return;
+    const isCorrect = retryAnswer === retryingQuestion.correctAnswer;
+    setRetryResult(isCorrect ? 'correct' : 'wrong');
+    if (isCorrect) {
+      setRetryCompleted((prev) => ({ ...prev, [retryingQuestion.id]: true }));
+    }
+  };
+
+  const closeRetry = () => {
+    setRetryingQuestion(null);
+    setRetryAnswer(null);
+    setRetryResult(null);
   };
 
   const formatTime = (seconds) => {
@@ -184,11 +215,15 @@ const Quiz = () => {
 
     const isPerfect = result.score === 100;
 
+    // ⚡ Kumpulkan soal yang salah
+    const wrongQuestions = questions.filter((q) => answers[q.id] !== q.correctAnswer);
+
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-slate-950 pb-20">
         <Navbar />
         <div className="max-w-2xl mx-auto px-4 py-8">
           
+          {/* Kartu Skor */}
           <div className={`rounded-3xl shadow-xl border p-8 text-center mb-6 relative overflow-hidden ${
             isPerfect
               ? 'bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-900/20 dark:via-yellow-900/10 dark:to-orange-900/20 border-amber-300 dark:border-amber-700'
@@ -197,7 +232,6 @@ const Quiz = () => {
             <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-teal-400/10 to-cyan-500/5 rounded-full blur-3xl"></div>
             
             <div className="relative">
-              {/* Badge khusus 100 */}
               {isPerfect && (
                 <div className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-500 text-white text-xs font-bold px-4 py-2 rounded-full mb-4 shadow-lg shadow-amber-500/40 animate-pulse">
                   <PartyPopper className="w-4 h-4" /> SEMPURNA! NILAI 100!
@@ -213,11 +247,6 @@ const Quiz = () => {
                   <Sparkles className="w-3.5 h-3.5" /> Kuis Selesai!
                 </div>
               )}
-              {!isPerfect && isNewFastest && !isNewRecord && (
-                <div className="inline-flex items-center gap-1.5 bg-gradient-to-r from-violet-400 to-fuchsia-500 text-white text-xs font-bold px-3 py-1.5 rounded-full mb-4 shadow-lg shadow-fuchsia-500/30">
-                  <Clock className="w-3.5 h-3.5" /> Waktu Tercepat Baru!
-                </div>
-              )}
 
               <div className={`w-32 h-32 rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl relative ${
                 isPerfect
@@ -229,9 +258,7 @@ const Quiz = () => {
                 {isPerfect && (
                   <Award className="w-10 h-10 text-white absolute -top-3 -right-3 bg-white rounded-full p-1.5 shadow-lg" />
                 )}
-                <span className="text-5xl font-extrabold text-white">
-                  {result.score}
-                </span>
+                <span className="text-5xl font-extrabold text-white">{result.score}</span>
               </div>
 
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
@@ -256,112 +283,149 @@ const Quiz = () => {
                   </p>
                 </div>
               </div>
-
-              <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/10 border border-amber-200/60 dark:border-amber-800/50 rounded-xl p-3 mt-4 flex items-center justify-center gap-2">
-                <TrendingUp className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                <p className="text-xs text-amber-800 dark:text-amber-300">
-                  Percobaan ke-<strong>{(bestResult?.attempts || 0) + 1}</strong>
-                </p>
-              </div>
             </div>
           </div>
 
           {/* ⚡ PEMBAHASAN KHUSUS NILAI 100 */}
           {isPerfect && (
-            <div className="bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-900/10 dark:via-yellow-900/5 dark:to-orange-900/10 border-2 border-amber-300 dark:border-amber-700/60 rounded-3xl p-6 mb-6 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-amber-400/20 to-orange-500/10 rounded-full blur-3xl"></div>
-              
-              <div className="relative">
-                {/* Header Pembahasan */}
-                <div className="flex items-center gap-3 mb-5 pb-4 border-b border-amber-200 dark:border-amber-800/50">
-                  <div className="w-12 h-12 bg-gradient-to-br from-amber-400 via-yellow-500 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-500/40">
-                    <Award className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-amber-900 dark:text-amber-200 flex items-center gap-2">
-                      🎁 Hadiah Spesial: Pembahasan Lengkap!
-                    </h3>
-                    <p className="text-xs text-amber-700 dark:text-amber-400">
-                      Karena kamu dapat nilai sempurna, ini jawaban & pembahasan lengkapnya!
-                    </p>
-                  </div>
+            <div className="bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-900/10 dark:via-yellow-900/5 dark:to-orange-900/10 border-2 border-amber-300 dark:border-amber-700/60 rounded-3xl p-6 mb-6">
+              <div className="flex items-center gap-3 mb-5 pb-4 border-b border-amber-200 dark:border-amber-800/50">
+                <div className="w-12 h-12 bg-gradient-to-br from-amber-400 via-yellow-500 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-500/40">
+                  <Award className="w-6 h-6 text-white" />
                 </div>
+                <div>
+                  <h3 className="text-lg font-bold text-amber-900 dark:text-amber-200">🎁 Hadiah Spesial: Pembahasan Lengkap!</h3>
+                  <p className="text-xs text-amber-700 dark:text-amber-400">Karena kamu dapat nilai sempurna, ini jawaban & pembahasan lengkapnya!</p>
+                </div>
+              </div>
 
-                {/* List Pembahasan */}
-                <div className="space-y-5">
-                  {questions.map((q, idx) => {
-                    const userAnswer = answers[q.id];
-                    const isCorrect = userAnswer === q.correctAnswer;
-                    return (
-                      <div key={q.id} className="bg-white/70 dark:bg-slate-800/50 rounded-2xl p-4 border border-amber-200/60 dark:border-amber-800/30">
-                        <div className="flex items-start gap-2 mb-3">
-                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-teal-400 to-cyan-600 flex items-center justify-center flex-shrink-0 shadow-md">
-                            <CheckCircle className="w-4 h-4 text-white" />
-                          </div>
-                          <p className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base leading-relaxed">
-                            {idx + 1}. {q.question}
-                          </p>
-                        </div>
-
-                        <div className="ml-9 space-y-1.5">
-                          {q.options.map((opt, i) => {
-                            const isRightAnswer = i === q.correctAnswer;
-                            return (
-                              <div 
-                                key={i} 
-                                className={`flex items-start gap-2 p-2 rounded-lg text-sm ${
-                                  isRightAnswer 
-                                    ? 'bg-teal-50 dark:bg-teal-900/30 border border-teal-200 dark:border-teal-800/50' 
-                                    : 'text-gray-500 dark:text-gray-500'
-                                }`}
-                              >
-                                <span className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${
-                                  isRightAnswer 
-                                    ? 'bg-teal-600 text-white' 
-                                    : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-400'
-                                }`}>
-                                  {String.fromCharCode(65 + i)}
-                                </span>
-                                <span className={isRightAnswer ? 'font-semibold text-teal-700 dark:text-teal-300' : ''}>
-                                  {opt}
-                                  {isRightAnswer && (
-                                    <span className="ml-2 text-[10px] bg-teal-100 dark:bg-teal-800/50 text-teal-700 dark:text-teal-300 px-1.5 py-0.5 rounded-full font-bold">
-                                      JAWABAN BENAR
-                                    </span>
-                                  )}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        {q.explanation && (
-                          <div className="ml-9 mt-3 p-3 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 border border-blue-200 dark:border-blue-800/50 rounded-xl">
-                            <p className="text-xs font-bold text-blue-700 dark:text-blue-300 mb-1 flex items-center gap-1">
-                              💡 Pembahasan:
-                            </p>
-                            <p className="text-sm text-blue-900 dark:text-blue-200 leading-relaxed">
-                              {q.explanation}
-                            </p>
-                          </div>
-                        )}
+              <div className="space-y-5">
+                {questions.map((q, idx) => (
+                  <div key={q.id} className="bg-white/70 dark:bg-slate-800/50 rounded-2xl p-4 border border-amber-200/60 dark:border-amber-800/30">
+                    <div className="flex items-start gap-2 mb-3">
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-teal-400 to-cyan-600 flex items-center justify-center flex-shrink-0 shadow-md">
+                        <CheckCircle className="w-4 h-4 text-white" />
                       </div>
-                    );
-                  })}
-                </div>
+                      <p className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base leading-relaxed">
+                        {idx + 1}. {q.question}
+                      </p>
+                    </div>
+                    <div className="ml-9 space-y-1.5">
+                      {q.options.map((opt, i) => {
+                        const isRightAnswer = i === q.correctAnswer;
+                        return (
+                          <div key={i} className={`flex items-start gap-2 p-2 rounded-lg text-sm ${
+                            isRightAnswer 
+                              ? 'bg-teal-50 dark:bg-teal-900/30 border border-teal-200 dark:border-teal-800/50' 
+                              : 'text-gray-500 dark:text-gray-500'
+                          }`}>
+                            <span className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${
+                              isRightAnswer ? 'bg-teal-600 text-white' : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-400'
+                            }`}>
+                              {String.fromCharCode(65 + i)}
+                            </span>
+                            <span className={isRightAnswer ? 'font-semibold text-teal-700 dark:text-teal-300' : ''}>
+                              {opt}
+                              {isRightAnswer && (
+                                <span className="ml-2 text-[10px] bg-teal-100 dark:bg-teal-800/50 text-teal-700 dark:text-teal-300 px-1.5 py-0.5 rounded-full font-bold">
+                                  JAWABAN BENAR
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {q.explanation && (
+                      <div className="ml-9 mt-3 p-3 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 border border-blue-200 dark:border-blue-800/50 rounded-xl">
+                        <p className="text-xs font-bold text-blue-700 dark:text-blue-300 mb-1">💡 Pembahasan:</p>
+                        <p className="text-sm text-blue-900 dark:text-blue-200 leading-relaxed">{q.explanation}</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           )}
 
-          {/* Info nilai tersimpan */}
-          {!isPerfect && (
+          {/* ⚡ SALAH SAYA (Kalau ada soal yang salah) */}
+          {!isPerfect && wrongQuestions.length > 0 && (
+            <div className="bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-900/10 dark:to-rose-900/10 border-2 border-red-200 dark:border-red-800/60 rounded-3xl p-6 mb-6">
+              <div className="flex items-center gap-3 mb-5 pb-4 border-b border-red-200 dark:border-red-800/50">
+                <div className="w-12 h-12 bg-gradient-to-br from-red-400 via-rose-500 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg shadow-rose-500/40">
+                  <Lightbulb className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-red-900 dark:text-red-200">📚 Belajar dari Kesalahan</h3>
+                  <p className="text-xs text-red-700 dark:text-red-400">
+                    Kamu salah di {wrongQuestions.length} soal. Yuk, coba lagi sampai benar!
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {wrongQuestions.map((q) => {
+                  const qIndex = questions.findIndex((qq) => qq.id === q.id);
+                  const isSolved = retryCompleted[q.id];
+                  return (
+                    <button
+                      key={q.id}
+                      onClick={() => openRetry(q)}
+                      className={`w-full text-left p-4 rounded-2xl border-2 transition-all group ${
+                        isSolved 
+                          ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-800/60'
+                          : 'bg-white/70 dark:bg-slate-800/50 border-red-200 dark:border-red-800/40 hover:border-red-400 hover:shadow-md'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md ${
+                          isSolved 
+                            ? 'bg-gradient-to-br from-green-400 to-emerald-600' 
+                            : 'bg-gradient-to-br from-red-400 to-rose-600'
+                        }`}>
+                          {isSolved ? <CheckCircle className="w-4 h-4 text-white" /> : <XCircle className="w-4 h-4 text-white" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              isSolved 
+                                ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400'
+                                : 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400'
+                            }`}>
+                              Soal #{qIndex + 1}
+                            </span>
+                            {isSolved && (
+                              <span className="text-[10px] font-bold text-green-700 dark:text-green-400 flex items-center gap-1">
+                                ✅ Berhasil!
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2">
+                            {q.question}
+                          </p>
+                          <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
+                            {isSolved ? 'Klik untuk lihat pembahasan lagi' : 'Klik untuk coba lagi'} →
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl p-3 text-xs text-amber-800 dark:text-amber-300 flex gap-2">
+                <Lightbulb className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <span>Salah itu wajar! Yang penting kamu <strong>belajar dari kesalahannya</strong> dan <strong>berani coba lagi</strong>. 💪</span>
+              </div>
+            </div>
+          )}
+
+          {!isPerfect && wrongQuestions.length === 0 && (
             <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/10 border border-amber-200/60 dark:border-amber-800/50 rounded-2xl p-4 mb-6 flex gap-3">
               <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-amber-800 dark:text-amber-300">
-                <p className="font-bold mb-1">Dapatkan nilai 100 untuk melihat pembahasan! 🎁</p>
-                <p className="text-xs leading-relaxed">
-                  Nilai tertinggi & waktu tercepat tetap tersimpan. Kumpulkan <strong>nilai sempurna (100)</strong> untuk membuka pembahasan lengkap!
-                </p>
+                <p className="font-bold mb-1">Dapatkan nilai 100 untuk lihat semua pembahasan! 🎁</p>
+                <p className="text-xs leading-relaxed">Kamu bisa coba lagi kapan saja. Nilai tertinggi tetap tersimpan.</p>
               </div>
             </div>
           )}
@@ -381,10 +445,140 @@ const Quiz = () => {
             </button>
           </div>
         </div>
+
+        {/* ⚡ MODAL RETRY SOAL SALAH */}
+        {retryingQuestion && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[110] flex items-center justify-center p-4 overflow-y-auto" onClick={closeRetry}>
+            <div className="bg-white dark:bg-slate-800 rounded-3xl max-w-lg w-full shadow-2xl my-8 relative" onClick={(e) => e.stopPropagation()}>
+              {/* Header */}
+              <div className={`p-5 rounded-t-3xl ${
+                retryResult === 'correct' 
+                  ? 'bg-gradient-to-r from-green-500 to-emerald-600'
+                  : retryResult === 'wrong'
+                    ? 'bg-gradient-to-r from-red-500 to-rose-600'
+                    : 'bg-gradient-to-r from-teal-500 to-cyan-600'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/30">
+                      {retryResult === 'correct' ? <CheckCircle className="w-5 h-5 text-white" /> : retryResult === 'wrong' ? <XCircle className="w-5 h-5 text-white" /> : <RefreshCw className="w-5 h-5 text-white" />}
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-white">
+                        {retryResult === 'correct' ? '🎉 Benar!' : retryResult === 'wrong' ? 'Belum Tepat' : 'Coba Lagi Soal Ini'}
+                      </h3>
+                      <p className="text-xs text-white/80">
+                        {retryResult === 'correct' ? 'Hebat! Kamu berhasil!' : retryResult === 'wrong' ? 'Coba lagi ya, jangan menyerah!' : 'Pilih jawaban yang benar'}
+                      </p>
+                    </div>
+                  </div>
+                  <button onClick={closeRetry} className="p-2 rounded-full hover:bg-white/20 transition-colors">
+                    <X className="w-5 h-5 text-white" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="p-5 sm:p-6">
+                <p className="font-semibold text-gray-900 dark:text-white mb-4 text-sm sm:text-base">
+                  {retryingQuestion.question}
+                </p>
+
+                <div className="space-y-2.5">
+                  {retryingQuestion.options.map((opt, i) => {
+                    const isSelected = retryAnswer === i;
+                    const isRight = i === retryingQuestion.correctAnswer;
+                    const showCorrect = retryResult === 'correct' && isRight;
+                    const showWrong = retryResult === 'wrong' && isSelected && !isRight;
+
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => {
+                          if (retryResult === 'correct') return;
+                          setRetryAnswer(i);
+                          setRetryResult(null);
+                        }}
+                        disabled={retryResult === 'correct'}
+                        className={`w-full text-left p-3.5 rounded-xl border-2 transition-all flex items-center gap-3 ${
+                          showCorrect
+                            ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                            : showWrong
+                              ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
+                              : isSelected
+                                ? 'border-teal-600 bg-teal-50 dark:bg-teal-900/20'
+                                : 'border-gray-200 dark:border-slate-700 hover:border-teal-400'
+                        }`}
+                      >
+                        <span className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold ${
+                          showCorrect ? 'bg-green-600 text-white' :
+                          showWrong ? 'bg-red-600 text-white' :
+                          isSelected ? 'bg-teal-600 text-white' :
+                          'bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-gray-400'
+                        }`}>
+                          {String.fromCharCode(65 + i)}
+                        </span>
+                        <span className={`text-sm ${
+                          showCorrect ? 'font-semibold text-green-700 dark:text-green-300' :
+                          showWrong ? 'text-red-700 dark:text-red-300' :
+                          isSelected ? 'font-semibold text-teal-700 dark:text-teal-300' :
+                          'text-gray-700 dark:text-gray-300'
+                        }`}>
+                          {opt}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Pembahasan (muncul kalau udah benar) */}
+                {retryResult === 'correct' && retryingQuestion.explanation && (
+                  <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 border border-blue-200 dark:border-blue-800/50 rounded-xl">
+                    <p className="text-xs font-bold text-blue-700 dark:text-blue-300 mb-1.5 flex items-center gap-1">
+                      💡 Pembahasan:
+                    </p>
+                    <p className="text-sm text-blue-900 dark:text-blue-200 leading-relaxed">
+                      {retryingQuestion.explanation}
+                    </p>
+                  </div>
+                )}
+
+                {/* Tombol Aksi */}
+                <div className="flex gap-3 mt-5">
+                  {retryResult === 'correct' ? (
+                    <button
+                      onClick={closeRetry}
+                      className="flex-1 py-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold shadow-lg"
+                    >
+                      Mantap! ✓
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={closeRetry}
+                        className="flex-1 py-3 rounded-xl bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-200 font-semibold"
+                      >
+                        Nanti Saja
+                      </button>
+                      <button
+                        onClick={submitRetry}
+                        disabled={retryAnswer === null}
+                        className="flex-1 py-3 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold shadow-lg"
+                      >
+                        Jawab
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
+  // ============ HALAMAN SOAL ============
   const currentQ = questions[currentIndex];
   const progress = ((currentIndex + 1) / questions.length) * 100;
   const answeredCount = Object.keys(answers).length;
@@ -414,7 +608,7 @@ const Quiz = () => {
         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 mb-4 flex items-start gap-2 text-xs text-amber-700 dark:text-amber-300">
           <Sparkles className="w-4 h-4 flex-shrink-0 mt-0.5" />
           <span>
-            <strong>Bonus:</strong> Dapatkan <strong>nilai 100</strong> untuk membuka pembahasan lengkap! 🔓
+            <strong>Bonus:</strong> Dapatkan <strong>nilai 100</strong> untuk buka pembahasan lengkap, atau coba lagi soal yang salah di akhir kuis! 🔓
           </span>
         </div>
 
@@ -479,7 +673,6 @@ const Quiz = () => {
             </button>
           )}
         </div>
-
       </div>
     </div>
   );

@@ -3,13 +3,15 @@ import { Link } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import { db } from '../../firebase';
 import { collection, getCountFromServer, query, orderBy, getDocs, limit } from 'firebase/firestore';
-import { BookOpen, Users, FileText, PlusCircle, Settings, ListChecks, Loader, ChevronRight, Trophy, Sparkles, Upload, BarChart3 } from 'lucide-react';
+import { BookOpen, Users, FileText, PlusCircle, Settings, ListChecks, Loader, ChevronRight, Trophy, Sparkles, Upload, BarChart3, FileCheck } from 'lucide-react';
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
     materials: 0,
     users: 0,
     quizResults: 0,
+    formulas: 0,
+    exams: 0,
     loading: true,
   });
   const [recentMaterials, setRecentMaterials] = useState([]);
@@ -20,11 +22,25 @@ const AdminDashboard = () => {
         const matSnap = await getCountFromServer(collection(db, 'materials'));
         const userSnap = await getCountFromServer(collection(db, 'users'));
         const quizSnap = await getCountFromServer(collection(db, 'quizResults'));
+        
+        let formulasCount = 0;
+        try {
+          const formulaSnap = await getCountFromServer(collection(db, 'formulas'));
+          formulasCount = formulaSnap.data().count;
+        } catch (e) { console.warn('Collection formulas belum ada'); }
+
+        let examsCount = 0;
+        try {
+          const examSnap = await getCountFromServer(collection(db, 'examPackages'));
+          examsCount = examSnap.data().count;
+        } catch (e) { console.warn('Collection examPackages belum ada'); }
 
         setStats({
           materials: matSnap.data().count,
           users: userSnap.data().count,
           quizResults: quizSnap.data().count,
+          formulas: formulasCount,
+          exams: examsCount,
           loading: false,
         });
 
@@ -62,45 +78,71 @@ const AdminDashboard = () => {
 
       <div className="page-content max-w-6xl mx-auto px-4 py-4">
         
-        {/* Statistik */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6 sm:mb-8">
+        {/* Statistik — 5 kartu */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6 sm:mb-8">
           
-          <div className="card-elevated rounded-2xl p-5 sm:p-6 relative overflow-hidden group hover:-translate-y-1 transition-all">
+          <div className="card-elevated rounded-2xl p-5 relative overflow-hidden group hover:-translate-y-1 transition-all">
             <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-teal-400/20 to-cyan-500/10 rounded-full blur-2xl group-hover:scale-150 transition-transform"></div>
             <div className="relative">
-              <div className="w-11 h-11 bg-gradient-to-br from-teal-400 via-teal-600 to-cyan-600 rounded-xl flex items-center justify-center mb-4 shadow-lg shadow-teal-500/30">
+              <div className="w-11 h-11 bg-gradient-to-br from-teal-400 via-teal-600 to-cyan-600 rounded-xl flex items-center justify-center mb-3 shadow-lg shadow-teal-500/30">
                 <BookOpen className="w-5 h-5 text-white" />
               </div>
               <div className="text-3xl font-bold text-gray-900 dark:text-white">
                 {stats.loading ? '…' : stats.materials}
               </div>
-              <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Total Materi</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1">Materi</div>
             </div>
           </div>
 
-          <div className="card-elevated rounded-2xl p-5 sm:p-6 relative overflow-hidden group hover:-translate-y-1 transition-all">
+          <div className="card-elevated rounded-2xl p-5 relative overflow-hidden group hover:-translate-y-1 transition-all">
             <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-violet-400/20 to-purple-500/10 rounded-full blur-2xl group-hover:scale-150 transition-transform"></div>
             <div className="relative">
-              <div className="w-11 h-11 bg-gradient-to-br from-violet-500 via-purple-600 to-fuchsia-600 rounded-xl flex items-center justify-center mb-4 shadow-lg shadow-purple-500/30">
+              <div className="w-11 h-11 bg-gradient-to-br from-violet-500 via-purple-600 to-fuchsia-600 rounded-xl flex items-center justify-center mb-3 shadow-lg shadow-purple-500/30">
                 <Users className="w-5 h-5 text-white" />
               </div>
               <div className="text-3xl font-bold text-gray-900 dark:text-white">
                 {stats.loading ? '…' : stats.users}
               </div>
-              <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Total User</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1">User</div>
             </div>
           </div>
 
-          <div className="card-elevated rounded-2xl p-5 sm:p-6 relative overflow-hidden group hover:-translate-y-1 transition-all col-span-2 md:col-span-1">
+          <div className="card-elevated rounded-2xl p-5 relative overflow-hidden group hover:-translate-y-1 transition-all">
             <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-amber-400/20 to-orange-500/10 rounded-full blur-2xl group-hover:scale-150 transition-transform"></div>
             <div className="relative">
-              <div className="w-11 h-11 bg-gradient-to-br from-amber-400 via-orange-500 to-pink-500 rounded-xl flex items-center justify-center mb-4 shadow-lg shadow-orange-500/30">
+              <div className="w-11 h-11 bg-gradient-to-br from-amber-400 via-orange-500 to-pink-500 rounded-xl flex items-center justify-center mb-3 shadow-lg shadow-orange-500/30">
                 <FileText className="w-5 h-5 text-white" />
               </div>
               <div className="text-3xl font-bold text-gray-900 dark:text-white">
                 {stats.loading ? '…' : stats.quizResults}
               </div>
-              <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Kuis Dikerjakan</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1">Kuis</div>
+            </div>
+          </div>
+
+          <div className="card-elevated rounded-2xl p-5 relative overflow-hidden group hover:-translate-y-1 transition-all">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-fuchsia-400/20 to-pink-500/10 rounded-full blur-2xl group-hover:scale-150 transition-transform"></div>
+            <div className="relative">
+              <div className="w-11 h-11 bg-gradient-to-br from-fuchsia-500 via-purple-600 to-violet-600 rounded-xl flex items-center justify-center mb-3 shadow-lg shadow-fuchsia-500/30">
+                <Sparkles className="w-5 h-5 text-white" />
+              </div>
+              <div className="text-3xl font-bold text-gray-900 dark:text-white">
+                {stats.loading ? '…' : stats.formulas}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1">Rumus</div>
+            </div>
+          </div>
+
+          <div className="card-elevated rounded-2xl p-5 relative overflow-hidden group hover:-translate-y-1 transition-all">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-red-400/20 to-orange-500/10 rounded-full blur-2xl group-hover:scale-150 transition-transform"></div>
+            <div className="relative">
+              <div className="w-11 h-11 bg-gradient-to-br from-red-500 via-orange-500 to-amber-500 rounded-xl flex items-center justify-center mb-3 shadow-lg shadow-red-500/30">
+                <FileCheck className="w-5 h-5 text-white" />
+              </div>
+              <div className="text-3xl font-bold text-gray-900 dark:text-white">
+                {stats.loading ? '…' : stats.exams}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1">Ujian</div>
             </div>
           </div>
         </div>
@@ -125,8 +167,8 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Menu Cepat - 4 KARTU */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        {/* Menu Cepat — 6 kartu */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 mb-6 sm:mb-8">
           
           <Link to="/admin/materi" className="card-elevated rounded-2xl p-5 hover:-translate-y-1 hover:shadow-xl transition-all flex items-center gap-4 group">
             <div className="w-12 h-12 bg-gradient-to-br from-teal-400 to-cyan-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-teal-500/30 group-hover:scale-110 transition-transform">
@@ -161,7 +203,6 @@ const AdminDashboard = () => {
             <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-violet-600 group-hover:translate-x-1 transition-all" />
           </Link>
 
-          {/* ⚡ KARTU BARU: ANALYTICS */}
           <Link to="/admin/analytics" className="card-elevated rounded-2xl p-5 hover:-translate-y-1 hover:shadow-xl transition-all flex items-center gap-4 group">
             <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-rose-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-pink-500/30 group-hover:scale-110 transition-transform">
               <BarChart3 className="w-6 h-6 text-white" />
@@ -171,6 +212,28 @@ const AdminDashboard = () => {
               <p className="text-xs text-gray-500 dark:text-gray-400">Insight & analytics.</p>
             </div>
             <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-pink-600 group-hover:translate-x-1 transition-all" />
+          </Link>
+
+          <Link to="/admin/rumus" className="card-elevated rounded-2xl p-5 hover:-translate-y-1 hover:shadow-xl transition-all flex items-center gap-4 group border-2 border-fuchsia-200/60 dark:border-fuchsia-800/40">
+            <div className="w-12 h-12 bg-gradient-to-br from-fuchsia-500 via-purple-600 to-violet-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-fuchsia-500/30 group-hover:scale-110 transition-transform">
+              <Sparkles className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm">Bank Rumus</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">AI auto-extract rumus.</p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-fuchsia-600 group-hover:translate-x-1 transition-all" />
+          </Link>
+
+          <Link to="/admin/ujian" className="card-elevated rounded-2xl p-5 hover:-translate-y-1 hover:shadow-xl transition-all flex items-center gap-4 group border-2 border-red-200/60 dark:border-red-800/40">
+            <div className="w-12 h-12 bg-gradient-to-br from-red-500 via-orange-500 to-amber-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-red-500/30 group-hover:scale-110 transition-transform">
+              <FileCheck className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm">Kelola Ujian</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Paket TKA/PAS.</p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-red-600 group-hover:translate-x-1 transition-all" />
           </Link>
         </div>
 

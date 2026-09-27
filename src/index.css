@@ -6,7 +6,6 @@
 /* ===== DARK MODE BASE FIX ================== */
 /* ============================================= */
 
-/* Pastikan html & body ikut dark */
 .dark,
 .dark body,
 .dark #root {
@@ -61,7 +60,6 @@ body {
   z-index: 0;
 }
 
-/* ⚡ DARK MODE — pakai !important biar tidak di-override */
 .dark.page-bg,
 .dark .page-bg {
   background: #0b1220 !important;
@@ -273,7 +271,8 @@ button:focus-visible, a[class*="rounded"]:focus-visible {
 }
 .dark .material-content { color: #cbd5e1 !important; }
 
-.material-content * {
+/* ⚡ KECUALIKAN KaTeX + SVG dari override agresif */
+.material-content *:not(.katex):not(.katex *):not(svg):not(svg *):not(.math-frac):not(.math-frac *) {
   white-space: normal !important;
   word-break: normal !important;
   overflow-wrap: break-word !important;
@@ -363,19 +362,254 @@ button:focus-visible, a[class*="rounded"]:focus-visible {
 }
 .dark .material-content a { color: #2dd4bf !important; }
 
+/* ═══════════════════════════════════════════════════════════ */
+/* ⚡ KaTeX — MATEMATIKA CANTIK (Word-Equation Style)          */
+/* ═══════════════════════════════════════════════════════════ */
+
+.material-content .katex {
+  font-family: 'KaTeX_Main', 'Times New Roman', serif !important;
+  font-size: 1.08em !important;
+  line-height: 1.2 !important;
+  white-space: normal !important;
+  word-break: keep-all !important;
+  overflow-wrap: normal !important;
+  max-width: none !important;
+  color: inherit;
+}
+
+.material-content .katex * {
+  font-family: inherit !important;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  max-width: none !important;
+}
+
+.material-content .katex-display {
+  display: block !important;
+  margin: 1.25rem 0 !important;
+  text-align: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.75rem 1rem !important;
+  background: rgba(20, 184, 166, 0.04);
+  border-left: 3px solid rgba(20, 184, 166, 0.3);
+  border-radius: 4px;
+}
+
+.material-content .katex-display > .katex {
+  display: inline-block !important;
+  text-align: initial;
+  font-size: 1.15em !important;
+}
+
+.dark .material-content .katex {
+  color: #e2e8f0 !important;
+}
+
+.dark .material-content .katex-display {
+  background: rgba(20, 184, 166, 0.06);
+  border-left-color: rgba(20, 184, 166, 0.4);
+}
+
+.material-content .katex .mathnormal,
+.material-content .katex .mathit {
+  font-family: 'KaTeX_Math', 'Times New Roman', serif !important;
+  font-style: italic !important;
+}
+
+/* ═══════════════════════════════════════════════════════════ */
+/* PECAHAN BERTINGKAT (Math Fraction via HTML/CSS)            */
+/* ═══════════════════════════════════════════════════════════ */
+.material-content .math-frac {
+  display: inline-flex !important;
+  flex-direction: column !important;
+  vertical-align: middle !important;
+  text-align: center !important;
+  font-size: 0.9em !important;
+  line-height: 1.1 !important;
+  margin: 0 4px !important;
+  position: relative;
+  top: -0.15em;
+  font-family: 'KaTeX_Main', 'Times New Roman', serif !important;
+  max-width: none !important;
+  white-space: nowrap !important;
+}
+
+.material-content .math-frac-num {
+  padding: 0 4px !important;
+  border-bottom: 1.5px solid currentColor !important;
+  display: block !important;
+}
+
+.material-content .math-frac-den {
+  padding: 0 4px !important;
+  display: block !important;
+}
+
+.dark .material-content .math-frac {
+  color: #e2e8f0 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════ */
+/* SUP (pangkat) — fallback untuk <sup> biasa                  */
+/* ═══════════════════════════════════════════════════════════ */
+.material-content sup.math-sup,
+.material-content sup {
+  display: inline !important;
+  vertical-align: super !important;
+  font-size: 0.72em !important;
+  line-height: 0 !important;
+  position: relative;
+  top: -0.15em;
+  margin: 0 1px;
+  color: inherit;
+  white-space: nowrap;
+  max-width: none !important;
+}
+
+/* ═══════════════════════════════════════════════════════════ */
+/* MARKDOWN TABLE — SUPER AGRESSIVE                           */
+/* ═══════════════════════════════════════════════════════════ */
+.material-content table.md-table,
+.material-content .md-table,
+.md-table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  margin: 1.5rem 0 !important;
+  font-size: 0.95em !important;
+  background: #ffffff !important;
+  border-radius: 10px !important;
+  overflow: hidden !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.1) !important;
+  border: 2px solid #14b8a6 !important;
+  display: table !important;
+}
+
+.material-content table.md-table thead,
+.material-content .md-table thead,
+.md-table thead {
+  background: linear-gradient(135deg, #14b8a6 0%, #06b6d4 100%) !important;
+  display: table-header-group !important;
+}
+
+.material-content .md-table thead tr,
+.md-table thead tr {
+  display: table-row !important;
+}
+
+.material-content .md-table th,
+.md-table th {
+  padding: 12px 14px !important;
+  text-align: center !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  font-size: 0.9em !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+  white-space: nowrap !important;
+  background: transparent !important;
+  display: table-cell !important;
+  max-width: none !important;
+}
+
+.material-content .md-table tbody,
+.md-table tbody {
+  display: table-row-group !important;
+}
+
+.material-content .md-table tbody tr,
+.md-table tbody tr {
+  display: table-row !important;
+  background: #ffffff !important;
+}
+
+.material-content .md-table tbody tr:nth-child(even),
+.md-table tbody tr:nth-child(even) {
+  background: #f8fafc !important;
+}
+
+.material-content .md-table td,
+.md-table td {
+  padding: 10px 14px !important;
+  text-align: center !important;
+  color: #1e293b !important;
+  border: 1px solid #cbd5e1 !important;
+  font-size: 0.95em !important;
+  display: table-cell !important;
+  max-width: none !important;
+  background: transparent !important;
+}
+
+/* Dark mode */
+.dark .material-content .md-table,
+.dark .md-table {
+  background: rgba(30, 41, 59, 0.7) !important;
+  border-color: #14b8a6 !important;
+}
+
+.dark .material-content .md-table td,
+.dark .md-table td {
+  color: #cbd5e1 !important;
+  border-color: rgba(71, 85, 105, 0.7) !important;
+  background: transparent !important;
+}
+
+.dark .material-content .md-table tbody tr,
+.dark .md-table tbody tr {
+  background: transparent !important;
+}
+
+.dark .material-content .md-table tbody tr:nth-child(even),
+.dark .md-table tbody tr:nth-child(even) {
+  background: rgba(15, 23, 42, 0.4) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════ */
+/* MOBILE RESPONSIVE                                          */
+/* ═══════════════════════════════════════════════════════════ */
 @media (max-width: 375px) {
   .material-content { font-size: 0.9rem; line-height: 1.75; }
   .material-content h1 { font-size: 1.15rem; }
   .material-content h2 { font-size: 1.05rem; }
   .material-content h3 { font-size: 0.98rem; }
   .material-content ul, .material-content ol { padding-left: 1.15rem !important; }
+  .material-content .katex { font-size: 1em !important; }
+  .material-content .katex-display > .katex { font-size: 1.05em !important; }
+  .material-content .katex-display { margin: 1rem 0 !important; padding: 0.5rem !important; }
+  .material-content .md-table { font-size: 0.8em !important; }
+  .material-content .md-table th,
+  .material-content .md-table td { padding: 8px 10px !important; }
 }
+
 @media (min-width: 376px) and (max-width: 640px) {
   .material-content { font-size: 0.95rem; line-height: 1.75; }
 }
+
 @media (min-width: 641px) and (max-width: 1024px) {
   .material-content { font-size: 1rem; line-height: 1.8; }
 }
+
 @media (min-width: 1025px) {
   .material-content { font-size: 1.05rem; line-height: 1.85; }
+}
+
+/* ═══════════════════════════════════════════════════════════ */
+/* SCROLLBAR HIDE (untuk quick prompts AI Tutor)              */
+/* ═══════════════════════════════════════════════════════════ */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+/* Sembunyikan scrollbar untuk Chrome, Safari, dan Opera */
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* Sembunyikan scrollbar untuk IE, Edge, dan Firefox */
+html, body {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }

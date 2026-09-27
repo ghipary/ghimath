@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { Search, BookOpen, Clock, Loader, Lock, X, CheckCircle, BookMarked, TrendingUp, Sparkles, ChevronDown, FolderOpen, Folder, GraduationCap, Layers, Trophy, Target, ShieldAlert, Star } from 'lucide-react';
+import AITutor from '../components/AITutor';
 
 // ⚡ Warna BASIC per kelas
 const getGradeStyle = (grade) => {

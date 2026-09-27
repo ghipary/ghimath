@@ -3,14 +3,11 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { Toaster } from 'react-hot-toast'
 
-// Komponen yang langsung di-load (karena dibutuhkan di awal)
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminRoute from './components/AdminRoute'
 import PWAInstallBanner from './components/PWAInstallBanner'
 
-// ==========================================
-// LAZY LOADING: Halaman di-load hanya saat dibutuhkan
-// ==========================================
+
 const LandingPage = lazy(() => import('./pages/LandingPage'))
 const Login = lazy(() => import('./pages/Login'))
 const Register = lazy(() => import('./pages/Register'))
@@ -23,9 +20,11 @@ const Quiz = lazy(() => import('./pages/Quiz'))
 const Leaderboard = lazy(() => import('./pages/Leaderboard'))
 const Profile = lazy(() => import('./pages/Profile'))
 const Certificate = lazy(() => import('./pages/Certificate'))
-const DailyChallenge = lazy(() => import('./pages/DailyChallenge')) // ⚡ BARU
+const DailyChallenge = lazy(() => import('./pages/DailyChallenge'))
+const FormulaBank = lazy(() => import('./pages/FormulaBank'))
+const ExamList = lazy(() => import('./pages/ExamList'))
+const ExamDetail = lazy(() => import('./pages/ExamDetail'))
 
-// Admin Pages
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'))
 const AdminMaterialList = lazy(() => import('./pages/admin/AdminMaterialList'))
 const AdminMaterialForm = lazy(() => import('./pages/admin/AdminMaterialForm'))
@@ -33,10 +32,10 @@ const AdminQuizBuilder = lazy(() => import('./pages/admin/AdminQuizBuilder'))
 const AdminQuizImport = lazy(() => import('./pages/admin/AdminQuizImport'))
 const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'))
 const AdminAnalytics = lazy(() => import('./pages/admin/AdminAnalytics'))
+const AdminFormulaManager = lazy(() => import('./pages/admin/AdminFormulaManager'))
+const AdminExamManager = lazy(() => import('./pages/admin/AdminExamManager'))
+const AdminExamResults = lazy(() => import('./pages/admin/AdminExamResults'))
 
-// ==========================================
-// LOADING FALLBACK (Tampilan pas pindah halaman)
-// ==========================================
 const PageLoader = () => (
   <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
     <div className="relative">
@@ -87,6 +86,9 @@ function App() {
             <Route path="/profil" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/sertifikat" element={<ProtectedRoute><Certificate /></ProtectedRoute>} />
             <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
+            <Route path="/rumus" element={<FormulaBank />} />
+            <Route path="/ujian" element={<ProtectedRoute><ExamList /></ProtectedRoute>} />
+            <Route path="/ujian/:id" element={<ProtectedRoute><ExamDetail /></ProtectedRoute>} />
 
             <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
             <Route path="/admin/materi" element={<AdminRoute><AdminMaterialList /></AdminRoute>} />
@@ -96,6 +98,8 @@ function App() {
             <Route path="/admin/materi/:id/import" element={<AdminRoute><AdminQuizImport /></AdminRoute>} />
             <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
             <Route path="/admin/analytics" element={<AdminRoute><AdminAnalytics /></AdminRoute>} />
+            <Route path="/admin/rumus" element={<AdminRoute><AdminFormulaManager /></AdminRoute>} />
+            <Route path="/admin/ujian" element={<AdminRoute><AdminExamManager /></AdminRoute>} />
           </Routes>
         </Suspense>
 

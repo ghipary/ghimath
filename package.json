@@ -10,9 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "dotenv": "^18.0.4",
     "firebase": "^12.19.0",
+    "firebase-admin": "^14.5.0",
     "html-to-image": "^1.11.13",
     "jspdf": "^4.2.1",
+    "katex": "^0.18.9",
     "lucide-react": "^1.48.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
