@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import { db } from '../../firebase';
-import { collection, getDocs } from 'firebase/firestore';
-import { ArrowLeft, Users, Search, Loader, Mail, GraduationCap, Trophy, X, BookOpen, Calendar, Settings, Sparkles } from 'lucide-react';
+import { collection, getDocs, query, where, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { ArrowLeft, Users, Search, Loader, Mail, GraduationCap, Trophy, X, BookOpen, Calendar, Sparkles, AlertTriangle, Trash2, RotateCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const AdminUsers = () => {
@@ -13,17 +13,22 @@ const AdminUsers = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
+  
+  // ⚡ STATE RESET
+  const [resetUser, setResetUser] = useState(null); // user yang mau di-reset
+  const [resetting, setResetting] = useState(false);
+
+  const fetchData = async () => {
+    try {
+      const usersSnap = await getDocs(collection(db, 'users'));
+      setUsers(usersSnap.docs.map((d) => ({ uid: d.id, ...d.data() })));
+      const resultsSnap = await getDocs(collection(db, 'quizResults'));
+      setQuizResults(resultsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    } catch (error) { toast.error('Gagal memuat data user'); }
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const usersSnap = await getDocs(collection(db, 'users'));
-        setUsers(usersSnap.docs.map((d) => ({ uid: d.id, ...d.data() })));
-        const resultsSnap = await getDocs(collection(db, 'quizResults'));
-        setQuizResults(resultsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      } catch (error) { toast.error('Gagal memuat data user'); }
-      setLoading(false);
-    };
     fetchData();
   }, []);
 
@@ -58,6 +63,71 @@ const AdminUsers = () => {
     try {
       return new Date(ts.toDate()).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
     } catch { return '-'; }
+  };
+
+  // ⚡ HANDLE RESET DATA USER
+  const handleResetData = async () => {
+    if (!resetUser) return;
+    setResetting(true);
+
+    try {
+      const uid = resetUser.uid;
+      console.log('🧹 Mulai reset data user:', resetUser.name, '(', uid, ')');
+
+      // 1. Hapus semua progress belajar
+      const progressQ = query(collection(db, 'progress'), where('userId', '==', uid));
+      const progressSnap = await getDocs(progressQ);
+      let deletedCount = 0;
+      await Promise.all(
+        progressSnap.docs.map(async (d) => {
+          await deleteDoc(doc(db, 'progress', d.id));
+          deletedCount++;
+        })
+      );
+      console.log(`✅ Progress dihapus: ${progressSnap.size}`);
+
+      // 2. Hapus semua hasil kuis (termasuk kuis harian)
+      const quizQ = query(collection(db, 'quizResults'), where('userId', '==', uid));
+      const quizSnap = await getDocs(quizQ);
+      await Promise.all(
+        quizSnap.docs.map(async (d) => {
+          await deleteDoc(doc(db, 'quizResults', d.id));
+          deletedCount++;
+        })
+      );
+      console.log(`✅ Quiz results dihapus: ${quizSnap.size}`);
+
+      // 3. Hapus semua daily challenges
+      const dailyQ = query(collection(db, 'dailyChallenges'), where('userId', '==', uid));
+      const dailySnap = await getDocs(dailyQ);
+      await Promise.all(
+        dailySnap.docs.map(async (d) => {
+          await deleteDoc(doc(db, 'dailyChallenges', d.id));
+          deletedCount++;
+        })
+      );
+      console.log(`✅ Daily challenges dihapus: ${dailySnap.size}`);
+
+      // 4. Reset streak & last active di doc user
+      await updateDoc(doc(db, 'users', uid), {
+        currentStreak: 0,
+        longestStreak: 0,
+        lastActiveDate: null,
+      });
+      console.log('✅ Streak di-reset');
+
+      toast.success(`🧹 Data ${resetUser.name} berhasil di-reset! (${deletedCount} dokumen dihapus)`);
+      
+      // Tutup modal & refresh data
+      setResetUser(null);
+      setSelectedUser(null);
+      setLoading(true);
+      await fetchData();
+    } catch (error) {
+      console.error('❌ Gagal reset:', error);
+      toast.error('Gagal reset: ' + (error.message || 'Unknown error'));
+    }
+    setResetting(false);
   };
 
   if (loading) {
@@ -156,10 +226,19 @@ const AdminUsers = () => {
                       </td>
                       <td className="px-6 py-4 text-center text-sm text-gray-700 dark:text-gray-300">{u.quizCount > 0 ? u.avgScore : '-'}</td>
                       <td className="px-6 py-4 text-right">
-                        <button onClick={() => setSelectedUser(u)}
-                          className="px-3 py-1.5 text-xs font-semibold bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-lg hover:from-violet-600 hover:to-purple-700 transition-all shadow-md">
-                          Lihat Detail
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button onClick={() => setSelectedUser(u)}
+                            className="px-3 py-1.5 text-xs font-semibold bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-lg hover:from-violet-600 hover:to-purple-700 transition-all shadow-md">
+                            Lihat Detail
+                          </button>
+                          <button 
+                            onClick={() => setResetUser(u)}
+                            className="p-2 text-xs font-semibold bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-all"
+                            title="Reset data user"
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -171,7 +250,7 @@ const AdminUsers = () => {
       </div>
 
       {/* MODAL DETAIL USER */}
-      {selectedUser && (
+      {selectedUser && !resetUser && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 overflow-y-auto" onClick={() => setSelectedUser(null)}>
           <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 md:p-8 max-w-2xl w-full shadow-2xl relative my-8" onClick={(e) => e.stopPropagation()}>
             <button onClick={() => setSelectedUser(null)} className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
@@ -211,7 +290,7 @@ const AdminUsers = () => {
               </div>
             </div>
 
-            <div>
+            <div className="mb-6">
               <h3 className="font-bold text-gray-900 dark:text-white mb-1 flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-teal-600" /> Riwayat Kuis
               </h3>
@@ -233,6 +312,126 @@ const AdminUsers = () => {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* ⚡ TOMBOL RESET DI MODAL DETAIL */}
+            <div className="border-t border-gray-200 dark:border-slate-700 pt-5">
+              <button
+                onClick={() => setResetUser(selectedUser)}
+                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-red-500 via-rose-500 to-red-600 hover:from-red-600 hover:to-rose-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-red-500/30 hover:shadow-xl"
+              >
+                <RotateCcw className="w-5 h-5" /> Reset Data User Ini
+              </button>
+              <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
+                ⚠️ Menghapus semua progress & nilai kuis user. Tidak bisa dibatalkan.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ⚡ MODAL KONFIRMASI RESET */}
+      {resetUser && (
+        <div 
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[110] flex items-center justify-center p-4 overflow-y-auto" 
+          onClick={() => !resetting && setResetUser(null)}
+        >
+          <div 
+            className="bg-white dark:bg-slate-800 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative overflow-hidden my-8" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Background decoration */}
+            <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-red-400/20 to-rose-500/10 rounded-full blur-3xl"></div>
+
+            <div className="relative">
+              <div className="w-20 h-20 bg-gradient-to-br from-red-400 via-rose-500 to-red-600 rounded-3xl flex items-center justify-center mx-auto mb-5 shadow-xl shadow-red-500/40">
+                <AlertTriangle className="w-10 h-10 text-white" />
+              </div>
+
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white text-center mb-2">
+                Reset Data User?
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 text-center mb-5 leading-relaxed">
+                Semua data di bawah ini bakal <strong className="text-red-600 dark:text-red-400">dihapus permanen</strong> untuk user:
+              </p>
+
+              {/* User Info */}
+              <div className="bg-gradient-to-br from-gray-50 to-violet-50/30 dark:from-slate-900/50 dark:to-slate-900/30 rounded-2xl p-4 mb-5 border border-gray-200/60 dark:border-slate-700/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-violet-500 via-purple-600 to-fuchsia-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
+                    <Users className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-gray-900 dark:text-white truncate">{resetUser.name || 'Siswa'}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{resetUser.email}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      {resetUser.quizCount} kuis • Total skor: {resetUser.totalScore}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* List yang bakal dihapus */}
+              <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-2.5 mb-5">
+                <li className="flex items-center gap-2.5">
+                  <span className="w-5 h-5 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 flex items-center justify-center flex-shrink-0">
+                    <X className="w-3 h-3" />
+                  </span>
+                  Semua progress belajar materi
+                </li>
+                <li className="flex items-center gap-2.5">
+                  <span className="w-5 h-5 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 flex items-center justify-center flex-shrink-0">
+                    <X className="w-3 h-3" />
+                  </span>
+                  Semua nilai kuis (termasuk kuis harian)
+                </li>
+                <li className="flex items-center gap-2.5">
+                  <span className="w-5 h-5 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 flex items-center justify-center flex-shrink-0">
+                    <X className="w-3 h-3" />
+                  </span>
+                  Riwayat kuis harian (daily challenges)
+                </li>
+                <li className="flex items-center gap-2.5">
+                  <span className="w-5 h-5 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 flex items-center justify-center flex-shrink-0">
+                    <X className="w-3 h-3" />
+                  </span>
+                  Streak (current & longest)
+                </li>
+              </ul>
+
+              {/* Warning Box */}
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/10 border border-amber-200/60 dark:border-amber-800/50 rounded-xl p-3 mb-5 flex gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <div className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+                  <strong>Akun user tetap aman</strong> — hanya data progress & nilai yang di-reset. Tindakan ini <strong>tidak bisa dibatalkan</strong>.
+                </div>
+              </div>
+
+              {/* Tombol Aksi */}
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setResetUser(null)} 
+                  disabled={resetting}
+                  className="flex-1 py-3.5 rounded-xl bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-200 font-semibold transition-all disabled:opacity-50"
+                >
+                  Batal
+                </button>
+                <button 
+                  onClick={handleResetData} 
+                  disabled={resetting}
+                  className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-red-500 via-rose-500 to-red-600 hover:from-red-600 hover:to-rose-700 text-white font-bold transition-all shadow-lg shadow-red-500/30 disabled:opacity-50"
+                >
+                  {resetting ? (
+                    <>
+                      <Loader className="w-4 h-4 animate-spin" /> Mereset...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" /> Ya, Reset!
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

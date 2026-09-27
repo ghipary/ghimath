@@ -3,10 +3,10 @@ import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import { db } from '../firebase';
 import { collection, getDocs } from 'firebase/firestore';
-import { Trophy, Medal, Crown, Loader, ChevronLeft, Sparkles, School, GraduationCap, Flame, Sprout, Zap, Rocket, Gem, Clock, BookOpen, Target, Layers, Award, BookMarked, TrendingUp } from 'lucide-react';
+import { Trophy, Medal, Crown, Loader, ChevronLeft, Sparkles, School, GraduationCap, Flame, Sprout, Zap, Rocket, Gem, Clock, BookOpen, Target, Layers, Award, BookMarked, TrendingUp, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-const MIN_QUIZ = 3; // Syarat minimal kuis untuk masuk ranking
+const MIN_QUIZ = 3;
 
 const getStreakConfig = (streak) => {
   if (streak >= 100) return { gradient: 'from-fuchsia-500 to-pink-500', Icon: Crown };
@@ -44,7 +44,6 @@ const fmtTime = (seconds) => {
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 };
 
-// Avatar reusable
 const Avatar = ({ photoURL, name, size = 'md', rank }) => {
   const sizeClasses = {
     sm: 'w-10 h-10 text-sm',
@@ -93,19 +92,16 @@ const Leaderboard = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('umum');
   
-  // Data mentah
   const [allUsers, setAllUsers] = useState({});
   const [allResults, setAllResults] = useState([]);
   const [allProgress, setAllProgress] = useState([]);
   const [allMaterials, setAllMaterials] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Per Bab
   const [selectedMaterial, setSelectedMaterial] = useState('');
   const [perBabData, setPerBabData] = useState({ fastest: [], highest: [], mostProgress: [] });
   const [loadingPerBab, setLoadingPerBab] = useState(false);
 
-  // Fetch semua data sekali
   useEffect(() => {
     const fetchAll = async () => {
       try {
@@ -145,19 +141,17 @@ const Leaderboard = () => {
     if (user) fetchAll();
   }, [user]);
 
-  // ⚡ HITUNG LEADERBOARD UMUM (rata-rata)
+  // ⚡ HITUNG LEADERBOARD UMUM — TAMPILKAN SEMUA USER (termasuk admin)
   const leaderboard = useMemo(() => {
     const userResults = {};
     allResults.forEach((r) => {
       if (!userResults[r.userId]) userResults[r.userId] = new Map();
       const existing = userResults[r.userId].get(r.materialId);
-      // Dedupe: ambil nilai tertinggi per materi
       if (!existing || (r.score || 0) > (existing.score || 0)) {
         userResults[r.userId].set(r.materialId, r);
       }
     });
 
-    // Progress per user
     const userProgress = {};
     allProgress.forEach((p) => {
       if (!userProgress[p.userId]) userProgress[p.userId] = { readingSeconds: 0, completedCount: 0 };
@@ -166,15 +160,14 @@ const Leaderboard = () => {
     });
 
     const list = [];
-    Object.entries(userResults).forEach(([uid, map]) => {
+    Object.entries(allUsers).forEach(([uid, userInfo]) => {
+      const map = userResults[uid] || new Map();
       const results = Array.from(map.values());
       const count = results.length;
-      if (count === 0) return;
-      
+
       const totalScore = results.reduce((sum, r) => sum + (r.score || 0), 0);
-      const avgScore = Math.round(totalScore / count);
-      const userInfo = allUsers[uid] || {};
-      
+      const avgScore = count > 0 ? Math.round(totalScore / count) : 0;
+
       list.push({
         uid,
         name: userInfo.name || 'Siswa',
@@ -190,10 +183,13 @@ const Leaderboard = () => {
         readingSeconds: userProgress[uid]?.readingSeconds || 0,
         completedMaterials: userProgress[uid]?.completedCount || 0,
         qualified: count >= MIN_QUIZ,
+        isAdmin: userInfo.role === 'admin',
       });
     });
 
+    // Sort: Siswa qualified dulu, lalu siswa belum qualified, admin di bawah
     list.sort((a, b) => {
+      if (a.isAdmin !== b.isAdmin) return a.isAdmin ? 1 : -1;
       if (a.qualified !== b.qualified) return b.qualified - a.qualified;
       if (b.avgScore !== a.avgScore) return b.avgScore - a.avgScore;
       return b.quizCount - a.quizCount;
@@ -204,17 +200,12 @@ const Leaderboard = () => {
 
   const myRank = useMemo(() => leaderboard.find((i) => i.uid === user.uid), [leaderboard, user]);
 
-  // ⚡ HITUNG PER BAB
   useEffect(() => {
     if (!selectedMaterial) return;
     setLoadingPerBab(true);
 
-    const material = allMaterials.find((m) => m.id === selectedMaterial);
-
-    // Filter hasil kuis untuk materi ini
     const resultsForMaterial = allResults.filter((r) => r.materialId === selectedMaterial);
     
-    // Tercepat (bestTime, score >= 50)
     const fastest = resultsForMaterial
       .filter((r) => r.bestTime && r.bestTime > 0)
       .map((r) => ({
@@ -229,7 +220,6 @@ const Leaderboard = () => {
       .sort((a, b) => a.value - b.value)
       .slice(0, 3);
 
-    // Nilai tertinggi
     const highest = resultsForMaterial
       .map((r) => ({
         uid: r.userId,
@@ -242,7 +232,6 @@ const Leaderboard = () => {
       .sort((a, b) => b.value - a.value)
       .slice(0, 3);
 
-    // Progress terbanyak (readingSeconds)
     const progressForMaterial = allProgress.filter((p) => p.materialId === selectedMaterial);
     const mostProgress = progressForMaterial
       .map((p) => ({
@@ -272,6 +261,7 @@ const Leaderboard = () => {
   const top1 = leaderboard[0];
   const top2 = leaderboard[1];
   const top3 = leaderboard[2];
+  const hasPodium = leaderboard.length >= 3 && leaderboard[0].qualified;
 
   return (
     <div className="page-bg transition-colors pb-20 min-h-screen">
@@ -291,12 +281,13 @@ const Leaderboard = () => {
               Leaderboard
             </h1>
             <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base">
-              {activeTab === 'umum' ? `Peringkat berdasarkan rata-rata nilai (min. ${MIN_QUIZ} kuis)` : 'Peringkat per bab berdasarkan 3 kategori'}
+              {activeTab === 'umum' 
+                ? `Peringkat semua siswa berdasarkan rata-rata nilai (min. ${MIN_QUIZ} kuis)` 
+                : 'Peringkat per bab berdasarkan 3 kategori'}
             </p>
           </div>
         </div>
 
-        {/* Tab Toggle */}
         <div className="flex items-center gap-2 bg-gray-100/50 dark:bg-slate-800/50 p-1.5 rounded-xl border border-gray-200 dark:border-slate-700 w-fit mt-6 shadow-sm">
           <button
             onClick={() => setActiveTab('umum')}
@@ -323,7 +314,6 @@ const Leaderboard = () => {
 
       <div className="page-content max-w-4xl mx-auto px-4 py-4 space-y-6 sm:space-y-8">
 
-        {/* ================= TAB UMUM ================= */}
         {activeTab === 'umum' && (
           <>
             {/* Kartu Peringkat Kamu */}
@@ -344,8 +334,13 @@ const Leaderboard = () => {
                         Rata-rata: <span className="font-bold text-white">{myRank.avgScore}</span> • {myRank.quizCount} kuis
                       </p>
                       <StreakChip streak={myRank.currentStreak} />
+                      {myRank.isAdmin && (
+                        <span className="text-[10px] font-bold bg-amber-400/30 text-amber-100 px-2 py-0.5 rounded-full">
+                          ⚙️ Admin
+                        </span>
+                      )}
                     </div>
-                    {!myRank.qualified && (
+                    {!myRank.qualified && !myRank.isAdmin && (
                       <p className="text-[11px] text-amber-200 mt-1 font-semibold bg-amber-500/30 px-2 py-0.5 rounded-full inline-block">
                         Kerjakan {MIN_QUIZ - myRank.quizCount} kuis lagi untuk masuk ranking
                       </p>
@@ -357,7 +352,6 @@ const Leaderboard = () => {
                   </div>
                 </div>
                 
-                {/* Mini stats */}
                 <div className="relative z-10 grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-white/20">
                   <div className="text-center">
                     <Clock className="w-4 h-4 text-teal-200 mx-auto mb-1" />
@@ -379,7 +373,7 @@ const Leaderboard = () => {
             )}
 
             {/* Podium Top 3 */}
-            {leaderboard.length >= 3 && leaderboard[0].qualified && (
+            {hasPodium && (
               <div className="grid grid-cols-3 gap-3 md:gap-4 items-end">
                 <div className="flex flex-col items-center pt-8">
                   <div className="relative mb-2">
@@ -418,10 +412,15 @@ const Leaderboard = () => {
             {/* Daftar Lengkap */}
             <div className="card-elevated rounded-2xl overflow-hidden">
               <div className="px-5 sm:px-6 py-4 border-b border-gray-100 dark:border-slate-700/50 bg-gradient-to-r from-gray-50/50 to-amber-50/30 dark:from-slate-800/50 dark:to-slate-800/30">
-                <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  <Trophy className="w-5 h-5 text-amber-500" />
-                  Peringkat Lengkap
-                </h3>
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-amber-500" />
+                    Peringkat Lengkap
+                  </h3>
+                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                    <UserPlus className="w-3.5 h-3.5" /> {leaderboard.length} siswa
+                  </span>
+                </div>
               </div>
 
               {leaderboard.length === 0 ? (
@@ -434,26 +433,34 @@ const Leaderboard = () => {
                 <div className="divide-y divide-gray-100 dark:divide-slate-700/50">
                   {leaderboard.map((item) => {
                     const isMe = item.uid === user.uid;
+                    const isEmpty = item.quizCount === 0;
                     return (
                       <div
                         key={item.uid}
                         className={`flex items-center gap-3 sm:gap-4 px-4 sm:px-6 py-3.5 sm:py-4 transition-colors ${
                           isMe
                             ? 'bg-gradient-to-r from-teal-50 via-cyan-50 to-transparent dark:from-teal-900/20 dark:via-cyan-900/10 dark:to-transparent border-l-4 border-teal-500'
-                            : !item.qualified
+                            : !item.qualified && !item.isAdmin
                               ? 'opacity-60'
                               : 'hover:bg-gray-50 dark:hover:bg-slate-800/30'
                         }`}
                       >
-                        <Avatar photoURL={item.photoURL} name={item.name} size="md" rank={item.qualified && item.rank <= 3 ? item.rank : null} />
+                        <Avatar photoURL={item.photoURL} name={item.name} size="md" rank={item.qualified && !item.isAdmin && item.rank <= 3 ? item.rank : null} />
 
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className={`font-semibold truncate text-sm sm:text-base ${isMe ? 'text-teal-700 dark:text-teal-400' : 'text-gray-900 dark:text-white'}`}>
-                              {item.name} {isMe && <span className="text-xs bg-teal-100 dark:bg-teal-900/40 px-1.5 py-0.5 rounded ml-1">Kamu</span>}
+                              {item.name} 
+                              {isMe && <span className="text-xs bg-teal-100 dark:bg-teal-900/40 px-1.5 py-0.5 rounded ml-1">Kamu</span>}
+                              {item.isAdmin && <span className="text-[10px] font-bold bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded ml-1">⚙️ Admin</span>}
                             </p>
                             <StreakChip streak={item.currentStreak} />
-                            {!item.qualified && (
+                            {isEmpty && !item.isAdmin && (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
+                                Belum mulai
+                              </span>
+                            )}
+                            {!isEmpty && !item.qualified && !item.isAdmin && (
                               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400">
                                 {item.quizCount}/{MIN_QUIZ} kuis
                               </span>
@@ -476,7 +483,6 @@ const Leaderboard = () => {
                               </>
                             )}
                           </div>
-                          {/* Info tambahan */}
                           <div className="flex items-center gap-3 text-[10px] text-gray-400 dark:text-gray-500 mt-1 flex-wrap">
                             <span className="flex items-center gap-1">
                               <Clock className="w-2.5 h-2.5" /> {fmtMinutes(item.readingSeconds)}
@@ -491,7 +497,7 @@ const Leaderboard = () => {
                         </div>
 
                         <div className="text-right flex-shrink-0">
-                          <p className={`font-bold text-lg ${isMe ? 'text-teal-600 dark:text-teal-400' : 'text-gray-900 dark:text-white'}`}>
+                          <p className={`font-bold text-lg ${isMe ? 'text-teal-600 dark:text-teal-400' : isEmpty ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-white'}`}>
                             {item.avgScore}
                           </p>
                           <p className="text-[10px] text-gray-400">rata-rata</p>
@@ -505,10 +511,8 @@ const Leaderboard = () => {
           </>
         )}
 
-        {/* ================= TAB PER BAB ================= */}
         {activeTab === 'perbab' && (
           <>
-            {/* Dropdown Pilih Bab */}
             <div className="card-elevated rounded-2xl p-5">
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-teal-500" /> Pilih Bab / Materi
@@ -537,7 +541,6 @@ const Leaderboard = () => {
             ) : (
               <div className="space-y-4">
                 
-                {/* Card: Tercepat */}
                 <div className="card-elevated rounded-2xl overflow-hidden">
                   <div className="px-5 py-4 border-b border-gray-100 dark:border-slate-700/50 bg-gradient-to-r from-cyan-50/50 to-blue-50/30 dark:from-cyan-900/10 dark:to-blue-900/10 flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/30">
@@ -584,7 +587,6 @@ const Leaderboard = () => {
                   )}
                 </div>
 
-                {/* Card: Nilai Tertinggi */}
                 <div className="card-elevated rounded-2xl overflow-hidden">
                   <div className="px-5 py-4 border-b border-gray-100 dark:border-slate-700/50 bg-gradient-to-r from-amber-50/50 to-orange-50/30 dark:from-amber-900/10 dark:to-orange-900/10 flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/30">
@@ -631,7 +633,6 @@ const Leaderboard = () => {
                   )}
                 </div>
 
-                {/* Card: Progress Terbanyak */}
                 <div className="card-elevated rounded-2xl overflow-hidden">
                   <div className="px-5 py-4 border-b border-gray-100 dark:border-slate-700/50 bg-gradient-to-r from-violet-50/50 to-purple-50/30 dark:from-violet-900/10 dark:to-purple-900/10 flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
