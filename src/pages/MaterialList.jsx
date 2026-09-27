@@ -86,6 +86,7 @@ const MaterialList = () => {
         const r = d.data();
         if (ownMaterialIds.has(r.materialId)) uniqueQuizMaterials.add(r.materialId);
       });
+      // Karena 1 user = 1 dokumen per materi, hitung langsung
       const completedQuizzes = uniqueQuizMaterials.size;
 
       const materialsPercent = Math.round((completedMaterials / totalMaterials) * 100);
