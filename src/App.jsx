@@ -100,6 +100,8 @@ function App() {
             <Route path="/admin/analytics" element={<AdminRoute><AdminAnalytics /></AdminRoute>} />
             <Route path="/admin/rumus" element={<AdminRoute><AdminFormulaManager /></AdminRoute>} />
             <Route path="/admin/ujian" element={<AdminRoute><AdminExamManager /></AdminRoute>} />
+            <Route path="/admin/ujian/:examId/results" element={<AdminRoute><AdminExamResults /></AdminRoute>} />
+            
           </Routes>
         </Suspense>
 

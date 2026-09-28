@@ -27,7 +27,10 @@ const AdminMaterialForm = () => {
   const [error, setError] = useState('');
 
   const topics = ['Aljabar', 'Geometri', 'Statistika', 'Trigonometri', 'Kalkulus', 'Bilangan'];
-  const grades = [7, 8, 9, 10, 11, 12];
+  
+  // ⚡ PISAHKAN KELAS BERDASARKAN JENJANG
+  const gradesSMP = [7, 8, 9];
+  const gradesSMA = [10, 11, 12];
 
   const quillModules = {
     toolbar: [
@@ -80,35 +83,23 @@ const AdminMaterialForm = () => {
   // ===== PARSER: Split teks lengkap + META HEADER =====
   const parseFullMaterial = (text) => {
     const result = { 
-      title: '', 
-      level: '', 
-      grade: '', 
-      topic: '', 
-      description: '', 
-      content: '', 
-      quizzes: [] 
+      title: '', level: '', grade: '', topic: '', description: '', content: '', quizzes: [] 
     };
 
-    // ⚡ 1. Auto-detect JENJANG
     const levelMatch = text.match(/^\s*JENJANG\s*:\s*(SMP|SMA)\s*$/im);
     if (levelMatch) result.level = levelMatch[1].toUpperCase();
 
-    // ⚡ 2. Auto-detect KELAS
     const gradeMatch = text.match(/^\s*KELAS\s*:\s*(\d+)\s*$/im);
     if (gradeMatch) result.grade = Number(gradeMatch[1]);
 
-    // ⚡ 3. Auto-detect TOPIK
     const topicMatch = text.match(/^\s*TOPIK\s*:\s*(.+)$/im);
     if (topicMatch) {
       const topicVal = topicMatch[1].trim();
       const validTopics = ['Aljabar', 'Geometri', 'Statistika', 'Trigonometri', 'Kalkulus', 'Bilangan'];
-      const matched = validTopics.find(t => 
-        topicVal.toLowerCase().includes(t.toLowerCase())
-      );
+      const matched = validTopics.find(t => topicVal.toLowerCase().includes(t.toLowerCase()));
       result.topic = matched || 'Bilangan';
     }
 
-    // ⚡ 4. Auto-detect JUDUL
     const judulMatch = text.match(/^\s*JUDUL\s*:\s*(.+)$/im);
     if (judulMatch) {
       result.title = judulMatch[1].trim();
@@ -117,15 +108,12 @@ const AdminMaterialForm = () => {
       if (babMatch) result.title = `Bab ${babMatch[1]}: ${babMatch[2].trim()}`;
     }
 
-    // 5. Deskripsi
     const descMatch = text.match(/BAGIAN\s+1\s*:\s*DESKRIPSI\s*\n([\s\S]*?)(?=BAGIAN\s+2\s*:|$)/i);
     if (descMatch) result.description = descMatch[1].trim();
 
-    // 6. Konten
     const contentMatch = text.match(/BAGIAN\s+2\s*:\s*KONTEN MATERI\s*\n([\s\S]*?)(?=BAGIAN\s+3\s*:|$)/i);
     if (contentMatch) result.content = contentMatch[1].trim();
 
-    // 7. Quiz
     const quizMatch = text.match(/BAGIAN\s+3\s*:[\s\S]*?\n([\s\S]*)$/i);
     if (quizMatch) {
       const quizText = quizMatch[1].trim();
@@ -227,9 +215,26 @@ const AdminMaterialForm = () => {
     fetchMaterial();
   }, [id, isEdit, navigate]);
 
+  // ⚡ UPDATE: Logika handleChange untuk reset grade jika level berubah
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    let finalValue = type === 'checkbox' ? checked : value;
+
+    if (name === 'level') {
+      const currentGrade = Number(formData.grade);
+      if (finalValue === 'SMP' && currentGrade > 9) {
+        finalValue = 7; // Reset ke default SMP
+        setFormData(prev => ({ ...prev, level: finalValue, grade: 7 }));
+        return;
+      }
+      if (finalValue === 'SMA' && currentGrade < 10) {
+        finalValue = 10; // Reset ke default SMA
+        setFormData(prev => ({ ...prev, level: finalValue, grade: 10 }));
+        return;
+      }
+    }
+
+    setFormData((prev) => ({ ...prev, [name]: finalValue }));
   };
 
   const handleSubmit = async (e) => {
@@ -258,7 +263,6 @@ const AdminMaterialForm = () => {
         materialId = docRef.id;
       }
 
-      // ⚡ AUTO-IMPORT KUIS
       if (pendingQuizzes.length > 0 && !isEdit) {
         let successCount = 0;
         for (const q of pendingQuizzes) {
@@ -362,31 +366,7 @@ const AdminMaterialForm = () => {
                     value={rawText}
                     onChange={(e) => setRawText(e.target.value)}
                     rows={12}
-                    placeholder={`Paste teks lengkap di sini...
-
-Contoh:
-JENJANG: SMP
-KELAS: 7
-TOPIK: Statistika
-JUDUL: Bab 9: Penyajian Data
-
-BAGIAN 1: DESKRIPSI
-Sub-bab:
-- ...
-Deskripsi:
-...
-
-BAGIAN 2: KONTEN MATERI
-Penjelasan Materi:
-1. ...
-...
-
-BAGIAN 3: 10 SOAL KUIS
-1. ...
-A. ...
-Jawaban: X
-Pembahasan: ...
-`}
+                    placeholder={`Paste teks lengkap di sini...\n\nContoh:\nJENJANG: SMP\nKELAS: 7\nTOPIK: Statistika\nJUDUL: Bab 9: Penyajian Data\n\nBAGIAN 1: DESKRIPSI\n...\n\nBAGIAN 2: KONTEN MATERI\n...\n\nBAGIAN 3: 10 SOAL KUIS\n...`}
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none resize-none font-mono text-xs"
                   />
 
@@ -440,7 +420,10 @@ Pembahasan: ...
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Kelas *</label>
               <select name="grade" value={formData.grade} onChange={handleChange}
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 outline-none">
-                {grades.map((g) => <option key={g} value={g}>Kelas {g}</option>)}
+                {/* ⚡ DROPDOWN KELAS DINAMIS */}
+                {(formData.level === 'SMP' ? gradesSMP : gradesSMA).map((g) => (
+                  <option key={g} value={g}>Kelas {g}</option>
+                ))}
               </select>
             </div>
           </div>
