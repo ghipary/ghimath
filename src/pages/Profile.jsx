@@ -543,79 +543,79 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* ⚡ KARTU STATISTIK LENGKAP (Sama seperti Leaderboard) */}
+        {/* ⚡ KARTU STATISTIK LENGKAP (LIGHT & DARK MODE) */}
         {myStats && (
-          <div className="relative overflow-hidden rounded-2xl p-5 sm:p-6 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white shadow-2xl border border-slate-700/50">
-            <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full blur-3xl"></div>
-            <div className="absolute bottom-0 left-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl"></div>
+          <div className="relative overflow-hidden rounded-2xl p-5 sm:p-6 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:via-indigo-950 dark:to-slate-900 text-slate-800 dark:text-white shadow-xl border border-slate-300 dark:border-slate-700/50 transition-colors">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-white/40 dark:bg-white/5 rounded-full blur-3xl"></div>
+            <div className="absolute bottom-0 left-0 w-32 h-32 bg-indigo-300/30 dark:bg-indigo-500/10 rounded-full blur-2xl"></div>
             <div className="relative z-10 flex items-center gap-4 flex-wrap">
               {showPhoto ? (
-                <img src={editPhoto} alt="Avatar" className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md" />
+                <img src={editPhoto} alt="Avatar" className="w-16 h-16 rounded-full object-cover border-2 border-white dark:border-slate-700 shadow-md" />
               ) : (
-                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center border-2 border-white text-2xl font-bold">
+                <div className="w-16 h-16 bg-white/50 dark:bg-white/20 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-700 text-2xl font-bold">
                   {initial}
                 </div>
               )}
 
               <div className="flex-1 min-w-0">
-                <p className="text-slate-300 text-sm mb-1 flex items-center gap-1.5 font-medium">
-                  <Sparkles className="w-4 h-4 text-amber-400" /> Peringkat Kamu
+                <p className="text-slate-500 dark:text-slate-300 text-sm mb-1 flex items-center gap-1.5 font-medium">
+                  <Sparkles className="w-4 h-4 text-amber-500 dark:text-amber-400" /> Peringkat Kamu
                 </p>
                 <h2 className="text-3xl sm:text-4xl font-bold mb-1">#{myStats.rank}</h2>
                 <div className="flex items-center gap-3 flex-wrap">
-                  <p className="text-slate-300 text-xs sm:text-sm">
-                    Rata-rata Kuis: <span className="font-bold text-white">{myStats.avgScore}</span> • Ujian: <span className="font-bold text-white">{myStats.avgExam}</span>
+                  <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm">
+                    Rata-rata Kuis: <span className="font-bold text-slate-900 dark:text-white">{myStats.avgScore}</span> • Ujian: <span className="font-bold text-slate-900 dark:text-white">{myStats.avgExam}</span>
                   </p>
                   <StreakChip streak={myStats.currentStreak} />
                   {myStats.isAdmin && (
-                    <span className="text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded-full">
+                    <span className="text-[10px] font-bold bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-400/30 px-2 py-0.5 rounded-full">
                       ⚙️ Admin
                     </span>
                   )}
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-5xl sm:text-6xl font-extrabold drop-shadow-lg text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-orange-400">{myStats.avgScore}</div>
-                <p className="text-slate-300 text-xs font-medium">rata-rata</p>
+                <div className="text-5xl sm:text-6xl font-extrabold drop-shadow-sm text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-600 dark:from-amber-200 dark:to-orange-400">{myStats.avgScore}</div>
+                <p className="text-slate-500 dark:text-slate-300 text-xs font-medium">rata-rata</p>
               </div>
             </div>
             
-            {/* ⚡ KOTAK STATISTIK BERWARNA (MEWAH & KONTRAS) */}
-            <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-slate-700/50">
-              <div className="text-center bg-gradient-to-br from-fuchsia-500 to-purple-600 rounded-xl p-3 shadow-lg shadow-fuchsia-500/30 border border-fuchsia-400/30 hover:-translate-y-1 transition-transform">
-                <Target className="w-5 h-5 text-white mx-auto mb-1.5 drop-shadow-md" />
-                <p className="text-sm font-bold text-white drop-shadow-md">{myStats.avgExam}</p>
-                <p className="text-[10px] text-white/90 font-medium drop-shadow-md">Rata-rata Ujian</p>
+            {/* ⚡ KOTAK STATISTIK BERWARNA (LIGHT & DARK MODE) */}
+            <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-slate-300 dark:border-slate-700/50">
+              <div className="text-center bg-fuchsia-100 dark:bg-gradient-to-br dark:from-fuchsia-500 dark:to-purple-600 rounded-xl p-3 shadow-sm dark:shadow-lg dark:shadow-fuchsia-500/30 border border-fuchsia-300 dark:border-fuchsia-400/30 hover:-translate-y-1 transition-transform">
+                <Target className="w-5 h-5 text-fuchsia-600 dark:text-white mx-auto mb-1.5 drop-shadow-sm" />
+                <p className="text-sm font-bold text-fuchsia-800 dark:text-white drop-shadow-sm">{myStats.avgExam}</p>
+                <p className="text-[10px] text-fuchsia-600 dark:text-white/90 font-medium">Rata-rata Ujian</p>
               </div>
-              <div className="text-center bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl p-3 shadow-lg shadow-blue-500/30 border border-blue-400/30 hover:-translate-y-1 transition-transform">
-                <Clock className="w-5 h-5 text-white mx-auto mb-1.5 drop-shadow-md" />
-                <p className="text-sm font-bold text-white drop-shadow-md">{fmtMinutes(myStats.readingSeconds)}</p>
-                <p className="text-[10px] text-white/90 font-medium drop-shadow-md">Waktu Baca</p>
+              <div className="text-center bg-blue-100 dark:bg-gradient-to-br dark:from-blue-500 dark:to-cyan-500 rounded-xl p-3 shadow-sm dark:shadow-lg dark:shadow-blue-500/30 border border-blue-300 dark:border-blue-400/30 hover:-translate-y-1 transition-transform">
+                <Clock className="w-5 h-5 text-blue-600 dark:text-white mx-auto mb-1.5 drop-shadow-sm" />
+                <p className="text-sm font-bold text-blue-800 dark:text-white drop-shadow-sm">{fmtMinutes(myStats.readingSeconds)}</p>
+                <p className="text-[10px] text-blue-600 dark:text-white/90 font-medium">Waktu Baca</p>
               </div>
-              <div className="text-center bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl p-3 shadow-lg shadow-emerald-500/30 border border-emerald-400/30 hover:-translate-y-1 transition-transform">
-                <BookMarked className="w-5 h-5 text-white mx-auto mb-1.5 drop-shadow-md" />
-                <p className="text-sm font-bold text-white drop-shadow-md">{myStats.completedMaterials} materi</p>
-                <p className="text-[10px] text-white/90 font-medium drop-shadow-md">Selesai</p>
+              <div className="text-center bg-emerald-100 dark:bg-gradient-to-br dark:from-emerald-400 dark:to-teal-500 rounded-xl p-3 shadow-sm dark:shadow-lg dark:shadow-emerald-500/30 border border-emerald-300 dark:border-emerald-400/30 hover:-translate-y-1 transition-transform">
+                <BookMarked className="w-5 h-5 text-emerald-600 dark:text-white mx-auto mb-1.5 drop-shadow-sm" />
+                <p className="text-sm font-bold text-emerald-800 dark:text-white drop-shadow-sm">{myStats.completedMaterials} materi</p>
+                <p className="text-[10px] text-emerald-600 dark:text-white/90 font-medium">Selesai</p>
               </div>
-              <div className="text-center bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl p-3 shadow-lg shadow-amber-500/30 border border-amber-400/30 hover:-translate-y-1 transition-transform">
-                <Trophy className="w-5 h-5 text-white mx-auto mb-1.5 drop-shadow-md" />
-                <p className="text-sm font-bold text-white drop-shadow-md">{myStats.quizCount} kuis</p>
-                <p className="text-[10px] text-white/90 font-medium drop-shadow-md">Dikerjakan</p>
+              <div className="text-center bg-amber-100 dark:bg-gradient-to-br dark:from-amber-400 dark:to-orange-500 rounded-xl p-3 shadow-sm dark:shadow-lg dark:shadow-amber-500/30 border border-amber-300 dark:border-amber-400/30 hover:-translate-y-1 transition-transform">
+                <Trophy className="w-5 h-5 text-amber-600 dark:text-white mx-auto mb-1.5 drop-shadow-sm" />
+                <p className="text-sm font-bold text-amber-800 dark:text-white drop-shadow-sm">{myStats.quizCount} kuis</p>
+                <p className="text-[10px] text-amber-600 dark:text-white/90 font-medium">Dikerjakan</p>
               </div>
-              <div className="text-center bg-gradient-to-br from-rose-500 to-red-600 rounded-xl p-3 shadow-lg shadow-rose-500/30 border border-rose-400/30 hover:-translate-y-1 transition-transform">
-                <Zap className="w-5 h-5 text-white mx-auto mb-1.5 drop-shadow-md" />
-                <p className="text-sm font-bold text-white drop-shadow-md">{fmtMinutes(myStats.fastestAvg)}</p>
-                <p className="text-[10px] text-white/90 font-medium drop-shadow-md">Tercepat (Avg)</p>
+              <div className="text-center bg-rose-100 dark:bg-gradient-to-br dark:from-rose-500 dark:to-red-600 rounded-xl p-3 shadow-sm dark:shadow-lg dark:shadow-rose-500/30 border border-rose-300 dark:border-rose-400/30 hover:-translate-y-1 transition-transform">
+                <Zap className="w-5 h-5 text-rose-600 dark:text-white mx-auto mb-1.5 drop-shadow-sm" />
+                <p className="text-sm font-bold text-rose-800 dark:text-white drop-shadow-sm">{fmtMinutes(myStats.fastestAvg)}</p>
+                <p className="text-[10px] text-rose-600 dark:text-white/90 font-medium">Tercepat (Avg)</p>
               </div>
-              <div className="text-center bg-gradient-to-br from-violet-500 to-indigo-600 rounded-xl p-3 shadow-lg shadow-violet-500/30 border border-violet-400/30 hover:-translate-y-1 transition-transform">
-                <TrendingUp className="w-5 h-5 text-white mx-auto mb-1.5 drop-shadow-md" />
-                <p className="text-sm font-bold text-white drop-shadow-md">{myStats.highestAvg}</p>
-                <p className="text-[10px] text-white/90 font-medium drop-shadow-md">Nilai Tertinggi</p>
+              <div className="text-center bg-violet-100 dark:bg-gradient-to-br dark:from-violet-500 dark:to-indigo-600 rounded-xl p-3 shadow-sm dark:shadow-lg dark:shadow-violet-500/30 border border-violet-300 dark:border-violet-400/30 hover:-translate-y-1 transition-transform">
+                <TrendingUp className="w-5 h-5 text-violet-600 dark:text-white mx-auto mb-1.5 drop-shadow-sm" />
+                <p className="text-sm font-bold text-violet-800 dark:text-white drop-shadow-sm">{myStats.highestAvg}</p>
+                <p className="text-[10px] text-violet-600 dark:text-white/90 font-medium">Nilai Tertinggi</p>
               </div>
-              <div className="text-center bg-gradient-to-br from-cyan-400 to-sky-500 rounded-xl p-3 shadow-lg shadow-cyan-500/30 border border-cyan-400/30 col-span-2 hover:-translate-y-1 transition-transform">
-                <BarChart3 className="w-5 h-5 text-white mx-auto mb-1.5 drop-shadow-md" />
-                <p className="text-sm font-bold text-white drop-shadow-md">{myStats.quizCount} Kuis & {myStats.completedMaterials} Materi</p>
-                <p className="text-[10px] text-white/90 font-medium drop-shadow-md">Progres Terbanyak</p>
+              <div className="text-center bg-cyan-100 dark:bg-gradient-to-br dark:from-cyan-400 dark:to-sky-500 rounded-xl p-3 shadow-sm dark:shadow-lg dark:shadow-cyan-500/30 border border-cyan-300 dark:border-cyan-400/30 col-span-2 hover:-translate-y-1 transition-transform">
+                <BarChart3 className="w-5 h-5 text-cyan-600 dark:text-white mx-auto mb-1.5 drop-shadow-sm" />
+                <p className="text-sm font-bold text-cyan-800 dark:text-white drop-shadow-sm">{myStats.quizCount} Kuis & {myStats.completedMaterials} Materi</p>
+                <p className="text-[10px] text-cyan-600 dark:text-white/90 font-medium">Progres Terbanyak</p>
               </div>
             </div>
           </div>
