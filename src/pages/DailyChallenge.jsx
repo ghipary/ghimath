@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { Clock, ArrowLeft, Loader, AlertTriangle, Sparkles, Target, Calendar } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import InlineMarkdown from '../components/InlineMarkdown';
 
 const NUM_QUESTIONS = 5;
 
@@ -35,7 +36,6 @@ const DailyChallenge = () => {
   const today = getTodayDate();
   const challengeId = user ? `${user.uid}_${today}` : null;
 
-  // Init
   useEffect(() => {
     const init = async () => {
       if (!user || !challengeId) return;
@@ -50,14 +50,12 @@ const DailyChallenge = () => {
           const data = challengeSnap.data();
           setChallengeData(data);
 
-          // Load questions + materialTitle
           const qIds = data.questionIds || [];
           const qs = await Promise.all(
             qIds.map(async (qid) => {
               const qSnap = await getDoc(doc(db, 'quizQuestions', qid));
               if (!qSnap.exists()) return null;
               const qData = qSnap.data();
-              // ⚡ Ambil materialTitle dari materi terkait
               let materialTitle = '';
               if (qData.materialId) {
                 try {
@@ -111,9 +109,9 @@ const DailyChallenge = () => {
       for (let i = 0; i < materialIds.length; i += chunkSize) {
         const chunk = materialIds.slice(i, i + chunkSize);
         const qQuery = query(
-          collection(db, 'quizQuestions'),
-          where('materialId', 'in', chunk)
+          collection(db, 'questions'),
         );
+        
         const qSnap = await getDocs(qQuery);
         qSnap.forEach((d) => allQuestions.push({ id: d.id, ...d.data() }));
       }
@@ -152,7 +150,6 @@ const DailyChallenge = () => {
     setGenerating(false);
   };
 
-  // Timer
   useEffect(() => {
     if (loading || finished || questions.length === 0 || !challengeData) return;
     const timer = setInterval(() => setElapsedTime((t) => t + 1), 1000);
@@ -171,7 +168,7 @@ const DailyChallenge = () => {
     };
   };
 
-    const handleSubmit = async () => {
+  const handleSubmit = async () => {
     if (Object.keys(answers).length < questions.length) {
       if (!window.confirm('Masih ada soal yang belum dijawab. Yakin mau selesai?')) return;
     }
@@ -181,7 +178,6 @@ const DailyChallenge = () => {
     setSaving(true);
 
     try {
-      // 1️⃣ Simpan ke dailyChallenges
       const challengeRef = doc(db, 'dailyChallenges', challengeId);
       await setDoc(
         challengeRef,
@@ -197,7 +193,6 @@ const DailyChallenge = () => {
         { merge: true }
       );
 
-      // ⚡ FIX: Update state lokal biar halaman hasil langsung tampil nilai benar
       setChallengeData((prev) => ({
         ...prev,
         completed: true,
@@ -207,7 +202,6 @@ const DailyChallenge = () => {
         elapsedTime,
       }));
 
-      // 2️⃣ Simpan ke quizResults — Cek dulu biar gak duplikat
       const dailyMaterialId = `daily-${today}`;
       const existingQ = query(
         collection(db, 'quizResults'),
@@ -217,7 +211,6 @@ const DailyChallenge = () => {
       const existingSnap = await getDocs(existingQ);
 
       if (existingSnap.empty) {
-        // Belum ada → create baru
         await addDoc(collection(db, 'quizResults'), {
           userId: user.uid,
           materialId: dailyMaterialId,
@@ -261,7 +254,6 @@ const DailyChallenge = () => {
     return `${hours}j ${minutes}m`;
   };
 
-  // ================= LOADING =================
   if (loading) {
     return (
       <div className="page-bg flex items-center justify-center min-h-screen">
@@ -270,7 +262,6 @@ const DailyChallenge = () => {
     );
   }
 
-  // ================= HASIL AKHIR =================
   if (finished && challengeData) {
     const result = {
       correct: challengeData.correctCount || 0,
@@ -348,7 +339,6 @@ const DailyChallenge = () => {
     );
   }
 
-  // ================= BELUM ADA CHALLENGE (Intro) =================
   if (!challengeData) {
     return (
       <div className="page-bg transition-colors pb-20 min-h-screen">
@@ -417,7 +407,6 @@ const DailyChallenge = () => {
     );
   }
 
-  // ================= SOAL =================
   const currentQ = questions[currentIndex];
   if (!currentQ) {
     return (
@@ -440,7 +429,6 @@ const DailyChallenge = () => {
           <Target className="w-3.5 h-3.5" /> KUIS HARIAN — {today}
         </div>
 
-        {/* Header Progress */}
         <div className="card-elevated rounded-2xl p-6 mb-6">
           <div className="flex justify-between items-center mb-3">
             <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
@@ -459,7 +447,6 @@ const DailyChallenge = () => {
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{answeredCount} dari {questions.length} soal terjawab</p>
         </div>
 
-        {/* Kartu Soal */}
         <div className="card-elevated rounded-2xl p-6 md:p-8 mb-6">
           {currentQ.materialTitle && (
             <div className="text-[10px] text-gray-400 dark:text-gray-500 font-semibold mb-2 uppercase tracking-wide">
@@ -467,7 +454,7 @@ const DailyChallenge = () => {
             </div>
           )}
           <h2 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white mb-6">
-            {currentQ.question}
+            <InlineMarkdown content={currentQ.question} />
           </h2>
           <div className="space-y-3">
             {currentQ.options.map((opt, i) => {
@@ -487,14 +474,13 @@ const DailyChallenge = () => {
                   }`}>
                     {String.fromCharCode(65 + i)}
                   </span>
-                  <span>{opt}</span>
+                  <span><InlineMarkdown content={opt} /></span>
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Navigasi */}
         <div className="flex gap-3">
           <button
             onClick={() => setCurrentIndex(currentIndex - 1)}
