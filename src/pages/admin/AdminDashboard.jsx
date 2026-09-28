@@ -8,6 +8,7 @@ import { BookOpen, Users, FileText, PlusCircle, Settings, ListChecks, Loader, Ch
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
     materials: 0,
+    totalQuizzes: 0,
     users: 0,
     quizResults: 0,
     formulas: 0,
@@ -35,8 +36,13 @@ const AdminDashboard = () => {
           examsCount = examSnap.data().count;
         } catch (e) { console.warn('Collection examPackages belum ada'); }
 
+        // Asumsi 1 materi = 1 kuis. Jadi total kuis = total materi.
+        // Jika ada collection 'quizzes' terpisah, silakan ganti logic di bawah ini.
+        const totalQuizzes = matSnap.data().count; 
+
         setStats({
           materials: matSnap.data().count,
+          totalQuizzes: totalQuizzes,
           users: userSnap.data().count,
           quizResults: quizSnap.data().count,
           formulas: formulasCount,
@@ -78,8 +84,8 @@ const AdminDashboard = () => {
 
       <div className="page-content max-w-6xl mx-auto px-4 py-4">
         
-        {/* Statistik — 5 kartu */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6 sm:mb-8">
+        {/* Statistik — 6 kartu */}
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6 sm:mb-8">
           
           <div className="card-elevated rounded-2xl p-5 relative overflow-hidden group hover:-translate-y-1 transition-all">
             <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-teal-400/20 to-cyan-500/10 rounded-full blur-2xl group-hover:scale-150 transition-transform"></div>
@@ -91,6 +97,19 @@ const AdminDashboard = () => {
                 {stats.loading ? '…' : stats.materials}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1">Materi</div>
+            </div>
+          </div>
+
+          <div className="card-elevated rounded-2xl p-5 relative overflow-hidden group hover:-translate-y-1 transition-all">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-blue-400/20 to-indigo-500/10 rounded-full blur-2xl group-hover:scale-150 transition-transform"></div>
+            <div className="relative">
+              <div className="w-11 h-11 bg-gradient-to-br from-blue-500 via-indigo-600 to-blue-700 rounded-xl flex items-center justify-center mb-3 shadow-lg shadow-blue-500/30">
+                <ListChecks className="w-5 h-5 text-white" />
+              </div>
+              <div className="text-3xl font-bold text-gray-900 dark:text-white">
+                {stats.loading ? '…' : stats.totalQuizzes}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1">Total Kuis</div>
             </div>
           </div>
 
@@ -116,7 +135,7 @@ const AdminDashboard = () => {
               <div className="text-3xl font-bold text-gray-900 dark:text-white">
                 {stats.loading ? '…' : stats.quizResults}
               </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1">Kuis</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1">Kuis Dikerjakan</div>
             </div>
           </div>
 

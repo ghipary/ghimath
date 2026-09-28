@@ -1,13 +1,44 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { db } from '../firebase';
 import { doc, getDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { User, Mail, GraduationCap, Trophy, Clock, Edit2, Save, X, LogOut, Loader, BookOpen, Sparkles, School, Camera, ZoomIn, ZoomOut, Check, TrendingUp, BarChart3, Award } from 'lucide-react';
+import { User, Mail, GraduationCap, Trophy, Clock, Edit2, Save, X, LogOut, Loader, BookOpen, Sparkles, School, Camera, ZoomIn, ZoomOut, Check, TrendingUp, BarChart3, Award, Flame, Target, BookMarked, Zap, Crown } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import Cropper from 'react-easy-crop';
 import toast from 'react-hot-toast';
+
+const MIN_QUIZ = 3;
+
+const getStreakConfig = (streak) => {
+  if (streak >= 100) return { gradient: 'from-fuchsia-500 to-pink-500', Icon: Crown };
+  if (streak >= 30) return { gradient: 'from-violet-500 to-purple-600', Icon: Zap };
+  if (streak >= 14) return { gradient: 'from-amber-400 to-red-500', Icon: Flame };
+  if (streak >= 7) return { gradient: 'from-yellow-400 to-orange-500', Icon: Zap };
+  if (streak >= 3) return { gradient: 'from-cyan-400 to-teal-500', Icon: Flame };
+  return { gradient: 'from-teal-400 to-cyan-500', Icon: Sparkles };
+};
+
+const StreakChip = ({ streak }) => {
+  if (!streak || streak <= 0) return null;
+  const config = getStreakConfig(streak);
+  return (
+    <div className={`inline-flex items-center gap-1 bg-gradient-to-r ${config.gradient} text-white px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm flex-shrink-0`}>
+      <config.Icon className="w-3 h-3" />
+      {streak}
+    </div>
+  );
+};
+
+const fmtMinutes = (seconds) => {
+  if (!seconds || seconds < 60) return '0 mnt';
+  const m = Math.floor(seconds / 60);
+  if (m < 60) return `${m} mnt`;
+  const h = Math.floor(m / 60);
+  const rem = m % 60;
+  return rem > 0 ? `${h}j ${rem}m` : `${h} jam`;
+};
 
 const Profile = () => {
   const { user, logout } = useAuth();
@@ -15,6 +46,11 @@ const Profile = () => {
 
   const [userData, setUserData] = useState(null);
   const [quizHistory, setQuizHistory] = useState([]);
+  const [examResults, setExamResults] = useState([]);
+  const [allUsers, setAllUsers] = useState({});
+  const [allResults, setAllResults] = useState([]);
+  const [allProgress, setAllProgress] = useState([]);
+  const [allExams, setAllExams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -65,18 +101,39 @@ const Profile = () => {
           }
         }
 
-        const q = query(collection(db, 'quizResults'), where('userId', '==', user.uid));
-        const qSnap = await getDocs(q);
-        const allResults = qSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        // Fetch semua data untuk kalkulasi peringkat & statistik
+        const [usersSnap, resultsSnap, progressSnap, examsSnap] = await Promise.all([
+          getDocs(collection(db, 'users')),
+          getDocs(collection(db, 'quizResults')),
+          getDocs(collection(db, 'progress')),
+          getDocs(collection(db, 'examResults')).catch(() => ({ docs: [] })),
+        ]);
 
-        allResults.sort((a, b) => {
+        const usersMap = {};
+        usersSnap.forEach((d) => { usersMap[d.id] = d.data(); });
+        setAllUsers(usersMap);
+
+        const resultsList = resultsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setAllResults(resultsList);
+
+        const progressList = progressSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setAllProgress(progressList);
+
+        const examsList = examsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setAllExams(examsList);
+
+        // Filter history untuk user ini (termasuk kuis harian)
+        const myResults = resultsList.filter(r => r.userId === user.uid);
+        myResults.sort((a, b) => {
           const dateA = a.completedAt?.toDate() || 0;
           const dateB = b.completedAt?.toDate() || 0;
           return dateA - dateB;
         });
 
+        // Deduplikasi hanya untuk tampilan riwayat (agar tidak spam jika mengulang kuis)
+        // Tapi rata-rata skor akan dihitung dari SEMUA hasil (termasuk harian)
         const seenMaterials = new Map();
-        allResults.forEach((r) => {
+        myResults.forEach((r) => {
           if (!seenMaterials.has(r.materialId)) {
             seenMaterials.set(r.materialId, r);
           }
@@ -89,6 +146,8 @@ const Profile = () => {
           });
 
         setQuizHistory(deduped);
+        setExamResults(examsList.filter(e => e.userId === user.uid));
+
       } catch (error) {
         console.error('Gagal ambil data:', error);
       }
@@ -96,6 +155,79 @@ const Profile = () => {
     };
     fetchData();
   }, [user]);
+
+  // ⚡ KALKULASI STATISTIK LENGKAP (Sama seperti Leaderboard)
+  const myStats = useMemo(() => {
+    if (!user || Object.keys(allUsers).length === 0) return null;
+
+    const userResultsMap = {};
+    allResults.forEach((r) => {
+      if (!userResultsMap[r.userId]) userResultsMap[r.userId] = new Map();
+      const existing = userResultsMap[r.userId].get(r.materialId);
+      if (!existing || (r.score || 0) > (existing.score || 0)) {
+        userResultsMap[r.userId].set(r.materialId, r);
+      }
+    });
+
+    const userProgressMap = {};
+    allProgress.forEach((p) => {
+      if (!userProgressMap[p.userId]) userProgressMap[p.userId] = { readingSeconds: 0, completedCount: 0 };
+      userProgressMap[p.userId].readingSeconds += (p.readingSeconds || 0);
+      if (p.completed) userProgressMap[p.userId].completedCount += 1;
+    });
+
+    const userExamMap = {};
+    allExams.forEach((e) => {
+      if (!userExamMap[e.userId]) userExamMap[e.userId] = [];
+      userExamMap[e.userId].push(e);
+    });
+
+    const list = [];
+    Object.entries(allUsers).forEach(([uid, userInfo]) => {
+      const map = userResultsMap[uid] || new Map();
+      const results = Array.from(map.values());
+      const count = results.length;
+      const totalScore = results.reduce((sum, r) => sum + (r.score || 0), 0);
+      const avgScore = count > 0 ? Math.round(totalScore / count) : 0;
+
+      const exams = userExamMap[uid] || [];
+      const avgExam = exams.length > 0 ? Math.round(exams.reduce((s, e) => s + (e.score || 0), 0) / exams.length) : 0;
+
+      // Fastest Avg (rata-rata waktu tercepat dari semua kuis, exclude ujian)
+      const validTimes = results.filter(r => r.bestTime && r.bestTime > 0);
+      const fastestAvg = validTimes.length > 0 ? validTimes.reduce((s, r) => s + r.bestTime, 0) / validTimes.length : 0;
+
+      // Highest Avg (rata-rata nilai tertinggi)
+      const highestAvg = count > 0 ? Math.round(results.reduce((s, r) => s + (r.score || 0), 0) / count) : 0;
+
+      list.push({
+        uid,
+        name: userInfo.name || 'Siswa',
+        photoURL: userInfo.photoURL || '',
+        currentStreak: userInfo.currentStreak || 0,
+        avgScore,
+        quizCount: count,
+        avgExam,
+        fastestAvg,
+        highestAvg,
+        readingSeconds: userProgressMap[uid]?.readingSeconds || 0,
+        completedMaterials: userProgressMap[uid]?.completedCount || 0,
+        qualified: count >= MIN_QUIZ,
+        isAdmin: userInfo.role === 'admin',
+      });
+    });
+
+    list.sort((a, b) => {
+      if (a.isAdmin !== b.isAdmin) return a.isAdmin ? 1 : -1;
+      if (a.qualified !== b.qualified) return b.qualified - a.qualified;
+      if (b.avgScore !== a.avgScore) return b.avgScore - a.avgScore;
+      return b.quizCount - a.quizCount;
+    });
+
+    const myData = list.find(i => i.uid === user.uid);
+    if (myData) myData.rank = list.findIndex(i => i.uid === user.uid) + 1;
+    return myData;
+  }, [user, allUsers, allResults, allProgress, allExams]);
 
   const lineChartData = [...quizHistory]
     .reverse()
@@ -270,10 +402,6 @@ const Profile = () => {
     }
   };
 
-  const averageScore = quizHistory.length > 0
-    ? Math.round(quizHistory.reduce((acc, curr) => acc + curr.score, 0) / quizHistory.length)
-    : 0;
-
   if (loading) {
     return (
       <div className="page-bg flex items-center justify-center">
@@ -395,7 +523,6 @@ const Profile = () => {
                     </div>
                   )}
                   
-                  {/* ⚡ TOMBOL AKSI */}
                   <div className="flex flex-wrap items-center gap-3 mt-5">
                     <Link 
                       to="/sertifikat"
@@ -416,42 +543,83 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* STATISTIK */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <div className="card-elevated rounded-2xl p-5 text-center relative overflow-hidden group hover:-translate-y-1 transition-all">
-            <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-amber-400/15 to-orange-500/10 rounded-full blur-2xl"></div>
-            <div className="relative">
-              <div className="w-11 h-11 mx-auto bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center mb-3 shadow-lg shadow-orange-500/30">
-                <Trophy className="w-5 h-5 text-white" />
+        {/* ⚡ KARTU STATISTIK LENGKAP (Sama seperti Leaderboard) */}
+        {myStats && (
+          <div className="relative overflow-hidden rounded-2xl p-5 sm:p-6 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white shadow-2xl border border-slate-700/50">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full blur-3xl"></div>
+            <div className="absolute bottom-0 left-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl"></div>
+            <div className="relative z-10 flex items-center gap-4 flex-wrap">
+              {showPhoto ? (
+                <img src={editPhoto} alt="Avatar" className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md" />
+              ) : (
+                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center border-2 border-white text-2xl font-bold">
+                  {initial}
+                </div>
+              )}
+
+              <div className="flex-1 min-w-0">
+                <p className="text-slate-300 text-sm mb-1 flex items-center gap-1.5 font-medium">
+                  <Sparkles className="w-4 h-4 text-amber-400" /> Peringkat Kamu
+                </p>
+                <h2 className="text-3xl sm:text-4xl font-bold mb-1">#{myStats.rank}</h2>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <p className="text-slate-300 text-xs sm:text-sm">
+                    Rata-rata Kuis: <span className="font-bold text-white">{myStats.avgScore}</span> • Ujian: <span className="font-bold text-white">{myStats.avgExam}</span>
+                  </p>
+                  <StreakChip streak={myStats.currentStreak} />
+                  {myStats.isAdmin && (
+                    <span className="text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded-full">
+                      ⚙️ Admin
+                    </span>
+                  )}
+                </div>
               </div>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">{averageScore}</div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1">Rata-rata Skor</div>
+              <div className="text-right">
+                <div className="text-5xl sm:text-6xl font-extrabold drop-shadow-lg text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-orange-400">{myStats.avgScore}</div>
+                <p className="text-slate-300 text-xs font-medium">rata-rata</p>
+              </div>
+            </div>
+            
+            {/* ⚡ KOTAK STATISTIK BERWARNA (MEWAH & KONTRAS) */}
+            <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-slate-700/50">
+              <div className="text-center bg-gradient-to-br from-fuchsia-500 to-purple-600 rounded-xl p-3 shadow-lg shadow-fuchsia-500/30 border border-fuchsia-400/30 hover:-translate-y-1 transition-transform">
+                <Target className="w-5 h-5 text-white mx-auto mb-1.5 drop-shadow-md" />
+                <p className="text-sm font-bold text-white drop-shadow-md">{myStats.avgExam}</p>
+                <p className="text-[10px] text-white/90 font-medium drop-shadow-md">Rata-rata Ujian</p>
+              </div>
+              <div className="text-center bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl p-3 shadow-lg shadow-blue-500/30 border border-blue-400/30 hover:-translate-y-1 transition-transform">
+                <Clock className="w-5 h-5 text-white mx-auto mb-1.5 drop-shadow-md" />
+                <p className="text-sm font-bold text-white drop-shadow-md">{fmtMinutes(myStats.readingSeconds)}</p>
+                <p className="text-[10px] text-white/90 font-medium drop-shadow-md">Waktu Baca</p>
+              </div>
+              <div className="text-center bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl p-3 shadow-lg shadow-emerald-500/30 border border-emerald-400/30 hover:-translate-y-1 transition-transform">
+                <BookMarked className="w-5 h-5 text-white mx-auto mb-1.5 drop-shadow-md" />
+                <p className="text-sm font-bold text-white drop-shadow-md">{myStats.completedMaterials} materi</p>
+                <p className="text-[10px] text-white/90 font-medium drop-shadow-md">Selesai</p>
+              </div>
+              <div className="text-center bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl p-3 shadow-lg shadow-amber-500/30 border border-amber-400/30 hover:-translate-y-1 transition-transform">
+                <Trophy className="w-5 h-5 text-white mx-auto mb-1.5 drop-shadow-md" />
+                <p className="text-sm font-bold text-white drop-shadow-md">{myStats.quizCount} kuis</p>
+                <p className="text-[10px] text-white/90 font-medium drop-shadow-md">Dikerjakan</p>
+              </div>
+              <div className="text-center bg-gradient-to-br from-rose-500 to-red-600 rounded-xl p-3 shadow-lg shadow-rose-500/30 border border-rose-400/30 hover:-translate-y-1 transition-transform">
+                <Zap className="w-5 h-5 text-white mx-auto mb-1.5 drop-shadow-md" />
+                <p className="text-sm font-bold text-white drop-shadow-md">{fmtMinutes(myStats.fastestAvg)}</p>
+                <p className="text-[10px] text-white/90 font-medium drop-shadow-md">Tercepat (Avg)</p>
+              </div>
+              <div className="text-center bg-gradient-to-br from-violet-500 to-indigo-600 rounded-xl p-3 shadow-lg shadow-violet-500/30 border border-violet-400/30 hover:-translate-y-1 transition-transform">
+                <TrendingUp className="w-5 h-5 text-white mx-auto mb-1.5 drop-shadow-md" />
+                <p className="text-sm font-bold text-white drop-shadow-md">{myStats.highestAvg}</p>
+                <p className="text-[10px] text-white/90 font-medium drop-shadow-md">Nilai Tertinggi</p>
+              </div>
+              <div className="text-center bg-gradient-to-br from-cyan-400 to-sky-500 rounded-xl p-3 shadow-lg shadow-cyan-500/30 border border-cyan-400/30 col-span-2 hover:-translate-y-1 transition-transform">
+                <BarChart3 className="w-5 h-5 text-white mx-auto mb-1.5 drop-shadow-md" />
+                <p className="text-sm font-bold text-white drop-shadow-md">{myStats.quizCount} Kuis & {myStats.completedMaterials} Materi</p>
+                <p className="text-[10px] text-white/90 font-medium drop-shadow-md">Progres Terbanyak</p>
+              </div>
             </div>
           </div>
-          <div className="card-elevated rounded-2xl p-5 text-center relative overflow-hidden group hover:-translate-y-1 transition-all">
-            <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-teal-400/15 to-cyan-500/10 rounded-full blur-2xl"></div>
-            <div className="relative">
-              <div className="w-11 h-11 mx-auto bg-gradient-to-br from-teal-400 to-cyan-600 rounded-xl flex items-center justify-center mb-3 shadow-lg shadow-teal-500/30">
-                <BookOpen className="w-5 h-5 text-white" />
-              </div>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">{quizHistory.length}</div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1">Kuis Dikerjakan</div>
-            </div>
-          </div>
-          <div className="card-elevated rounded-2xl p-5 text-center col-span-2 md:col-span-1 relative overflow-hidden group hover:-translate-y-1 transition-all">
-            <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-violet-400/15 to-purple-500/10 rounded-full blur-2xl"></div>
-            <div className="relative">
-              <div className="w-11 h-11 mx-auto bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center mb-3 shadow-lg shadow-purple-500/30">
-                <Clock className="w-5 h-5 text-white" />
-              </div>
-              <div className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
-                {quizHistory.length > 0 && quizHistory[0].completedAt 
-                  ? new Date(quizHistory[0].completedAt.toDate()).toLocaleDateString('id-ID') : '-'}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1">Kuis Terakhir</div>
-            </div>
-          </div>
-        </div>
+        )}
 
         {/* LINE CHART */}
         {lineChartData.length > 0 && (
