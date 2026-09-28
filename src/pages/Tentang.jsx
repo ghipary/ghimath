@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { db } from '../firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { 
   Sparkles, Heart, Target, Rocket, BookOpen, Users, Lightbulb, 
   Code, GraduationCap, Globe, ChevronRight, Award, TrendingUp, 
@@ -119,6 +119,8 @@ const TECH_STACK = [
   { name: 'Vercel', desc: 'Hosting cepat & stabil', icon: Globe, color: 'from-slate-500 to-slate-700' },
 ];
 
+const DEVELOPER_EMAIL = 'abdrrhmn.alghifary@gmail.com';
+
 /* ═══════════════════════════════════════════════════ */
 /* KOMPONEN UTAMA                                      */
 /* ═══════════════════════════════════════════════════ */
@@ -129,7 +131,9 @@ const Tentang = () => {
     formulas: 0,
     users: 0,
   });
+  const [developerProfile, setDeveloperProfile] = useState(null);
 
+  // Fetch stats
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -156,6 +160,26 @@ const Tentang = () => {
     fetchStats();
   }, []);
 
+  // ⚡ Fetch Developer Profile (khusus email developer)
+  useEffect(() => {
+    const fetchDeveloper = async () => {
+      try {
+        const q = query(
+          collection(db, 'users'),
+          where('email', '==', DEVELOPER_EMAIL)
+        );
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          const devData = { id: snap.docs[0].id, ...snap.docs[0].data() };
+          setDeveloperProfile(devData);
+        }
+      } catch (error) {
+        console.error('Gagal fetch developer:', error);
+      }
+    };
+    fetchDeveloper();
+  }, []);
+
   const fmt = (num) => {
     if (num === 0) return '0';
     if (num < 10) return `${num}`;
@@ -163,6 +187,14 @@ const Tentang = () => {
     if (num < 1000) return `${Math.floor(num / 50) * 50}+`;
     return `${Math.floor(num / 100) * 100}+`;
   };
+
+  // ⚡ Helper: cek foto valid
+  const hasValidPhoto = (photo) => {
+    return photo && typeof photo === 'string' && photo.startsWith('data:image') && photo.length > 100;
+  };
+
+  const showDevPhoto = hasValidPhoto(developerProfile?.photoURL);
+  const devInitial = (developerProfile?.name || 'A')[0].toUpperCase();
 
   return (
     <div className="page-bg transition-colors min-h-screen">
@@ -478,10 +510,33 @@ const Tentang = () => {
                 {/* Avatar */}
                 <div className="flex justify-center md:justify-start">
                   <div className="relative">
-                    <div className="w-32 h-32 sm:w-36 sm:h-36 rounded-3xl bg-gradient-to-br from-teal-400 via-cyan-500 to-blue-600 flex items-center justify-center shadow-2xl shadow-teal-500/40 relative overflow-hidden">
-                      <span className="text-6xl font-extrabold text-white drop-shadow-lg">A</span>
+                    {/* Foto jika ada */}
+                    {showDevPhoto ? (
+                      <img
+                        src={developerProfile.photoURL}
+                        alt={developerProfile?.name || 'Developer'}
+                        className="w-32 h-32 sm:w-36 sm:h-36 rounded-3xl object-cover shadow-2xl shadow-teal-500/40 border-4 border-white dark:border-slate-800"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          if (e.target.nextSibling) {
+                            e.target.nextSibling.style.display = 'flex';
+                          }
+                        }}
+                      />
+                    ) : null}
+                    
+                    {/* Fallback: inisial */}
+                    <div 
+                      className="w-32 h-32 sm:w-36 sm:h-36 rounded-3xl bg-gradient-to-br from-teal-400 via-cyan-500 to-blue-600 flex items-center justify-center shadow-2xl shadow-teal-500/40 relative overflow-hidden"
+                      style={{ display: showDevPhoto ? 'none' : 'flex' }}
+                    >
+                      <span className="text-6xl font-extrabold text-white drop-shadow-lg">
+                        {devInitial}
+                      </span>
                       <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent"></div>
                     </div>
+                    
+                    {/* Heart badge */}
                     <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center shadow-lg border-4 border-white dark:border-slate-900">
                       <Heart className="w-5 h-5 text-white fill-white" />
                     </div>
