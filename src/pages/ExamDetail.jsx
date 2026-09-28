@@ -1,32 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import InlineMarkdown from '../components/InlineMarkdown';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { Clock, Loader, Award, CheckCircle, XCircle, AlertTriangle, ArrowLeft, FileText, Play, Lock, Timer, RefreshCw } from 'lucide-react';
-import katex from 'katex';
-import 'katex/dist/katex.min.css';
+import { Clock, Loader, Award, CheckCircle, XCircle, AlertTriangle, ArrowLeft, FileText, Play, Timer, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-// ═══ Helper: Render KaTeX (kalau ada $...$) ═══
-const renderMath = (text) => {
-  if (!text) return '';
-  try {
-    // Split $...$ dan render
-    const parts = String(text).split(/(\$[^$\n]+\$)/g);
-    return parts.map((part) => {
-      if (part.startsWith('$') && part.endsWith('$')) {
-        try {
-          return katex.renderToString(part.slice(1, -1), { throwOnError: false });
-        } catch { return part; }
-      }
-      return part.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }).join('');
-  } catch { return text; }
-};
-
-// ═══ Helper: Shuffle array ═══
 const shuffle = (arr) => {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -36,20 +17,15 @@ const shuffle = (arr) => {
   return a;
 };
 
-// ═══ Helper: Prepare exam questions (shuffle jika perlu) ═══
 const prepareQuestions = (exam) => {
   let qs = [...(exam.questions || [])];
-
-  if (exam.shuffleQuestions) {
-    qs = shuffle(qs);
-  }
+  if (exam.shuffleQuestions) qs = shuffle(qs);
 
   return qs.map((q) => {
     let options = [...(q.options || [])];
     let correctAnswer = q.correctAnswer;
 
     if (exam.shuffleOptions) {
-      // Buat array indexed, shuffle, lalu track posisi baru
       const indexed = options.map((opt, i) => ({ opt, isCorrect: i === q.correctAnswer }));
       const shuffled = shuffle(indexed);
       options = shuffled.map((x) => x.opt);
@@ -67,7 +43,7 @@ const ExamDetail = () => {
 
   const [exam, setExam] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [phase, setPhase] = useState('intro'); // 'intro' | 'taking' | 'result'
+  const [phase, setPhase] = useState('intro');
   const [existingResult, setExistingResult] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -82,7 +58,6 @@ const ExamDetail = () => {
   const timeLeftRef = useRef(0);
   const submittedRef = useRef(false);
 
-  // Fetch exam + existing result
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -109,15 +84,12 @@ const ExamDetail = () => {
     fetchData();
   }, [id, user, navigate]);
 
-  // Timer — tick setiap detik
   useEffect(() => {
     if (phase !== 'taking' || submitted) return;
 
     timerRef.current = setInterval(() => {
       timeLeftRef.current -= 1;
       setTimeLeft(timeLeftRef.current);
-
-      // ⚡ Auto-submit kalau waktu habis
       if (timeLeftRef.current <= 0) {
         clearInterval(timerRef.current);
         handleAutoSubmit();
@@ -128,20 +100,13 @@ const ExamDetail = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, submitted]);
 
-  // Update answers ref untuk auto-submit
   useEffect(() => {
     answersRef.current = answers;
   }, [answers]);
 
   const handleStart = () => {
-    if (!user) {
-      toast.error('Login dulu untuk ikut ujian');
-      return;
-    }
-    if (existingResult) {
-      toast.error('Kamu sudah mengerjakan ujian ini!');
-      return;
-    }
+    if (!user) { toast.error('Login dulu untuk ikut ujian'); return; }
+    if (existingResult) { toast.error('Kamu sudah mengerjakan ujian ini!'); return; }
 
     const prepared = prepareQuestions(exam);
     setQuestions(prepared);
@@ -158,10 +123,11 @@ const ExamDetail = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // ⚡ Pakai INDEX (bukan id) karena soal ujian mungkin tidak punya id unik
   const calculateResult = () => {
     let correct = 0;
-    questions.forEach((q) => {
-      if (answersRef.current[q.id] === q.correctAnswer) correct++;
+    questions.forEach((q, idx) => {
+      if (answersRef.current[idx] === q.correctAnswer) correct++;
     });
     const total = questions.length;
     const score = total > 0 ? Math.round((correct / total) * 100) : 0;
@@ -235,17 +201,13 @@ const ExamDetail = () => {
 
   if (!exam) return null;
 
-  // ═══════════════════════════════════════════════════════════
-  // PHASE: INTRO
-  // ═══════════════════════════════════════════════════════════
+  // ═══ PHASE: INTRO ═══
   if (phase === 'intro') {
     const isLocked = !!existingResult;
-
     return (
       <div className="page-bg transition-colors pb-20 min-h-screen">
         <div className="grid-pattern"></div>
         <Navbar />
-
         <div className="page-content max-w-2xl mx-auto px-4 pt-8 sm:pt-12">
           <button onClick={() => navigate('/ujian')} className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-teal-600 mb-4 font-medium">
             <ArrowLeft className="w-4 h-4" /> Kembali ke Daftar Ujian
@@ -265,7 +227,6 @@ const ExamDetail = () => {
               </p>
             )}
 
-            {/* Info Grid */}
             <div className="grid grid-cols-3 gap-3 mb-5">
               <div className="bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 border border-red-200/50 dark:border-red-800/50 rounded-xl p-3 text-center">
                 <Timer className="w-5 h-5 text-red-600 dark:text-red-400 mx-auto mb-1" />
@@ -284,7 +245,6 @@ const ExamDetail = () => {
               </div>
             </div>
 
-            {/* Info Penting */}
             <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl p-4 mb-5 flex gap-3">
               <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
               <div className="text-xs text-amber-800 dark:text-amber-300 space-y-1.5">
@@ -329,9 +289,7 @@ const ExamDetail = () => {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════
-  // PHASE: TAKING
-  // ═══════════════════════════════════════════════════════════
+  // ═══ PHASE: TAKING ═══
   if (phase === 'taking') {
     const currentQ = questions[currentIndex];
     if (!currentQ) return null;
@@ -345,7 +303,6 @@ const ExamDetail = () => {
       <div className="min-h-screen bg-gray-50 dark:bg-slate-950 pb-20">
         <Navbar />
 
-        {/* Sticky Timer */}
         <div className={`sticky top-16 z-40 backdrop-blur-lg border-b shadow-sm ${
           isLowTime 
             ? 'bg-red-50/95 dark:bg-red-950/95 border-red-300 dark:border-red-800' 
@@ -372,7 +329,6 @@ const ExamDetail = () => {
         </div>
 
         <div className="max-w-3xl mx-auto px-4 py-6">
-          {/* Progress */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border dark:border-slate-800 p-4 mb-5">
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
@@ -384,17 +340,19 @@ const ExamDetail = () => {
             </div>
           </div>
 
-          {/* Soal */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg border dark:border-slate-800 p-6 md:p-8 mb-5">
-            <div className="text-lg md:text-xl font-bold text-gray-900 dark:text-white mb-6 leading-relaxed" dangerouslySetInnerHTML={{ __html: renderMath(currentQ.question) }} />
+            <div className="text-lg md:text-xl font-bold text-gray-900 dark:text-white mb-6 leading-relaxed">
+              <InlineMarkdown content={currentQ.question} />
+            </div>
 
             <div className="space-y-3">
               {currentQ.options.map((opt, i) => {
-                const isSelected = answers[currentQ.id] === i;
+                // ⚡ FIX BUG: pakai currentIndex sebagai key
+                const isSelected = answers[currentIndex] === i;
                 return (
                   <button
                     key={i}
-                    onClick={() => setAnswers({ ...answers, [currentQ.id]: i })}
+                    onClick={() => setAnswers({ ...answers, [currentIndex]: i })}
                     className={`w-full text-left p-4 rounded-xl border-2 transition-all flex items-center gap-3 ${
                       isSelected
                         ? 'border-red-500 bg-red-50 dark:bg-red-900/20 font-semibold'
@@ -406,14 +364,13 @@ const ExamDetail = () => {
                     }`}>
                       {String.fromCharCode(65 + i)}
                     </span>
-                    <span className="flex-1" dangerouslySetInnerHTML={{ __html: renderMath(opt) }} />
+                    <span className="flex-1"><InlineMarkdown content={opt} /></span>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Navigasi */}
           <div className="flex gap-3">
             <button
               onClick={() => setCurrentIndex(currentIndex - 1)}
@@ -444,9 +401,7 @@ const ExamDetail = () => {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════
-  // PHASE: RESULT
-  // ═══════════════════════════════════════════════════════════
+  // ═══ PHASE: RESULT ═══
   if (phase === 'result' && finalResult) {
     const passed = finalResult.score >= (exam.passingScore || 70);
     const isPerfect = finalResult.score === 100;
@@ -454,13 +409,11 @@ const ExamDetail = () => {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-slate-950 pb-20">
         <Navbar />
-
         <div className="max-w-2xl mx-auto px-4 py-8">
           <button onClick={() => navigate('/ujian')} className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-teal-600 mb-4 font-medium">
             <ArrowLeft className="w-4 h-4" /> Kembali ke Daftar Ujian
           </button>
 
-          {/* Score Card */}
           <div className={`rounded-3xl shadow-xl border p-8 text-center mb-6 ${
             passed 
               ? 'bg-gradient-to-br from-teal-50 via-cyan-50 to-teal-100 dark:from-teal-900/20 dark:via-cyan-900/10 dark:to-teal-900/20 border-teal-300 dark:border-teal-700'
@@ -504,7 +457,6 @@ const ExamDetail = () => {
             )}
           </div>
 
-          {/* Pembahasan */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border dark:border-slate-800 p-5 sm:p-6 mb-6">
             <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <FileText className="w-5 h-5 text-teal-500" /> Pembahasan Jawaban
@@ -512,18 +464,21 @@ const ExamDetail = () => {
 
             <div className="space-y-5 max-h-[600px] overflow-y-auto pr-2">
               {questions.map((q, idx) => {
-                const userAnswer = finalResult.answersSnapshot?.[q.id];
+                // ⚡ FIX BUG: pakai idx (index) sebagai key, bukan q.id
+                const userAnswer = finalResult.answersSnapshot?.[idx];
                 const isCorrect = userAnswer === q.correctAnswer;
 
                 return (
-                  <div key={q.id} className="border-b border-gray-100 dark:border-slate-800 pb-4 last:border-0">
+                  <div key={idx} className="border-b border-gray-100 dark:border-slate-800 pb-4 last:border-0">
                     <div className="flex items-start gap-2 mb-2">
                       {isCorrect ? (
                         <CheckCircle className="w-5 h-5 text-teal-500 flex-shrink-0 mt-0.5" />
                       ) : (
                         <XCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
                       )}
-                      <p className="font-semibold text-sm text-gray-900 dark:text-white" dangerouslySetInnerHTML={{ __html: `${idx + 1}. ${renderMath(q.question)}` }} />
+                      <div className="font-semibold text-sm text-gray-900 dark:text-white">
+                        {idx + 1}. <InlineMarkdown content={q.question} />
+                      </div>
                     </div>
                     <div className="ml-7 space-y-1.5 text-sm">
                       {q.options.map((opt, i) => {
@@ -547,7 +502,7 @@ const ExamDetail = () => {
                             }`}>
                               {String.fromCharCode(65 + i)}
                             </span>
-                            <span className="flex-1" dangerouslySetInnerHTML={{ __html: renderMath(opt) }} />
+                            <span className="flex-1"><InlineMarkdown content={opt} /></span>
                             {isRightAnswer && <span className="text-[10px] font-bold">✓ BENAR</span>}
                             {isUserPick && !isCorrect && <span className="text-[10px] font-bold">✗ JAWABANMU</span>}
                           </div>
@@ -555,7 +510,7 @@ const ExamDetail = () => {
                       })}
                       {q.explanation && (
                         <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-lg text-xs text-blue-800 dark:text-blue-300">
-                          💡 <strong>Pembahasan:</strong> <span dangerouslySetInnerHTML={{ __html: renderMath(q.explanation) }} />
+                          💡 <strong>Pembahasan:</strong> <InlineMarkdown content={q.explanation} />
                         </div>
                       )}
                     </div>

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
+import InlineMarkdown from '../../components/InlineMarkdown';
 import { db } from '../../firebase';
 import { collection, getDocs, doc, addDoc, updateDoc, deleteDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
-import { ArrowLeft, Plus, Trash2, Edit, X, Save, FileText, Clock, CheckCircle, Loader, AlertTriangle, Upload, Wand2, Square, CheckSquare, Trophy } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Edit, X, Save, FileText, Clock, CheckCircle, Loader, AlertTriangle, Upload, Wand2, Square, CheckSquare, Trophy, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const DEFAULT_FORM = {
@@ -18,6 +19,30 @@ const DEFAULT_FORM = {
   questions: [],
 };
 
+const TEMPLATE_EXAMPLE = `1. Akar-akar persamaan $x^2 - (k+2)x + (2k-1) = 0$ adalah $p$ dan $q$. Jika $p^2 + q^2 = 22$, maka nilai $k$ positif yang memenuhi adalah...
+A. $4$
+B. $7$
+C. $8$
+D. $10$
+Jawaban: A
+Pembahasan: Dari $p + q = k + 2$ dan $pq = 2k - 1$, maka $p^2 + q^2 = (p+q)^2 - 2pq = 22$. Substitusi: $(k+2)^2 - 2(2k-1) = 22$, jadi $k^2 = 16$, sehingga $k = 4$.
+
+2. Berapakah nilai dari $|-7|$?
+A. $-7$
+B. $0$
+C. $7$
+D. $14$
+Jawaban: C
+Pembahasan: Nilai mutlak selalu positif, jadi $|-7| = 7$.
+
+3. Nilai dari $\frac{1}{2} + \frac{1}{4}$ adalah...
+A. $\frac{1}{6}$
+B. $\frac{2}{6}$
+C. $\frac{3}{4}$
+D. $\frac{2}{8}$
+Jawaban: C
+Pembahasan: Samakan penyebut, $\frac{2}{4} + \frac{1}{4} = \frac{3}{4}$.`;
+
 const AdminExamManager = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -29,11 +54,10 @@ const AdminExamManager = () => {
   const [formData, setFormData] = useState(DEFAULT_FORM);
   const [saving, setSaving] = useState(false);
 
-  // Bulk paste
   const [showBulkPaste, setShowBulkPaste] = useState(false);
   const [bulkText, setBulkText] = useState('');
+  const [showQuestionPreview, setShowQuestionPreview] = useState(true);
 
-  // Bulk Selection & Delete All
   const [selectedExamIds, setSelectedExamIds] = useState([]);
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
   const [deleteAllConfirm, setDeleteAllConfirm] = useState('');
@@ -187,10 +211,10 @@ const AdminExamManager = () => {
     setDeletingBulk(false);
   };
 
-  // ═══ Parser Bulk Paste ═══
+  // ⚡ Parser Bulk Paste (support LaTeX)
   const parseBulkQuestions = (text) => {
     const questions = [];
-    const blocks = text.trim().split(/\n\s*\n/);
+    const blocks = text.trim().split(/\n(?=\s*\d+[\.\)]\s)/);
 
     blocks.forEach((block) => {
       const lines = block.split('\n').map((l) => l.trim()).filter(Boolean);
@@ -201,9 +225,9 @@ const AdminExamManager = () => {
       let correctAnswer = -1;
       let explanation = '';
 
-      lines.forEach((line) => {
+      lines.forEach((line, lineIdx) => {
         const qMatch = line.match(/^\d+[\.\)]\s*(.+)/);
-        if (qMatch && !question) {
+        if (qMatch && lineIdx === 0) {
           question = qMatch[1].trim();
           return;
         }
@@ -226,17 +250,19 @@ const AdminExamManager = () => {
           return;
         }
 
-        if (!question) {
+        if (explanation && !qMatch && !optMatch && !ansMatch) {
+          explanation += ' ' + line;
+        } else if (!question) {
           question = line;
-        } else if (options.length === 0 && !question.includes(line)) {
-          question += ' ' + line;
         }
       });
 
       if (question && options.length >= 2 && correctAnswer >= 0) {
+        const paddedOptions = [...options];
+        while (paddedOptions.length < 4) paddedOptions.push('');
         questions.push({
           question,
-          options: options.slice(0, 4).concat(Array(Math.max(0, 4 - options.length)).fill('')).slice(0, 4),
+          options: paddedOptions.slice(0, 4),
           correctAnswer,
           explanation,
         });
@@ -253,9 +279,14 @@ const AdminExamManager = () => {
       return;
     }
     setFormData((prev) => ({ ...prev, questions: [...prev.questions, ...parsed] }));
-    toast.success(`${parsed.length} soal berhasil ditambahkan!`);
+    toast.success(`${parsed.length} soal berhasil ditambahkan! 🎉`);
     setBulkText('');
     setShowBulkPaste(false);
+  };
+
+  const handleFillTemplate = () => {
+    setBulkText(TEMPLATE_EXAMPLE);
+    toast.success('Template contoh terisi! Klik "Parse & Tambah Soal" 📋');
   };
 
   const updateQuestion = (idx, field, value) => {
@@ -306,7 +337,6 @@ const AdminExamManager = () => {
       </div>
 
       <div className="page-content max-w-6xl mx-auto px-4 py-4">
-        {/* TOOLBAR BULK ACTION */}
         {exams.length > 0 && (
           <div className="card-elevated rounded-2xl p-4 mb-6 flex items-center gap-3 flex-wrap">
             <button
@@ -380,7 +410,6 @@ const AdminExamManager = () => {
                       </div>
                     </div>
                     <div className="flex gap-1 flex-shrink-0">
-                      {/* ⚡ TOMBOL BARU: Lihat Nilai */}
                       <button 
                         onClick={() => navigate(`/admin/ujian/${exam.id}/results`)} 
                         className="p-2 rounded-lg hover:bg-teal-50 dark:hover:bg-teal-900/20 text-teal-600"
@@ -421,7 +450,7 @@ const AdminExamManager = () => {
         )}
       </div>
 
-      {/* ═══ MODAL FORM ═══ */}
+      {/* MODAL FORM */}
       {showModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4 overflow-y-auto" onClick={() => !saving && setShowModal(false)}>
           <div className="bg-white dark:bg-slate-800 rounded-3xl max-w-3xl w-full shadow-2xl my-8 relative" onClick={(e) => e.stopPropagation()}>
@@ -532,25 +561,30 @@ const AdminExamManager = () => {
 
                 {showBulkPaste && (
                   <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/50 rounded-xl p-4 mb-4">
-                    <p className="text-xs font-semibold text-orange-800 dark:text-orange-300 mb-2">Format Bulk Paste:</p>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-semibold text-orange-800 dark:text-orange-300">Format Bulk Paste (support LaTeX):</p>
+                      <button
+                        type="button"
+                        onClick={handleFillTemplate}
+                        className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        📋 Isi Template Contoh
+                      </button>
+                    </div>
                     <pre className="text-[10px] bg-white dark:bg-slate-800 p-3 rounded-lg mb-3 overflow-x-auto text-gray-700 dark:text-gray-300">
-{`1. Soal pertama...
-A. Pilihan A
-B. Pilihan B
-C. Pilihan C
-D. Pilihan D
-Jawaban: A
-Pembahasan: Karena...
-
-2. Soal kedua...
-A. ...
-Jawaban: C`}
+{`1. Berapakah $(+5) + (-3)$?
+A. $-8$
+B. $-2$
+C. $+2$
+D. $+8$
+Jawaban: C
+Pembahasan: $(+5) + (-3) = 5 - 3 = 2$`}
                     </pre>
                     <textarea
                       value={bulkText}
                       onChange={(e) => setBulkText(e.target.value)}
                       placeholder="Paste soal di sini..."
-                      rows={10}
+                      rows={12}
                       className="w-full px-3 py-2 rounded-lg border border-orange-300 dark:border-orange-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white text-xs font-mono focus:ring-2 focus:ring-orange-500 outline-none resize-none"
                     />
                     <button
@@ -569,6 +603,17 @@ Jawaban: C`}
                   <Plus className="w-4 h-4 inline mr-1" /> Tambah Soal Manual
                 </button>
 
+                {formData.questions.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowQuestionPreview(!showQuestionPreview)}
+                    className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-violet-100 dark:bg-violet-900/20 hover:bg-violet-200 dark:hover:bg-violet-900/40 text-violet-700 dark:text-violet-300 text-xs font-bold transition-all mb-3"
+                  >
+                    {showQuestionPreview ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    {showQuestionPreview ? 'Sembunyikan Preview Render' : 'Tampilkan Preview Render (LaTeX)'}
+                  </button>
+                )}
+
                 <div className="space-y-3">
                   {formData.questions.map((q, idx) => (
                     <div key={idx} className="bg-gray-50 dark:bg-slate-900/50 rounded-xl p-3 border border-gray-200 dark:border-slate-700">
@@ -581,10 +626,22 @@ Jawaban: C`}
                       <textarea
                         value={q.question}
                         onChange={(e) => updateQuestion(idx, 'question', e.target.value)}
-                        placeholder="Soal..."
+                        placeholder="Soal... (bisa pakai $x^2$ untuk rumus)"
                         rows={2}
-                        className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white text-sm mb-2 focus:ring-2 focus:ring-red-500 outline-none resize-none"
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white text-sm mb-2 focus:ring-2 focus:ring-red-500 outline-none resize-none font-mono"
                       />
+
+                      {showQuestionPreview && q.question.trim() && (
+                        <div className="mb-3 p-3 bg-white dark:bg-slate-800 rounded-lg border border-violet-200 dark:border-violet-800/50">
+                          <div className="text-[10px] font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider mb-1.5">
+                            👁️ Preview Soal
+                          </div>
+                          <div className="text-sm text-gray-900 dark:text-white">
+                            <InlineMarkdown content={q.question} />
+                          </div>
+                        </div>
+                      )}
+
                       {q.options.map((opt, i) => (
                         <div key={i} className="flex items-center gap-2 mb-1.5">
                           <button
@@ -604,18 +661,28 @@ Jawaban: C`}
                               newOpts[i] = e.target.value;
                               updateQuestion(idx, 'options', newOpts);
                             }}
-                            placeholder={`Pilihan ${String.fromCharCode(65 + i)}`}
-                            className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-red-500 outline-none"
+                            placeholder={`Pilihan ${String.fromCharCode(65 + i)} (bisa pakai $x^2$)`}
+                            className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-red-500 outline-none font-mono"
                           />
+                          {showQuestionPreview && opt.trim() && (
+                            <div className="text-xs text-gray-700 dark:text-gray-300 min-w-[60px] flex-shrink-0">
+                              <InlineMarkdown content={opt} />
+                            </div>
+                          )}
                         </div>
                       ))}
                       <input
                         type="text"
                         value={q.explanation || ''}
                         onChange={(e) => updateQuestion(idx, 'explanation', e.target.value)}
-                        placeholder="Pembahasan (opsional)"
-                        className="w-full mt-2 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-red-500 outline-none"
+                        placeholder="Pembahasan (opsional, bisa pakai $x^2$)"
+                        className="w-full mt-2 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-red-500 outline-none font-mono"
                       />
+                      {showQuestionPreview && q.explanation && q.explanation.trim() && (
+                        <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800/50 text-xs text-blue-800 dark:text-blue-300">
+                          💡 <strong>Pembahasan:</strong> <InlineMarkdown content={q.explanation} />
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -642,7 +709,7 @@ Jawaban: C`}
         </div>
       )}
 
-      {/* ═══ MODAL HAPUS SEMUA UJIAN ═══ */}
+      {/* MODAL HAPUS SEMUA */}
       {showDeleteAllModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[110] flex items-center justify-center p-4" onClick={() => !deletingBulk && setShowDeleteAllModal(false)}>
           <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>

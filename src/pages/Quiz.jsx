@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import InlineMarkdown from '../components/InlineMarkdown';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
@@ -23,11 +24,10 @@ const Quiz = () => {
   const [isNewRecord, setIsNewRecord] = useState(false);
   const [isNewFastest, setIsNewFastest] = useState(false);
 
-  // ⚡ STATE RETRY (Salah Saya)
   const [retryingQuestion, setRetryingQuestion] = useState(null);
   const [retryAnswer, setRetryAnswer] = useState(null);
   const [retryResult, setRetryResult] = useState(null);
-  const [retryCompleted, setRetryCompleted] = useState({}); // { qId: true }
+  const [retryCompleted, setRetryCompleted] = useState({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -150,14 +150,12 @@ const Quiz = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // ⚡ Buka soal salah untuk retry
   const openRetry = (question) => {
     setRetryingQuestion(question);
     setRetryAnswer(null);
     setRetryResult(null);
   };
 
-  // ⚡ Submit jawaban retry
   const submitRetry = () => {
     if (retryAnswer === null) return;
     const isCorrect = retryAnswer === retryingQuestion.correctAnswer;
@@ -214,8 +212,6 @@ const Quiz = () => {
         : oldBestTime;
 
     const isPerfect = result.score === 100;
-
-    // ⚡ Kumpulkan soal yang salah
     const wrongQuestions = questions.filter((q) => answers[q.id] !== q.correctAnswer);
 
     return (
@@ -223,7 +219,6 @@ const Quiz = () => {
         <Navbar />
         <div className="max-w-2xl mx-auto px-4 py-8">
           
-          {/* Kartu Skor */}
           <div className={`rounded-3xl shadow-xl border p-8 text-center mb-6 relative overflow-hidden ${
             isPerfect
               ? 'bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-900/20 dark:via-yellow-900/10 dark:to-orange-900/20 border-amber-300 dark:border-amber-700'
@@ -286,7 +281,6 @@ const Quiz = () => {
             </div>
           </div>
 
-          {/* ⚡ PEMBAHASAN KHUSUS NILAI 100 */}
           {isPerfect && (
             <div className="bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-900/10 dark:via-yellow-900/5 dark:to-orange-900/10 border-2 border-amber-300 dark:border-amber-700/60 rounded-3xl p-6 mb-6">
               <div className="flex items-center gap-3 mb-5 pb-4 border-b border-amber-200 dark:border-amber-800/50">
@@ -306,9 +300,9 @@ const Quiz = () => {
                       <div className="w-7 h-7 rounded-full bg-gradient-to-br from-teal-400 to-cyan-600 flex items-center justify-center flex-shrink-0 shadow-md">
                         <CheckCircle className="w-4 h-4 text-white" />
                       </div>
-                      <p className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base leading-relaxed">
-                        {idx + 1}. {q.question}
-                      </p>
+                      <div className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base leading-relaxed">
+                        {idx + 1}. <InlineMarkdown content={q.question} />
+                      </div>
                     </div>
                     <div className="ml-9 space-y-1.5">
                       {q.options.map((opt, i) => {
@@ -325,7 +319,7 @@ const Quiz = () => {
                               {String.fromCharCode(65 + i)}
                             </span>
                             <span className={isRightAnswer ? 'font-semibold text-teal-700 dark:text-teal-300' : ''}>
-                              {opt}
+                              <InlineMarkdown content={opt} />
                               {isRightAnswer && (
                                 <span className="ml-2 text-[10px] bg-teal-100 dark:bg-teal-800/50 text-teal-700 dark:text-teal-300 px-1.5 py-0.5 rounded-full font-bold">
                                   JAWABAN BENAR
@@ -339,7 +333,9 @@ const Quiz = () => {
                     {q.explanation && (
                       <div className="ml-9 mt-3 p-3 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 border border-blue-200 dark:border-blue-800/50 rounded-xl">
                         <p className="text-xs font-bold text-blue-700 dark:text-blue-300 mb-1">💡 Pembahasan:</p>
-                        <p className="text-sm text-blue-900 dark:text-blue-200 leading-relaxed">{q.explanation}</p>
+                        <div className="text-sm text-blue-900 dark:text-blue-200 leading-relaxed">
+                          <InlineMarkdown content={q.explanation} />
+                        </div>
                       </div>
                     )}
                   </div>
@@ -348,7 +344,6 @@ const Quiz = () => {
             </div>
           )}
 
-          {/* ⚡ SALAH SAYA (Kalau ada soal yang salah) */}
           {!isPerfect && wrongQuestions.length > 0 && (
             <div className="bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-900/10 dark:to-rose-900/10 border-2 border-red-200 dark:border-red-800/60 rounded-3xl p-6 mb-6">
               <div className="flex items-center gap-3 mb-5 pb-4 border-b border-red-200 dark:border-red-800/50">
@@ -400,9 +395,9 @@ const Quiz = () => {
                               </span>
                             )}
                           </div>
-                          <p className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2">
-                            {q.question}
-                          </p>
+                          <div className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2">
+                            <InlineMarkdown content={q.question} />
+                          </div>
                           <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
                             {isSolved ? 'Klik untuk lihat pembahasan lagi' : 'Klik untuk coba lagi'} →
                           </p>
@@ -446,11 +441,9 @@ const Quiz = () => {
           </div>
         </div>
 
-        {/* ⚡ MODAL RETRY SOAL SALAH */}
         {retryingQuestion && (
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[110] flex items-center justify-center p-4 overflow-y-auto" onClick={closeRetry}>
             <div className="bg-white dark:bg-slate-800 rounded-3xl max-w-lg w-full shadow-2xl my-8 relative" onClick={(e) => e.stopPropagation()}>
-              {/* Header */}
               <div className={`p-5 rounded-t-3xl ${
                 retryResult === 'correct' 
                   ? 'bg-gradient-to-r from-green-500 to-emerald-600'
@@ -478,11 +471,10 @@ const Quiz = () => {
                 </div>
               </div>
 
-              {/* Body */}
               <div className="p-5 sm:p-6">
-                <p className="font-semibold text-gray-900 dark:text-white mb-4 text-sm sm:text-base">
-                  {retryingQuestion.question}
-                </p>
+                <div className="font-semibold text-gray-900 dark:text-white mb-4 text-sm sm:text-base">
+                  <InlineMarkdown content={retryingQuestion.question} />
+                </div>
 
                 <div className="space-y-2.5">
                   {retryingQuestion.options.map((opt, i) => {
@@ -524,26 +516,24 @@ const Quiz = () => {
                           isSelected ? 'font-semibold text-teal-700 dark:text-teal-300' :
                           'text-gray-700 dark:text-gray-300'
                         }`}>
-                          {opt}
+                          <InlineMarkdown content={opt} />
                         </span>
                       </button>
                     );
                   })}
                 </div>
 
-                {/* Pembahasan (muncul kalau udah benar) */}
                 {retryResult === 'correct' && retryingQuestion.explanation && (
                   <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 border border-blue-200 dark:border-blue-800/50 rounded-xl">
                     <p className="text-xs font-bold text-blue-700 dark:text-blue-300 mb-1.5 flex items-center gap-1">
                       💡 Pembahasan:
                     </p>
-                    <p className="text-sm text-blue-900 dark:text-blue-200 leading-relaxed">
-                      {retryingQuestion.explanation}
-                    </p>
+                    <div className="text-sm text-blue-900 dark:text-blue-200 leading-relaxed">
+                      <InlineMarkdown content={retryingQuestion.explanation} />
+                    </div>
                   </div>
                 )}
 
-                {/* Tombol Aksi */}
                 <div className="flex gap-3 mt-5">
                   {retryResult === 'correct' ? (
                     <button
@@ -578,7 +568,6 @@ const Quiz = () => {
     );
   }
 
-  // ============ HALAMAN SOAL ============
   const currentQ = questions[currentIndex];
   const progress = ((currentIndex + 1) / questions.length) * 100;
   const answeredCount = Object.keys(answers).length;
@@ -628,9 +617,9 @@ const Quiz = () => {
         </div>
 
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg border dark:border-slate-800 p-6 md:p-8 mb-6">
-          <h2 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white mb-6">
-            {currentQ.question}
-          </h2>
+          <div className="text-lg md:text-xl font-bold text-gray-900 dark:text-white mb-6">
+            <InlineMarkdown content={currentQ.question} />
+          </div>
           <div className="space-y-3">
             {currentQ.options.map((opt, i) => {
               const isSelected = answers[currentQ.id] === i;
@@ -649,7 +638,7 @@ const Quiz = () => {
                   }`}>
                     {String.fromCharCode(65 + i)}
                   </span>
-                  <span>{opt}</span>
+                  <span><InlineMarkdown content={opt} /></span>
                 </button>
               );
             })}

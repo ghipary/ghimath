@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import MarkdownRenderer from '../components/MarkdownRenderer';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { ArrowLeft, CheckCircle, BookOpen, Video, ListChecks, Loader, Clock, TrendingUp, PauseCircle, Lock, FileText } from 'lucide-react';
+import { ArrowLeft, CheckCircle, BookOpen, Video, ListChecks, Loader, Clock, TrendingUp, PauseCircle, Lock, FileText, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AITutor from '../components/AITutor';
 
@@ -22,6 +23,25 @@ const sanitizeHtml = (html) => {
     .replace(/[\u200B-\u200D\uFEFF]/g, '')
     .replace(/\u00AD/g, '')
     .replace(/&nbsp;/g, ' ');
+};
+
+// ⚡ Deteksi apakah konten pakai Markdown + LaTeX
+const isMarkdownContent = (str) => {
+  if (!str) return false;
+  // Kalau ada tag HTML block-level → anggap HTML biasa
+  if (/<(p|h[1-6]|ul|ol|li|div|blockquote|table|pre|code|span)[\s>]/i.test(str)) return false;
+  // Ada ciri-ciri Markdown/LaTeX
+  if (/\$\$[\s\S]+?\$\$/.test(str)) return true;        // block math
+  if (/\$[^$\n]+\$/.test(str)) return true;              // inline math
+  if (/^#{1,6}\s/m.test(str)) return true;               // heading
+  if (/\*\*[^*\n]+\*\*/.test(str)) return true;          // bold
+  if (/^\s*[-*]\s+/m.test(str)) return true;             // bullet list
+  return false;
+};
+
+const isHtmlContent = (str) => {
+  if (!str) return false;
+  return /<[a-z][\s\S]*>/i.test(str);
 };
 
 const MaterialDetail = () => {
@@ -44,7 +64,6 @@ const MaterialDetail = () => {
     const s = sec % 60;
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
-  const isHtml = (str) => str && /<[a-z][\s\S]*>/i.test(str);
 
   useEffect(() => {
     const fetchMaterial = async () => {
@@ -188,11 +207,20 @@ const MaterialDetail = () => {
   if (!material) return null;
 
   const finalPercent = isCompleted ? 100 : percentage;
-  const cleanContent = sanitizeHtml(material.content);
-  const cleanDescription = sanitizeHtml(material.description);
-  const hasContent = cleanContent && cleanContent.replace(/<[^>]*>/g, '').trim().length > 0;
+
+  // ⚡ Tentukan format konten
+  const rawContent = material.content || '';
+  const rawDescription = material.description || '';
+  const cleanContent = sanitizeHtml(rawContent);
+  const cleanDescription = sanitizeHtml(rawDescription);
+
+  const contentIsMarkdown = isMarkdownContent(rawContent);
+  const descIsMarkdown = isMarkdownContent(rawDescription);
+  const descIsHtml = !descIsMarkdown && isHtmlContent(cleanDescription);
+  const contentIsHtml = !contentIsMarkdown && isHtmlContent(cleanContent);
+
+  const hasContent = (rawContent && rawContent.replace(/<[^>]*>/g, '').trim().length > 0) || contentIsMarkdown;
   const hasPdf = material.fileUrl && material.fileUrl.trim().length > 0;
-  const descIsHtml = isHtml(cleanDescription);
 
   return (
     <div className="page-bg transition-colors pb-20 min-h-screen">
@@ -217,6 +245,11 @@ const MaterialDetail = () => {
             <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">Kelas {material.grade}</span>
             <span className="text-sm text-gray-400">•</span>
             <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">{material.topic}</span>
+            {contentIsMarkdown && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-gradient-to-r from-violet-100 to-purple-100 text-violet-700 dark:from-violet-900/40 dark:to-purple-900/40 dark:text-violet-400 px-2 py-0.5 rounded-full">
+                <Sparkles className="w-3 h-3" /> LaTeX
+              </span>
+            )}
           </div>
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 dark:from-teal-400 dark:via-cyan-400 dark:to-blue-400 bg-clip-text text-transparent">
             {material.title}
@@ -259,6 +292,7 @@ const MaterialDetail = () => {
           </div>
         )}
 
+        {/* ⚡ TENTANG MATERI */}
         {cleanDescription && (
           <div className="card-elevated rounded-2xl overflow-hidden mb-4 sm:mb-6">
             <div className="flex items-center gap-3 px-5 sm:px-6 py-4 border-b border-gray-100 dark:border-slate-700/50">
@@ -268,7 +302,9 @@ const MaterialDetail = () => {
               <h2 className="font-bold text-gray-900 dark:text-white text-sm sm:text-base">Tentang Materi</h2>
             </div>
             <div className="p-4 sm:p-6 md:p-8">
-              {descIsHtml ? (
+              {descIsMarkdown ? (
+                <MarkdownRenderer content={rawDescription} />
+              ) : descIsHtml ? (
                 <div className="material-content" dangerouslySetInnerHTML={{ __html: cleanDescription }} />
               ) : (
                 <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{cleanDescription}</p>
@@ -277,6 +313,7 @@ const MaterialDetail = () => {
           </div>
         )}
 
+        {/* ⚡ MATERI BACAAN */}
         {hasContent && (
           <div className="card-elevated rounded-2xl overflow-hidden mb-4 sm:mb-6">
             <div className="flex items-center gap-3 px-5 sm:px-6 py-4 border-b border-gray-100 dark:border-slate-700/50">
@@ -284,13 +321,27 @@ const MaterialDetail = () => {
                 <BookOpen className="w-4 h-4 text-white" />
               </div>
               <h2 className="font-bold text-gray-900 dark:text-white text-sm sm:text-base">Materi Bacaan</h2>
+              {contentIsMarkdown && (
+                <span className="ml-auto inline-flex items-center gap-1 text-[10px] font-bold bg-gradient-to-r from-teal-100 to-cyan-100 text-teal-700 dark:from-teal-900/40 dark:to-cyan-900/40 dark:text-teal-400 px-2 py-0.5 rounded-full">
+                  ✨ Rendered
+                </span>
+              )}
             </div>
             <div className="p-4 sm:p-6 md:p-8">
-              <div className="material-content" dangerouslySetInnerHTML={{ __html: cleanContent }} />
+              {contentIsMarkdown ? (
+                <MarkdownRenderer content={rawContent} />
+              ) : contentIsHtml ? (
+                <div className="material-content" dangerouslySetInnerHTML={{ __html: cleanContent }} />
+              ) : (
+                <div className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                  {cleanContent}
+                </div>
+              )}
             </div>
           </div>
         )}
 
+        {/* PDF Fallback */}
         {!hasContent && hasPdf && (
           <div className="card-elevated rounded-2xl overflow-hidden mb-4 sm:mb-6">
             <div className="flex items-center gap-3 px-5 sm:px-6 py-4 border-b border-gray-100 dark:border-slate-700/50">
@@ -303,6 +354,7 @@ const MaterialDetail = () => {
           </div>
         )}
 
+        {/* Video */}
         {material.videoUrl && (
           <div className="card-elevated rounded-2xl overflow-hidden mb-4 sm:mb-6">
             <div className="flex items-center gap-3 px-5 sm:px-6 py-4 border-b border-gray-100 dark:border-slate-700/50">
@@ -317,6 +369,7 @@ const MaterialDetail = () => {
           </div>
         )}
 
+        {/* Tombol Aksi */}
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
           <button 
             onClick={handleTandaiSelesai} 

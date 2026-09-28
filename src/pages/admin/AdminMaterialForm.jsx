@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
+import MarkdownRenderer from '../../components/MarkdownRenderer';
 import { db } from '../../firebase';
 import { collection, addDoc, doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
-import { Save, ArrowLeft, Video, Info, BookOpen, Wand2, FileText, Loader, Settings, CheckCircle, Sparkles } from 'lucide-react';
+import { Save, ArrowLeft, Video, Info, BookOpen, Wand2, FileText, Loader, Settings, CheckCircle, Sparkles, Type, Code2, Eye, EyeOff, ClipboardList, ChevronDown, ChevronUp } from 'lucide-react';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import toast from 'react-hot-toast';
@@ -26,9 +27,13 @@ const AdminMaterialForm = () => {
   const [dataLoading, setDataLoading] = useState(isEdit);
   const [error, setError] = useState('');
 
+  // ⚡ MODE EDITOR
+  const [descriptionMode, setDescriptionMode] = useState('html');
+  const [contentMode, setContentMode] = useState('html');
+  const [showPreview, setShowPreview] = useState(false);
+  const [showReview, setShowReview] = useState(false);
+
   const topics = ['Aljabar', 'Geometri', 'Statistika', 'Trigonometri', 'Kalkulus', 'Bilangan'];
-  
-  // ⚡ PISAHKAN KELAS BERDASARKAN JENJANG
   const gradesSMP = [7, 8, 9];
   const gradesSMA = [10, 11, 12];
 
@@ -80,11 +85,9 @@ const AdminMaterialForm = () => {
     closeList(); return html;
   };
 
-  // ===== PARSER: Split teks lengkap + META HEADER =====
+  // ===== PARSER =====
   const parseFullMaterial = (text) => {
-    const result = { 
-      title: '', level: '', grade: '', topic: '', description: '', content: '', quizzes: [] 
-    };
+    const result = { title: '', level: '', grade: '', topic: '', description: '', content: '', quizzes: [] };
 
     const levelMatch = text.match(/^\s*JENJANG\s*:\s*(SMP|SMA)\s*$/im);
     if (levelMatch) result.level = levelMatch[1].toUpperCase();
@@ -101,9 +104,8 @@ const AdminMaterialForm = () => {
     }
 
     const judulMatch = text.match(/^\s*JUDUL\s*:\s*(.+)$/im);
-    if (judulMatch) {
-      result.title = judulMatch[1].trim();
-    } else {
+    if (judulMatch) result.title = judulMatch[1].trim();
+    else {
       const babMatch = text.match(/^\s*BAB\s+(\d+)\s*:\s*(.+)$/im);
       if (babMatch) result.title = `Bab ${babMatch[1]}: ${babMatch[2].trim()}`;
     }
@@ -118,17 +120,14 @@ const AdminMaterialForm = () => {
     if (quizMatch) {
       const quizText = quizMatch[1].trim();
       const blocks = quizText.split(/\n(?=\s*\d+\.\s)/).map(b => b.trim()).filter(Boolean);
-
       blocks.forEach(block => {
         try {
           const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
           const question = lines[0].replace(/^\d+\.\s*/, '').trim();
           if (!question) return;
-
           const options = ['', '', '', ''];
           let correctAnswer = -1;
           let explanation = '';
-
           lines.slice(1).forEach(line => {
             const optMatch = line.match(/^([A-Da-d])\.\s*(.+)/);
             if (optMatch) {
@@ -136,35 +135,33 @@ const AdminMaterialForm = () => {
               return;
             }
             const ansMatch = line.match(/^Jawaban\s*:\s*([A-Da-d])/i);
-            if (ansMatch) {
-              correctAnswer = ansMatch[1].toUpperCase().charCodeAt(0) - 65;
-              return;
-            }
+            if (ansMatch) { correctAnswer = ansMatch[1].toUpperCase().charCodeAt(0) - 65; return; }
             const explMatch = line.match(/^Pembahasan\s*:\s*(.+)/i);
             if (explMatch) explanation = explMatch[1].trim();
           });
-
           if (!options.some(o => !o) && correctAnswer >= 0) {
             result.quizzes.push({ question, options, correctAnswer, explanation });
           }
         } catch (e) {}
       });
     }
-
     return result;
   };
 
   const handleAutoImport = () => {
     if (!rawText.trim()) return toast.error('Paste teks materi dulu!');
-    
     const parsed = parseFullMaterial(rawText);
-    
     if (!parsed.title && !parsed.content) {
       return toast.error('Format tidak dikenali. Pastikan ada header JENJANG/KELAS/TOPIK/JUDUL dan BAGIAN 1/2/3.');
     }
 
-    const descHtml = autoFormatText(parsed.description);
-    const contentHtml = autoFormatText(parsed.content);
+    const looksMarkdown = (str) => {
+      if (!str) return false;
+      return /\$/.test(str) || /^#{1,6}\s/m.test(str) || /\*\*[^*]+\*\*/.test(str);
+    };
+
+    const useMarkdownDesc = looksMarkdown(parsed.description);
+    const useMarkdownContent = looksMarkdown(parsed.content);
 
     setFormData(prev => ({
       ...prev,
@@ -172,17 +169,82 @@ const AdminMaterialForm = () => {
       level: parsed.level || prev.level,
       grade: parsed.grade || prev.grade,
       topic: parsed.topic || prev.topic,
-      description: descHtml || prev.description,
-      content: contentHtml || prev.content,
+      description: useMarkdownDesc ? parsed.description : (autoFormatText(parsed.description) || prev.description),
+      content: useMarkdownContent ? parsed.content : (autoFormatText(parsed.content) || prev.content),
     }));
+
+    if (useMarkdownDesc) setDescriptionMode('markdown');
+    if (useMarkdownContent) setContentMode('markdown');
+
     setPendingQuizzes(parsed.quizzes);
 
     const info = [];
     if (parsed.level) info.push(`Jenjang: ${parsed.level}`);
     if (parsed.grade) info.push(`Kelas: ${parsed.grade}`);
     if (parsed.topic) info.push(`Topik: ${parsed.topic}`);
-    
     toast.success(`✅ Auto-isi berhasil! ${info.join(' • ')} | ${parsed.quizzes.length} soal siap import.`, { duration: 4000 });
+  };
+
+  const handleFillTemplate = () => {
+    setRawText(`JENJANG: SMP
+KELAS: 7
+TOPIK: Bilangan
+JUDUL: Bab 1: Bilangan Bulat dan Operasinya
+
+BAGIAN 1: DESKRIPSI
+**Bilangan bulat** adalah bilangan yang terdiri atas bilangan positif, nol, dan bilangan negatif. Di bab ini, kita akan mempelajari bagaimana menggunakan bilangan positif dan negatif dalam kehidupan sehari-hari.
+
+BAGIAN 2: KONTEN MATERI
+
+# Bilangan Positif dan Negatif
+
+## Penjelasan Materi
+
+**Bilangan positif** adalah bilangan yang lebih besar dari $0$.
+
+**Bilangan negatif** adalah bilangan yang lebih kecil dari $0$.
+
+## Contoh
+
+- Suhu $2°C$ di bawah $0$ ditulis $-2°C$
+- Suhu $27°C$ di atas $0$ ditulis $+27°C$
+
+## Rumus Penjumlahan
+
+$$(+5) + (+3) = +8$$
+
+$$(-5) + (-3) = -8$$
+
+## Nilai Mutlak
+
+Jarak bilangan dari $0$, contoh: $|-3| = 3$ dan $|+4| = 4$.
+
+BAGIAN 3: 3 SOAL KUIS
+
+1. Berapakah hasil dari $(+5) + (-3)$?
+A. $-8$
+B. $-2$
+C. $+2$
+D. $+8$
+Jawaban: C
+Pembahasan: $(+5) + (-3) = 5 - 3 = 2$
+
+2. Berapakah nilai dari $|-7|$?
+A. $-7$
+B. $0$
+C. $7$
+D. $14$
+Jawaban: C
+Pembahasan: Nilai mutlak selalu positif, jadi $|-7| = 7$.
+
+3. Suhu di puncak gunung $-5°C$. Suhu di pantai $30°C$. Berapa selisihnya?
+A. $25°C$
+B. $35°C$
+C. $-25°C$
+D. $-35°C$
+Jawaban: B
+Pembahasan: $30 - (-5) = 30 + 5 = 35°C$`);
+    toast.success('Template contoh terisi! Klik "Auto-Isi SEMUA" untuk memproses. 📋');
   };
 
   const handleAutoFormatDescription = () => {
@@ -203,11 +265,18 @@ const AdminMaterialForm = () => {
         const docSnap = await getDoc(doc(db, 'materials', id));
         if (docSnap.exists()) {
           const data = docSnap.data();
+          const isMd = (str) => {
+            if (!str) return false;
+            if (/<(p|h[1-6]|ul|ol|li|div|blockquote|table|pre|code|span)[\s>]/i.test(str)) return false;
+            return /\$/.test(str) || /^#{1,6}\s/m.test(str) || /\*\*[^*]+\*\*/.test(str);
+          };
           setFormData({
             title: data.title || '', level: data.level || 'SMP', grade: data.grade || 7,
             topic: data.topic || 'Aljabar', description: data.description || '',
             content: data.content || '', videoUrl: data.videoUrl || '', published: data.published || false
           });
+          setDescriptionMode(isMd(data.description) ? 'markdown' : 'html');
+          setContentMode(isMd(data.content) ? 'markdown' : 'html');
         } else { toast.error('Materi tidak ditemukan'); navigate('/admin/materi'); }
       } catch (err) { toast.error('Gagal memuat materi'); }
       setDataLoading(false);
@@ -215,7 +284,6 @@ const AdminMaterialForm = () => {
     fetchMaterial();
   }, [id, isEdit, navigate]);
 
-  // ⚡ UPDATE: Logika handleChange untuk reset grade jika level berubah
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     let finalValue = type === 'checkbox' ? checked : value;
@@ -223,17 +291,14 @@ const AdminMaterialForm = () => {
     if (name === 'level') {
       const currentGrade = Number(formData.grade);
       if (finalValue === 'SMP' && currentGrade > 9) {
-        finalValue = 7; // Reset ke default SMP
         setFormData(prev => ({ ...prev, level: finalValue, grade: 7 }));
         return;
       }
       if (finalValue === 'SMA' && currentGrade < 10) {
-        finalValue = 10; // Reset ke default SMA
         setFormData(prev => ({ ...prev, level: finalValue, grade: 10 }));
         return;
       }
     }
-
     setFormData((prev) => ({ ...prev, [name]: finalValue }));
   };
 
@@ -253,7 +318,6 @@ const AdminMaterialForm = () => {
       };
       
       let materialId = id;
-      
       if (isEdit) {
         await updateDoc(doc(db, 'materials', id), dataToSave);
       } else {
@@ -300,6 +364,33 @@ const AdminMaterialForm = () => {
     );
   }
 
+  const EditorModeToggle = ({ mode, setMode }) => (
+    <div className="inline-flex items-center bg-gray-100 dark:bg-slate-800 rounded-lg p-0.5 border border-gray-200 dark:border-slate-700">
+      <button
+        type="button"
+        onClick={() => setMode('html')}
+        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold transition-all ${
+          mode === 'html'
+            ? 'bg-white dark:bg-slate-700 text-teal-600 dark:text-teal-400 shadow-sm'
+            : 'text-gray-500 dark:text-gray-400'
+        }`}
+      >
+        <Type className="w-3 h-3" /> Rich Text
+      </button>
+      <button
+        type="button"
+        onClick={() => setMode('markdown')}
+        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold transition-all ${
+          mode === 'markdown'
+            ? 'bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-400 shadow-sm'
+            : 'text-gray-500 dark:text-gray-400'
+        }`}
+      >
+        <Code2 className="w-3 h-3" /> Markdown + LaTeX
+      </button>
+    </div>
+  );
+
   return (
     <div className="page-bg transition-colors pb-20 min-h-screen">
       <div className="grid-pattern"></div>
@@ -316,7 +407,7 @@ const AdminMaterialForm = () => {
           {isEdit ? 'Edit Materi' : 'Upload Materi Baru'}
         </h1>
         <p className="text-gray-500 dark:text-gray-400 mb-6 text-sm">
-          {isEdit ? 'Edit materi & soal kuis.' : 'Paste teks lengkap → auto-isi SEMUA (jenjang, kelas, topik, judul, konten, kuis)! 🚀'}
+          {isEdit ? 'Edit materi & soal kuis.' : 'Paste teks lengkap → auto-isi SEMUA. Atau tulis manual dengan mode Markdown + LaTeX. 🚀'}
         </p>
       </div>
 
@@ -362,11 +453,20 @@ const AdminMaterialForm = () => {
                     </ul>
                   </div>
 
+                  {/* ⚡ TOMBOL ISI TEMPLATE */}
+                  <button
+                    type="button"
+                    onClick={handleFillTemplate}
+                    className="w-full mb-3 flex items-center justify-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white text-xs font-bold py-2.5 rounded-lg shadow-md transition-all"
+                  >
+                    📋 Isi Template Contoh (Lihat Format)
+                  </button>
+
                   <textarea
                     value={rawText}
                     onChange={(e) => setRawText(e.target.value)}
                     rows={12}
-                    placeholder={`Paste teks lengkap di sini...\n\nContoh:\nJENJANG: SMP\nKELAS: 7\nTOPIK: Statistika\nJUDUL: Bab 9: Penyajian Data\n\nBAGIAN 1: DESKRIPSI\n...\n\nBAGIAN 2: KONTEN MATERI\n...\n\nBAGIAN 3: 10 SOAL KUIS\n...`}
+                    placeholder={`Paste teks lengkap di sini...\n\nContoh:\nJENJANG: SMP\nKELAS: 7\nTOPIK: Bilangan\nJUDUL: Bab 1: Bilangan Bulat\n\nBAGIAN 1: DESKRIPSI\n...\n\nBAGIAN 2: KONTEN MATERI\n(markdown + LaTeX juga bisa)\n\nBAGIAN 3: 10 SOAL KUIS\n...`}
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none resize-none font-mono text-xs"
                   />
 
@@ -396,7 +496,7 @@ const AdminMaterialForm = () => {
           <div className="p-4 bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/10 border border-teal-200/60 dark:border-teal-800/50 rounded-xl flex gap-3 text-sm text-teal-800 dark:text-teal-300">
             <Info className="w-5 h-5 flex-shrink-0 mt-0.5" />
             <div>
-              <strong>Tips:</strong> Kalau pakai Auto-Import, semua field di bawah otomatis terisi. Kamu bisa edit manual kalau perlu.
+              <strong>Tips:</strong> Gunakan mode <strong className="text-violet-600 dark:text-violet-400">Markdown + LaTeX</strong> untuk materi yang banyak rumus matematika. Rumus ditulis dengan <code className="bg-white dark:bg-slate-800 px-1 rounded">$x^2$</code> (inline) atau <code className="bg-white dark:bg-slate-800 px-1 rounded">$$...$$</code> (block).
             </div>
           </div>
 
@@ -420,7 +520,6 @@ const AdminMaterialForm = () => {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Kelas *</label>
               <select name="grade" value={formData.grade} onChange={handleChange}
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 outline-none">
-                {/* ⚡ DROPDOWN KELAS DINAMIS */}
                 {(formData.level === 'SMP' ? gradesSMP : gradesSMA).map((g) => (
                   <option key={g} value={g}>Kelas {g}</option>
                 ))}
@@ -442,14 +541,29 @@ const AdminMaterialForm = () => {
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
                 <FileText className="w-4 h-4" /> Deskripsi Singkat *
               </label>
-              <button type="button" onClick={handleAutoFormatDescription}
-                className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-md">
-                <Wand2 className="w-3.5 h-3.5" /> Auto-Rapikan
-              </button>
+              <div className="flex items-center gap-2">
+                <EditorModeToggle mode={descriptionMode} setMode={setDescriptionMode} />
+                {descriptionMode === 'html' && (
+                  <button type="button" onClick={handleAutoFormatDescription}
+                    className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-md">
+                    <Wand2 className="w-3.5 h-3.5" /> Auto-Rapikan
+                  </button>
+                )}
+              </div>
             </div>
-            <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700">
-              <ReactQuill theme="snow" value={formData.description} onChange={(v) => setFormData((p) => ({ ...p, description: v }))} modules={quillModules} formats={quillFormats} placeholder="Paste deskripsi di sini..." />
-            </div>
+            {descriptionMode === 'html' ? (
+              <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700">
+                <ReactQuill theme="snow" value={formData.description} onChange={(v) => setFormData((p) => ({ ...p, description: v }))} modules={quillModules} formats={quillFormats} placeholder="Paste deskripsi di sini..." />
+              </div>
+            ) : (
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
+                rows={6}
+                placeholder="Tulis deskripsi dengan format Markdown..."
+                className="w-full px-4 py-3 rounded-xl border border-violet-200 dark:border-violet-800/50 bg-violet-50/50 dark:bg-violet-900/10 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 outline-none resize-none font-mono text-xs"
+              />
+            )}
           </div>
 
           {/* KONTEN */}
@@ -458,14 +572,57 @@ const AdminMaterialForm = () => {
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
                 <BookOpen className="w-4 h-4" /> Konten Materi *
               </label>
-              <button type="button" onClick={handleAutoFormatContent}
-                className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-md">
-                <Wand2 className="w-3.5 h-3.5" /> Auto-Rapikan
-              </button>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button type="button" onClick={() => {
+                  if (window.confirm('Yakin hapus semua konten materi?')) {
+                    setFormData((p) => ({ ...p, content: '' }));
+                  }
+                }}
+                  className="flex items-center gap-1.5 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 text-xs font-semibold px-3 py-1.5 rounded-lg">
+                  🗑️ Clear
+                </button>
+                <button type="button" onClick={() => setShowPreview(!showPreview)}
+                  className="flex items-center gap-1.5 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 text-xs font-semibold px-3 py-1.5 rounded-lg">
+                  {showPreview ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  {showPreview ? 'Sembunyikan Preview' : 'Preview'}
+                </button>
+                <EditorModeToggle mode={contentMode} setMode={setContentMode} />
+                {contentMode === 'html' && (
+                  <button type="button" onClick={handleAutoFormatContent}
+                    className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-md">
+                    <Wand2 className="w-3.5 h-3.5" /> Auto-Rapikan
+                  </button>
+                )}
+              </div>
             </div>
-            <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700">
-              <ReactQuill theme="snow" value={formData.content} onChange={(v) => setFormData((p) => ({ ...p, content: v }))} modules={quillModules} formats={quillFormats} placeholder="Paste konten materi di sini..." />
-            </div>
+
+            {contentMode === 'html' ? (
+              <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700">
+                <ReactQuill theme="snow" value={formData.content} onChange={(v) => setFormData((p) => ({ ...p, content: v }))} modules={quillModules} formats={quillFormats} placeholder="Paste konten materi di sini..." />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                <textarea
+                  value={formData.content}
+                  onChange={(e) => setFormData((p) => ({ ...p, content: e.target.value }))}
+                  rows={showPreview ? 30 : 20}
+                  placeholder={`Tulis konten dengan Markdown + LaTeX...\n\nContoh:\n# Bilangan Bulat\n\n**Bilangan positif** adalah bilangan yang lebih besar dari $0$.\n\n$$a + b = b + a$$\n\n## Sub-bab\n\n- Poin 1\n- Poin 2`}
+                  className="w-full px-4 py-3 rounded-xl border border-violet-200 dark:border-violet-800/50 bg-violet-50/50 dark:bg-violet-900/10 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 outline-none resize-none font-mono text-xs"
+                />
+                {showPreview && (
+                  <div className="border border-violet-200 dark:border-violet-800/50 rounded-xl bg-white dark:bg-slate-900 p-4 overflow-y-auto max-h-[600px]">
+                    <div className="text-[10px] font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <Eye className="w-3 h-3" /> Live Preview
+                    </div>
+                    {formData.content.trim() ? (
+                      <MarkdownRenderer content={formData.content} />
+                    ) : (
+                      <p className="text-xs text-gray-400 italic">Preview akan muncul di sini...</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div>
@@ -485,6 +642,19 @@ const AdminMaterialForm = () => {
             </label>
           </div>
 
+          {/* ⚡ TOMBOL REVIEW HASIL IMPORT */}
+          {pendingQuizzes.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowReview(!showReview)}
+              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-violet-500/30 transition-all"
+            >
+              <ClipboardList className="w-5 h-5" />
+              {showReview ? 'Sembunyikan Review' : `📋 Review Hasil Import (${pendingQuizzes.length} soal)`}
+              {showReview ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+          )}
+
           <button type="submit" disabled={loading}
             className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-teal-500 via-cyan-600 to-teal-600 hover:from-teal-600 hover:to-cyan-700 disabled:opacity-50 text-white font-semibold py-4 rounded-xl transition-all shadow-lg shadow-teal-500/30">
             <Save className="w-5 h-5" />
@@ -496,6 +666,103 @@ const AdminMaterialForm = () => {
             )}
           </button>
         </form>
+
+        {/* ⚡ PANEL REVIEW HASIL IMPORT */}
+        {showReview && pendingQuizzes.length > 0 && (
+          <div className="card-elevated rounded-2xl p-5 border-2 border-violet-300 dark:border-violet-800">
+            <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2 text-lg">
+              <ClipboardList className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+              Review Hasil Import
+            </h3>
+
+            <div className="space-y-4">
+              {/* Info Materi */}
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="bg-gray-50 dark:bg-slate-800/50 rounded-xl p-3">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Judul</span>
+                  <p className="font-bold text-gray-900 dark:text-white mt-0.5 text-sm">{formData.title || '(kosong)'}</p>
+                </div>
+                <div className="bg-gray-50 dark:bg-slate-800/50 rounded-xl p-3">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Jenjang & Kelas</span>
+                  <p className="font-bold text-gray-900 dark:text-white mt-0.5 text-sm">{formData.level} • Kelas {formData.grade}</p>
+                </div>
+                <div className="bg-gray-50 dark:bg-slate-800/50 rounded-xl p-3">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Topik</span>
+                  <p className="font-bold text-gray-900 dark:text-white mt-0.5 text-sm">{formData.topic}</p>
+                </div>
+                <div className="bg-gray-50 dark:bg-slate-800/50 rounded-xl p-3">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Mode Konten</span>
+                  <p className="font-bold text-violet-600 dark:text-violet-400 mt-0.5 text-sm">
+                    {contentMode === 'markdown' ? '✨ Markdown + LaTeX' : '📝 Rich Text'}
+                  </p>
+                </div>
+              </div>
+              {/* ⚡ Preview Deskripsi */}
+              {formData.description && (
+                <div className="bg-amber-50/50 dark:bg-amber-900/10 rounded-xl p-4 border border-amber-200 dark:border-amber-800/50">
+                  <div className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-2">
+                    📝 Preview Deskripsi
+                  </div>
+                  <div className="max-h-48 overflow-y-auto bg-white dark:bg-slate-900 rounded-lg p-4">
+                    {descriptionMode === 'markdown' ? (
+                      <MarkdownRenderer content={formData.description} />
+                    ) : (
+                      <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed" dangerouslySetInnerHTML={{ __html: formData.description }} />
+                    )}
+                  </div>
+                </div>
+              )}
+              {/* Preview Konten */}
+              <div className="bg-violet-50/50 dark:bg-violet-900/10 rounded-xl p-4 border border-violet-200 dark:border-violet-800/50">
+                <div className="text-[10px] font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider mb-2">📖 Preview Konten Materi</div>
+                <div className="max-h-72 overflow-y-auto bg-white dark:bg-slate-900 rounded-lg p-4">
+                  {formData.content.trim() ? (
+                    <MarkdownRenderer content={formData.content} />
+                  ) : (
+                    <p className="text-xs text-gray-400 italic">Konten kosong</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Daftar Soal */}
+              <div className="bg-teal-50/50 dark:bg-teal-900/10 rounded-xl p-4 border border-teal-200 dark:border-teal-800/50">
+                <div className="text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider mb-2">
+                  📝 {pendingQuizzes.length} Soal Siap Diimport
+                </div>
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {pendingQuizzes.map((q, idx) => (
+                    <div key={idx} className="bg-white dark:bg-slate-900 rounded-lg p-3 border border-teal-100 dark:border-teal-800/30">
+                      <div className="flex items-start gap-2 mb-2">
+                        <span className="w-6 h-6 rounded-full bg-teal-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
+                          {idx + 1}
+                        </span>
+                        <div className="flex-1 text-sm font-semibold text-gray-900 dark:text-white">
+                          <MarkdownRenderer content={q.question} />
+                        </div>
+                      </div>
+                      <div className="ml-8 space-y-1">
+                        {q.options.map((opt, i) => (
+                          <div key={i} className={`text-xs flex items-start gap-2 ${i === q.correctAnswer ? 'text-teal-600 dark:text-teal-400 font-bold' : 'text-gray-500'}`}>
+                            <span className="font-bold w-4 flex-shrink-0">{String.fromCharCode(65 + i)}.</span>
+                            <div className="flex-1">
+                              <MarkdownRenderer content={opt} />
+                            </div>
+                            {i === q.correctAnswer && <span className="text-[9px] bg-teal-100 dark:bg-teal-900/40 px-1.5 rounded flex-shrink-0">✓</span>}
+                          </div>
+                        ))}
+                      </div>
+                      {q.explanation && (
+                        <div className="ml-8 mt-2 text-[11px] text-blue-600 dark:text-blue-400 italic">
+                          💡 <MarkdownRenderer content={q.explanation} />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

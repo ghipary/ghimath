@@ -2,15 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import { db } from '../../firebase';
-import { collection, getDocs, doc, addDoc, deleteDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, doc, addDoc, updateDoc, deleteDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
-import { ArrowLeft, Sparkles, Loader, Trash2, Wand2, CheckCircle, X, AlertTriangle, CheckSquare, Square } from 'lucide-react';
+import { ArrowLeft, Sparkles, Loader, Trash2, Wand2, CheckCircle, X, AlertTriangle, CheckSquare, Square, Plus, Edit2, Save, Eye, EyeOff } from 'lucide-react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import toast from 'react-hot-toast';
 
-// URL Groq sudah dihapus, diganti dengan endpoint lokal /api/groq
 const GROQ_MODELS = ['openai/gpt-oss-120b', 'qwen/qwen3.6-27b'];
+
+const TOPICS = ['Aljabar', 'Geometri', 'Statistika', 'Trigonometri', 'Kalkulus', 'Bilangan', 'Logaritma', 'Barisan', 'Lainnya'];
+const LEVELS = ['SMP', 'SMA'];
+const GRADES_SMP = [7, 8, 9];
+const GRADES_SMA = [10, 11, 12];
 
 const fixLatex = (s) => {
   if (!s) return '';
@@ -24,6 +28,17 @@ const fixLatex = (s) => {
     fixed = fixed.replace(regex, `\\${cmd}`);
   });
   return fixed;
+};
+
+const DEFAULT_FORM = {
+  title: '',
+  formula: '',
+  description: '',
+  topic: 'Lainnya',
+  level: 'SMA',
+  grade: 10,
+  materialId: '',
+  materialTitle: '',
 };
 
 const AdminFormulaManager = () => {
@@ -45,13 +60,23 @@ const AdminFormulaManager = () => {
   const [deleteAllConfirm, setDeleteAllConfirm] = useState('');
   const [deletingBulk, setDeletingBulk] = useState(false);
 
+  // ⚡ FORM MODAL STATE
+  const [showFormModal, setShowFormModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentId, setCurrentId] = useState(null);
+  const [formData, setFormData] = useState(DEFAULT_FORM);
+  const [formSaving, setFormSaving] = useState(false);
+  const [showFormulaPreview, setShowFormulaPreview] = useState(true);
+
   const fetchData = async () => {
     try {
       const [fSnap, mSnap] = await Promise.all([
         getDocs(collection(db, 'formulas')),
         getDocs(collection(db, 'materials')),
       ]);
-      setFormulas(fSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      const fData = fSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      fData.sort((a, b) => (b.createdAt?.toDate?.() || 0) - (a.createdAt?.toDate?.() || 0));
+      setFormulas(fData);
       setMaterials(mSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
     } catch (err) {
       console.error(err);
@@ -134,6 +159,80 @@ const AdminFormulaManager = () => {
     setDeletingBulk(false);
   };
 
+  // ═══ FORM MANUAL ═══
+  const handleOpenAdd = () => {
+    setFormData(DEFAULT_FORM);
+    setIsEditing(false);
+    setCurrentId(null);
+    setShowFormModal(true);
+  };
+
+  const handleOpenEdit = (f) => {
+    setFormData({
+      title: f.title || '',
+      formula: f.formula || '',
+      description: f.description || '',
+      topic: f.topic || 'Lainnya',
+      level: f.level || 'SMA',
+      grade: f.grade || 10,
+      materialId: f.materialId || '',
+      materialTitle: f.materialTitle || '',
+    });
+    setIsEditing(true);
+    setCurrentId(f.id);
+    setShowFormModal(true);
+  };
+
+  const handleFormSave = async () => {
+    if (!formData.title.trim()) return toast.error('Judul rumus wajib diisi!');
+    if (!formData.formula.trim()) return toast.error('Rumus (LaTeX) wajib diisi!');
+
+    setFormSaving(true);
+    try {
+      // Resolve material title kalau ada materialId
+      let materialTitle = formData.materialTitle;
+      if (formData.materialId && !materialTitle) {
+        const mat = materials.find(m => m.id === formData.materialId);
+        if (mat) materialTitle = mat.title;
+      }
+
+      const payload = {
+        title: formData.title.trim(),
+        formula: formData.formula.trim(),
+        description: formData.description.trim(),
+        topic: formData.topic,
+        level: formData.level,
+        grade: Number(formData.grade),
+        materialId: formData.materialId || '',
+        materialTitle: materialTitle || 'Manual',
+        updatedAt: serverTimestamp(),
+      };
+
+      if (isEditing) {
+        await updateDoc(doc(db, 'formulas', currentId), payload);
+        toast.success('Rumus diupdate! ✅');
+      } else {
+        await addDoc(collection(db, 'formulas'), {
+          ...payload,
+          bookmarkedBy: [],
+          createdBy: user.uid,
+          createdAt: serverTimestamp(),
+        });
+        toast.success('Rumus ditambahkan! 🎉');
+      }
+
+      setShowFormModal(false);
+      setFormData(DEFAULT_FORM);
+      setIsEditing(false);
+      setCurrentId(null);
+      fetchData();
+    } catch (err) {
+      console.error(err);
+      toast.error('Gagal simpan: ' + err.message);
+    }
+    setFormSaving(false);
+  };
+
   // ═══ AI Extract ═══
   const extractFormulasFromMaterial = async (material, retryCount = 0) => {
     const plainContent = String(material.content || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').slice(0, 3000);
@@ -169,7 +268,6 @@ Ambil 3-8 rumus penting. Output HANYA JSON.`;
       response_format: { type: 'json_object' },
     };
 
-    // UBAH: fetch ke /api/groq, hapus Authorization header
     const res = await fetch('/api/groq', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -206,7 +304,6 @@ Ambil 3-8 rumus penting. Output HANYA JSON.`;
 
   const handleExtractAll = async () => {
     if (selectedMaterialIds.length === 0) return toast.error('Pilih materi dulu!');
-    // UBAH: Baris pengecekan API Key dihapus, karena sudah dicek di server
 
     setExtracting(true);
     setExtractedPreview([]);
@@ -284,6 +381,8 @@ Ambil 3-8 rumus penting. Output HANYA JSON.`;
     return <div className="page-bg flex items-center justify-center min-h-screen"><Loader className="w-10 h-10 text-teal-600 animate-spin" /></div>;
   }
 
+  const grades = formData.level === 'SMP' ? GRADES_SMP : GRADES_SMA;
+
   return (
     <div className="page-bg transition-colors pb-20 min-h-screen">
       <div className="grid-pattern"></div>
@@ -304,6 +403,12 @@ Ambil 3-8 rumus penting. Output HANYA JSON.`;
             </h1>
             <p className="text-gray-600 dark:text-gray-400 text-sm">Total: {formulas.length} rumus</p>
           </div>
+          <button
+            onClick={handleOpenAdd}
+            className="flex items-center gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white px-5 py-3 rounded-xl font-bold shadow-lg shadow-teal-500/30"
+          >
+            <Plus className="w-5 h-5" /> Tambah Rumus
+          </button>
         </div>
 
         {formulas.length > 0 && (
@@ -345,7 +450,13 @@ Ambil 3-8 rumus penting. Output HANYA JSON.`;
         )}
 
         {formulas.length === 0 && (
-          <div className="card-elevated rounded-2xl p-4 mb-6 flex justify-end">
+          <div className="card-elevated rounded-2xl p-4 mb-6 flex justify-end gap-3 flex-wrap">
+            <button
+              onClick={handleOpenAdd}
+              className="flex items-center gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 text-white px-5 py-3 rounded-xl font-bold shadow-lg"
+            >
+              <Plus className="w-5 h-5" /> Tambah Manual
+            </button>
             <button
               onClick={() => setShowExtractModal(true)}
               className="flex items-center gap-2 bg-gradient-to-r from-amber-500 via-orange-500 to-pink-500 text-white px-5 py-3 rounded-xl font-bold shadow-lg"
@@ -361,7 +472,7 @@ Ambil 3-8 rumus penting. Output HANYA JSON.`;
           <div className="card-elevated rounded-2xl text-center py-16 px-4">
             <Sparkles className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="font-bold text-gray-700 dark:text-gray-300 mb-2">Belum ada rumus</h3>
-            <p className="text-gray-500 text-sm">Klik "AI Auto-Extract" untuk generate rumus.</p>
+            <p className="text-gray-500 text-sm">Klik "Tambah Rumus" untuk mulai, atau pakai AI Auto-Extract.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -384,9 +495,14 @@ Ambil 3-8 rumus penting. Output HANYA JSON.`;
                         <p className="text-[10px] text-gray-400 mt-0.5">{f.topic} • {f.materialTitle}</p>
                       </div>
                     </div>
-                    <button onClick={() => handleDelete(f.id, f.title)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg flex-shrink-0">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex gap-1 flex-shrink-0">
+                      <button onClick={() => handleOpenEdit(f)} className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg">
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleDelete(f.id, f.title)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                   <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 text-center overflow-x-auto" dangerouslySetInnerHTML={{ __html: renderKatex(f.formula) }} />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{f.description}</p>
@@ -397,6 +513,160 @@ Ambil 3-8 rumus penting. Output HANYA JSON.`;
         )}
       </div>
 
+      {/* ⚡ MODAL FORM TAMBAH/EDIT */}
+      {showFormModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[200] flex items-center justify-center p-4 overflow-y-auto" onClick={() => !formSaving && setShowFormModal(false)}>
+          <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl my-8 relative" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-violet-500 via-purple-600 to-fuchsia-600 p-5 rounded-t-3xl flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                  {isEditing ? <Edit2 className="w-5 h-5 text-white" /> : <Plus className="w-5 h-5 text-white" />}
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-white">{isEditing ? 'Edit Rumus' : 'Tambah Rumus Manual'}</h2>
+                  <p className="text-[10px] text-white/80">Tulis rumus dengan LaTeX ($...$ atau langsung)</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowFormulaPreview(!showFormulaPreview)}
+                  className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-1.5 rounded-lg"
+                >
+                  {showFormulaPreview ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  {showFormulaPreview ? 'Preview ON' : 'Preview OFF'}
+                </button>
+                {!formSaving && (
+                  <button onClick={() => setShowFormModal(false)} className="p-2 rounded-full hover:bg-white/20">
+                    <X className="w-5 h-5 text-white" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="p-5 sm:p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-xl p-3 text-xs text-blue-800 dark:text-blue-300">
+                💡 <strong>Contoh LaTeX:</strong> <code className="bg-white dark:bg-slate-800 px-1 rounded">a^2 + b^2 = c^2</code> atau <code className="bg-white dark:bg-slate-800 px-1 rounded">\frac{"{a}"}{"{b}"}</code> atau <code className="bg-white dark:bg-slate-800 px-1 rounded">\sqrt{"{x}"}</code>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Judul Rumus *</label>
+                <input
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  placeholder="Misal: Rumus Pythagoras"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Rumus (LaTeX) *</label>
+                <textarea
+                  value={formData.formula}
+                  onChange={(e) => setFormData({ ...formData, formula: e.target.value })}
+                  placeholder="Contoh: \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}"
+                  rows={3}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 outline-none font-mono text-sm resize-none"
+                />
+                {showFormulaPreview && formData.formula.trim() && (
+                  <div className="mt-2 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-violet-200 dark:border-violet-800/50 text-center overflow-x-auto">
+                    <div className="text-[10px] font-bold text-violet-600 dark:text-violet-400 uppercase mb-2">👁️ Live Preview</div>
+                    <div className="text-lg" dangerouslySetInnerHTML={{ __html: renderKatex(formData.formula) }} />
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Deskripsi</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Penjelasan singkat tentang rumus ini..."
+                  rows={2}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 outline-none resize-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Topik</label>
+                  <select
+                    value={formData.topic}
+                    onChange={(e) => setFormData({ ...formData, topic: e.target.value })}
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 outline-none text-sm"
+                  >
+                    {TOPICS.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Jenjang</label>
+                  <select
+                    value={formData.level}
+                    onChange={(e) => {
+                      const newLevel = e.target.value;
+                      setFormData({ ...formData, level: newLevel, grade: newLevel === 'SMP' ? 7 : 10 });
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 outline-none text-sm"
+                  >
+                    {LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Kelas</label>
+                  <select
+                    value={formData.grade}
+                    onChange={(e) => setFormData({ ...formData, grade: Number(e.target.value) })}
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 outline-none text-sm"
+                  >
+                    {grades.map((g) => <option key={g} value={g}>Kelas {g}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Terkait Materi (Opsional)</label>
+                <select
+                  value={formData.materialId}
+                  onChange={(e) => {
+                    const mat = materials.find(m => m.id === e.target.value);
+                    setFormData({
+                      ...formData,
+                      materialId: e.target.value,
+                      materialTitle: mat?.title || '',
+                    });
+                  }}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 outline-none text-sm"
+                >
+                  <option value="">— Tanpa Materi (Manual) —</option>
+                  {materials.map((m) => (
+                    <option key={m.id} value={m.id}>{m.title} ({m.level} • {m.grade})</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="p-5 border-t border-gray-200 dark:border-slate-700 flex gap-3">
+              <button
+                onClick={() => setShowFormModal(false)}
+                disabled={formSaving}
+                className="flex-1 py-3 rounded-xl bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-200 font-semibold"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleFormSave}
+                disabled={formSaving}
+                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-violet-500 via-purple-600 to-fuchsia-600 text-white font-bold shadow-lg disabled:opacity-40 flex items-center justify-center gap-2"
+              >
+                {formSaving ? <><Loader className="w-4 h-4 animate-spin" /> Menyimpan...</> : <><Save className="w-4 h-4" /> {isEditing ? 'Update' : 'Simpan'}</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL HAPUS SEMUA */}
       {showDeleteAllModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[110] flex items-center justify-center p-4" onClick={() => !deletingBulk && setShowDeleteAllModal(false)}>
           <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -442,6 +712,7 @@ Ambil 3-8 rumus penting. Output HANYA JSON.`;
         </div>
       )}
 
+      {/* MODAL AI EXTRACT (existing) */}
       {showExtractModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4 overflow-y-auto" onClick={() => !extracting && !saving && setShowExtractModal(false)}>
           <div className="bg-white dark:bg-slate-800 rounded-3xl max-w-3xl w-full shadow-2xl my-8 relative" onClick={(e) => e.stopPropagation()}>

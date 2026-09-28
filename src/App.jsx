@@ -9,6 +9,7 @@ import PWAInstallBanner from './components/PWAInstallBanner'
 import QuizGabut from './pages/QuizGabut';
 
 import AdminQuizManager from './pages/admin/AdminQuizManager';
+import TestMateri from './pages/TestMateri';
 
 
 const LandingPage = lazy(() => import('./pages/LandingPage'))
@@ -106,6 +107,7 @@ function App() {
             <Route path="/admin/ujian/:examId/results" element={<AdminRoute><AdminExamResults /></AdminRoute>} />
             <Route path="/kuis-gabut" element={<QuizGabut />} />
             <Route path="/admin/quiz-manager" element={<AdminQuizManager />} />
+            <Route path="/test-materi" element={<TestMateri />} />
             
           </Routes>
         </Suspense>

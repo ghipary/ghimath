@@ -2,25 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import InlineMarkdown from '../components/InlineMarkdown';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Loader, ChevronLeft, Gamepad2, CheckCircle, ArrowRight, Flag, Trophy, Clock, RefreshCw, Home, AlertTriangle, Brain, Flame, Target } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const DUMMY_QUESTIONS = [
-  { id: 'd1', materialTitle: 'Matematika Dasar', difficulty: 'mudah', question: 'Berapakah hasil dari 12 + 15?', options: ['25', '27', '28', '30'], correctAnswer: '27' },
-  { id: 'd2', materialTitle: 'Aljabar', difficulty: 'mudah', question: 'Jika x = 5, berapakah nilai dari 3x + 2?', options: ['15', '16', '17', '18'], correctAnswer: '17' },
-  { id: 'd3', materialTitle: 'Geometri', difficulty: 'mudah', question: 'Rumus luas persegi panjang adalah...', options: ['s x s', 'p + l', 'p x l', '2 x (p + l)'], correctAnswer: 'p x l' },
+  { id: 'd1', materialTitle: 'Matematika Dasar', difficulty: 'mudah', question: 'Berapakah hasil dari $12 + 15$?', options: ['$25$', '$27$', '$28$', '$30$'], correctAnswer: '$27$' },
+  { id: 'd2', materialTitle: 'Aljabar', difficulty: 'mudah', question: 'Jika $x = 5$, berapakah nilai dari $3x + 2$?', options: ['$15$', '$16$', '$17$', '$18$'], correctAnswer: '$17$' },
+  { id: 'd3', materialTitle: 'Geometri', difficulty: 'mudah', question: 'Rumus luas persegi panjang adalah...', options: ['$s \\times s$', '$p + l$', '$p \\times l$', '$2(p + l)$'], correctAnswer: '$p \\times l$' },
   { id: 'd4', materialTitle: 'Statistika', difficulty: 'sedang', question: 'Nilai yang paling sering muncul disebut...', options: ['Mean', 'Median', 'Modus', 'Range'], correctAnswer: 'Modus' },
-  { id: 'd5', materialTitle: 'Trigonometri', difficulty: 'sedang', question: 'Nilai dari sin 90° adalah...', options: ['0', '1/2', '1', 'Tidak terdefinisi'], correctAnswer: '1' },
-  { id: 'd6', materialTitle: 'Kalkulus', difficulty: 'sedang', question: 'Turunan dari f(x) = x² adalah...', options: ['x', '2x', 'x²', '2'], correctAnswer: '2x' },
-  { id: 'd7', materialTitle: 'Bilangan', difficulty: 'mudah', question: 'Bilangan prima terkecil adalah...', options: ['0', '1', '2', '3'], correctAnswer: '2' },
-  { id: 'd8', materialTitle: 'Aljabar', difficulty: 'sulit', question: 'Jika x² - 5x + 6 = 0, nilai x adalah...', options: ['1 dan 6', '2 dan 3', '3 dan 4', '4 dan 5'], correctAnswer: '2 dan 3' },
-  { id: 'd9', materialTitle: 'Geometri', difficulty: 'sulit', question: 'Volume kubus dengan sisi 5 cm adalah...', options: ['25 cm³', '75 cm³', '100 cm³', '125 cm³'], correctAnswer: '125 cm³' },
-  { id: 'd10', materialTitle: 'Matematika Dasar', difficulty: 'sulit', question: 'Hasil dari 2⁵ + 3³ adalah...', options: ['59', '67', '72', '81'], correctAnswer: '59' },
+  { id: 'd5', materialTitle: 'Trigonometri', difficulty: 'sedang', question: 'Nilai dari $\\sin 90°$ adalah...', options: ['$0$', '$\\frac{1}{2}$', '$1$', 'Tidak terdefinisi'], correctAnswer: '$1$' },
+  { id: 'd6', materialTitle: 'Kalkulus', difficulty: 'sedang', question: 'Turunan dari $f(x) = x^2$ adalah...', options: ['$x$', '$2x$', '$x^2$', '$2$'], correctAnswer: '$2x$' },
+  { id: 'd7', materialTitle: 'Bilangan', difficulty: 'mudah', question: 'Bilangan prima terkecil adalah...', options: ['$0$', '$1$', '$2$', '$3$'], correctAnswer: '$2$' },
+  { id: 'd8', materialTitle: 'Aljabar', difficulty: 'sulit', question: 'Jika $x^2 - 5x + 6 = 0$, nilai $x$ adalah...', options: ['$1$ dan $6$', '$2$ dan $3$', '$3$ dan $4$', '$4$ dan $5$'], correctAnswer: '$2$ dan $3$' },
+  { id: 'd9', materialTitle: 'Geometri', difficulty: 'sulit', question: 'Volume kubus dengan sisi $5$ cm adalah...', options: ['$25$ cm³', '$75$ cm³', '$100$ cm³', '$125$ cm³'], correctAnswer: '$125$ cm³' },
+  { id: 'd10', materialTitle: 'Matematika Dasar', difficulty: 'sulit', question: 'Hasil dari $2^5 + 3^3$ adalah...', options: ['$59$', '$67$', '$72$', '$81$'], correctAnswer: '$59$' },
 ];
 
-const QUIZ_LENGTH = 10; // Jumlah soal per sesi
+const QUIZ_LENGTH = 10;
 
 const getDifficultyStyle = (diff) => {
   switch (diff) {
@@ -48,7 +49,6 @@ const QuizGabut = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [isUsingDummy, setIsUsingDummy] = useState(false);
 
-  // ⚡ FETCH SOAL
   useEffect(() => {
     const fetchQuestions = async () => {
       if (!user) return;
@@ -59,7 +59,6 @@ const QuizGabut = () => {
 
         let allQ = [];
 
-        // Ambil dari collection 'questions'
         try {
           const qQuery = query(collection(db, 'questions'));
           const qSnap = await getDocs(qQuery);
@@ -68,7 +67,6 @@ const QuizGabut = () => {
           }
         } catch (e) { console.warn("Collection 'questions' error:", e.message); }
 
-        // Fallback: field questions di dalam materials
         if (allQ.length === 0 && materials.length > 0) {
           materials.forEach(mat => {
             if (mat.questions && Array.isArray(mat.questions)) {
@@ -85,7 +83,6 @@ const QuizGabut = () => {
           });
         }
 
-        // Fallback: dummy soal
         if (allQ.length === 0) {
           allQ = [...DUMMY_QUESTIONS];
           setIsUsingDummy(true);
@@ -100,18 +97,16 @@ const QuizGabut = () => {
       setLoading(false);
     };
     fetchQuestions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // ⚡ MULAI GAME BARU dengan DIFFICULTY PROGRESSION
   const startNewGame = (questionPool) => {
     if (!questionPool || questionPool.length === 0) return;
 
-    // Kelompokkan berdasarkan difficulty
     const mudah = questionPool.filter(q => (q.difficulty || 'sedang') === 'mudah');
     const sedang = questionPool.filter(q => (q.difficulty || 'sedang') === 'sedang');
     const sulit = questionPool.filter(q => (q.difficulty || 'sedang') === 'sulit');
 
-    // Komposisi: 3 mudah, 4 sedang, 3 sulit
     const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
     const pickN = (arr, n) => shuffle(arr).slice(0, n);
 
@@ -121,20 +116,17 @@ const QuizGabut = () => {
       ...pickN(sulit, 3),
     ];
 
-    // Kalau kurang dari QUIZ_LENGTH, isi dari soal yang tersisa
     if (selected.length < QUIZ_LENGTH) {
       const selectedIds = new Set(selected.map(q => q.id));
       const rest = shuffle(questionPool.filter(q => !selectedIds.has(q.id)));
       selected = [...selected, ...rest].slice(0, QUIZ_LENGTH);
     }
 
-    // Susun urutan: mudah → sedang → sulit
     const mudahPicked = selected.filter(q => (q.difficulty || 'sedang') === 'mudah');
     const sedangPicked = selected.filter(q => (q.difficulty || 'sedang') === 'sedang');
     const sulitPicked = selected.filter(q => (q.difficulty || 'sedang') === 'sulit');
     const final = [...mudahPicked, ...sedangPicked, ...sulitPicked];
 
-    // Kalau masih kurang dari QUIZ_LENGTH, ulang campur
     while (final.length < QUIZ_LENGTH && questionPool.length > final.length) {
       const remaining = shuffle(questionPool).find(q => !final.includes(q));
       if (remaining) final.push(remaining);
@@ -152,7 +144,6 @@ const QuizGabut = () => {
     setErrorMsg('');
   };
 
-  // ⚡ TIMER
   useEffect(() => {
     let interval;
     if (startTime && !isFinished) {
@@ -264,7 +255,6 @@ const QuizGabut = () => {
     );
   }
 
-  // ⚡ HASIL
   if (isFinished) {
     const correctCount = answers.filter(a => a.isCorrect).length;
     const percentage = Math.round((correctCount / questions.length) * 100);
@@ -337,7 +327,6 @@ const QuizGabut = () => {
           <div className="bg-gradient-to-r from-purple-500 to-fuchsia-500 h-2 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
         </div>
 
-        {/* ⚡ BANNER MODE UJI COBA */}
         {isUsingDummy && (
           <div className="mb-4 flex items-center gap-3 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800/50 rounded-2xl p-3.5 shadow-sm">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center flex-shrink-0 shadow-md">
@@ -352,7 +341,6 @@ const QuizGabut = () => {
           </div>
         )}
 
-        {/* ⚡ INDIKATOR LEVEL MAKIN SULIT */}
         <div className="mb-4 flex items-center justify-between text-xs">
           <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
             <Brain className="w-3.5 h-3.5 text-purple-500" />
@@ -372,9 +360,9 @@ const QuizGabut = () => {
             </span>
           </div>
 
-          <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-8 leading-relaxed">
-            {currentQ.question || currentQ.text || 'Soal tidak tersedia'}
-          </h2>
+          <div className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-8 leading-relaxed">
+            <InlineMarkdown content={currentQ.question || currentQ.text || 'Soal tidak tersedia'} />
+          </div>
 
           <div className="space-y-3">
             {(currentQ.options || []).map((option, idx) => {
@@ -388,7 +376,7 @@ const QuizGabut = () => {
                     {letters[idx]}
                   </div>
                   <span className={`text-sm sm:text-base ${isSelected ? 'font-semibold text-purple-900 dark:text-purple-100' : 'text-gray-700 dark:text-gray-300'}`}>
-                    {option}
+                    <InlineMarkdown content={option} />
                   </span>
                   {isSelected && <CheckCircle className="w-5 h-5 text-purple-500 ml-auto flex-shrink-0" />}
                 </button>
