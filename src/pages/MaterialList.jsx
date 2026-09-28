@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
@@ -7,7 +6,6 @@ import { db } from '../firebase';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { Search, BookOpen, Clock, Loader, Lock, X, CheckCircle, BookMarked, TrendingUp, Sparkles, ChevronDown, FolderOpen, Folder, GraduationCap, Layers, Trophy, Target, ShieldAlert, Star } from 'lucide-react';
 
-// ⚡ Warna BASIC per kelas
 const getGradeStyle = (grade) => {
   const g = Number(grade);
   const styles = {
@@ -51,7 +49,6 @@ const getGradeStyle = (grade) => {
   return styles[g] || styles[7];
 };
 
-// ⚡ Warna PREMIUM untuk Matematika Tingkat Lanjut (deep color + glow mewah)
 const getAdvancedGradeStyle = (grade) => {
   const g = Number(grade);
   const styles = {
@@ -79,7 +76,6 @@ const getAdvancedGradeStyle = (grade) => {
       badgeBg: 'bg-gradient-to-r from-orange-200 to-red-200 text-orange-900 dark:from-orange-800/60 dark:to-red-800/60 dark:text-orange-200',
       iconBg: 'from-orange-500 via-red-500 to-rose-600',
     },
-    // ⚡ KELAS 11 TINGKAT LANJUT — Ungu MEWAH
     11: {
       bg: 'from-purple-700 via-violet-700 to-indigo-800',
       shadow: 'shadow-purple-500/70',
@@ -87,7 +83,6 @@ const getAdvancedGradeStyle = (grade) => {
       iconBg: 'from-purple-600 via-violet-600 to-indigo-700',
       isPremium: true,
     },
-    // ⚡ KELAS 12 TINGKAT LANJUT — Emas MEWAH
     12: {
       bg: 'from-amber-400 via-yellow-500 to-orange-600',
       shadow: 'shadow-amber-500/70',
@@ -99,7 +94,6 @@ const getAdvancedGradeStyle = (grade) => {
   return styles[g] || styles[7];
 };
 
-// ⚡ Helper: cek apakah materi tingkat lanjut
 const isAdvancedMath = (title) => {
   if (!title) return false;
   return /matematika\s+tingkat\s+lanjut/i.test(title);
@@ -161,7 +155,6 @@ const MaterialList = () => {
     fetchData();
   }, [user]);
 
-  // ⚡ CEK UNLOCK STATUS
   useEffect(() => {
     const checkUnlockStatus = async () => {
       if (!user || !userProfile?.level || materials.length === 0) return;
@@ -201,7 +194,6 @@ const MaterialList = () => {
     checkUnlockStatus();
   }, [user, userProfile, materials, progressMap]);
 
-  // ⚡ GROUP MATERIALS — Folder SMP & SMA (jenjang tetap)
   const groupedMaterials = useMemo(() => {
     const groups = {};
 
@@ -236,7 +228,6 @@ const MaterialList = () => {
       groups[key].materials.push(mat);
     });
 
-    // ⚡ SORT: kelas dulu (7→12), lalu biasa dulu, baru tingkat lanjut, lalu nomor bab
     Object.values(groups).forEach((group) => {
       group.materials.sort((a, b) => {
         const gradeA = Number(a.grade) || 0;
@@ -585,11 +576,9 @@ const MaterialList = () => {
                           const isCompleted = progress?.completed === true;
                           const isOpened = !!progress;
                           const percent = isCompleted ? 100 : (progress?.percentage || 0);
-                          const descPreview = stripHtml(mat.description);
                           const matLocked = isMaterialLocked(mat);
                           const isAdvanced = isAdvancedMath(mat.title);
                           
-                          // ⚡ Pilih style: basic vs premium (advanced)
                           const gradeStyle = isAdvanced 
                             ? getAdvancedGradeStyle(mat.grade) 
                             : getGradeStyle(mat.grade);
@@ -635,7 +624,6 @@ const MaterialList = () => {
                             );
                           }
 
-                          // ⚡ KARTU MATERI — basic atau premium (advanced)
                           return (
                             <Link 
                               key={mat.id} 
@@ -663,19 +651,16 @@ const MaterialList = () => {
                                     } hover:shadow-xl`
                               }`}
                             >
-                              {/* Top bar dengan warna kelas — advanced pakai shimmer */}
                               <div className={`h-1.5 bg-gradient-to-r ${gradeStyle.bg} relative overflow-hidden`}>
                                 {isAdvanced && (
                                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/70 to-transparent animate-pulse"></div>
                                 )}
                               </div>
 
-                              {/* Shimmer overlay saat hover untuk advanced */}
                               {isAdvanced && (
                                 <div className="absolute inset-0 pointer-events-none bg-gradient-to-tr from-transparent via-white/5 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-700"></div>
                               )}
 
-                              {/* Badge TINGKAT LANJUT + Kelas untuk advanced, atau Kelas saja untuk basic */}
                               {isAdvanced ? (
                                 <div className="absolute top-3 right-3 flex flex-col items-end gap-1 z-10">
                                   <div className="text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-600 text-white flex items-center gap-1 ring-1 ring-white/40">
@@ -692,7 +677,6 @@ const MaterialList = () => {
                                 </div>
                               )}
 
-                              {/* Status badge */}
                               {isCompleted && (
                                 <div className="absolute top-3 left-3 bg-gradient-to-r from-teal-500 to-cyan-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-md z-10">
                                   <CheckCircle className="w-3 h-3" /> Selesai
@@ -705,8 +689,7 @@ const MaterialList = () => {
                               )}
 
                               <div className="p-4 pt-8">
-                                <div className="flex items-start gap-2.5 mb-2">
-                                  {/* Icon dengan warna kelas — advanced ada ring putih */}
+                                <div className="flex items-start gap-2.5 mb-3">
                                   <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 group-hover/card:scale-110 transition-transform bg-gradient-to-br ${gradeStyle.iconBg} ${
                                     isAdvanced 
                                       ? `${gradeStyle.shadow} shadow-lg ring-2 ring-white/40 dark:ring-white/20` 
@@ -735,8 +718,8 @@ const MaterialList = () => {
                                     </span>
                                   </div>
                                 </div>
-                                
-                                <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 mb-3">{descPreview}</p>
+
+                                {/* ⚡ DESKRIPSI DIHAPUS DARI SINI */}
 
                                 {isOpened && !isCompleted && (
                                   <div className="mb-2">
