@@ -20,6 +20,23 @@ const AdminDashboard = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
+        // ⚡ CEK CACHE DI BROWSER (Berlaku 15 Menit)
+        const cachedData = localStorage.getItem('adminDashboardStats');
+        const cachedTime = localStorage.getItem('adminDashboardStatsTime');
+        const now = new Date().getTime();
+        const CACHE_DURATION = 15 * 60 * 1000; // 15 menit dalam milidetik
+
+        if (cachedData && cachedTime && (now - cachedTime < CACHE_DURATION)) {
+          console.log("Menggunakan data cache (Tidak memanggil Firebase)...");
+          const parsed = JSON.parse(cachedData);
+          setStats(parsed.stats);
+          setRecentMaterials(parsed.recentMaterials);
+          setStats((prev) => ({ ...prev, loading: false }));
+          return; // Berhenti di sini, tidak lanjut ke Firebase
+        }
+
+        // ⚡ JIKA TIDAK ADA CACHE, AMBIL DARI FIREBASE
+        console.log("Mengambil data baru dari Firebase...");
         const matSnap = await getCountFromServer(collection(db, 'materials'));
         const userSnap = await getCountFromServer(collection(db, 'users'));
         const quizSnap = await getCountFromServer(collection(db, 'quizResults'));
@@ -36,11 +53,9 @@ const AdminDashboard = () => {
           examsCount = examSnap.data().count;
         } catch (e) { console.warn('Collection examPackages belum ada'); }
 
-        // Asumsi 1 materi = 1 kuis. Jadi total kuis = total materi.
-        // Jika ada collection 'quizzes' terpisah, silakan ganti logic di bawah ini.
         const totalQuizzes = matSnap.data().count; 
 
-        setStats({
+        const newStats = {
           materials: matSnap.data().count,
           totalQuizzes: totalQuizzes,
           users: userSnap.data().count,
@@ -48,7 +63,9 @@ const AdminDashboard = () => {
           formulas: formulasCount,
           exams: examsCount,
           loading: false,
-        });
+        };
+
+        setStats(newStats);
 
         const recentQuery = query(
           collection(db, 'materials'),
@@ -58,9 +75,22 @@ const AdminDashboard = () => {
         const recentSnap = await getDocs(recentQuery);
         const recent = recentSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
         setRecentMaterials(recent);
+
+        // ⚡ SIMPAN KE CACHE
+        localStorage.setItem('adminDashboardStats', JSON.stringify({ stats: newStats, recentMaterials: recent }));
+        localStorage.setItem('adminDashboardStatsTime', now.toString());
+
       } catch (error) {
         console.error('Gagal ambil statistik:', error);
         setStats((prev) => ({ ...prev, loading: false }));
+        
+        // Jika error karena kuota habis, coba gunakan cache lama jika ada
+        const cachedData = localStorage.getItem('adminDashboardStats');
+        if (cachedData) {
+          const parsed = JSON.parse(cachedData);
+          setStats(parsed.stats);
+          setRecentMaterials(parsed.recentMaterials);
+        }
       }
     };
     fetchStats();
@@ -200,7 +230,7 @@ const AdminDashboard = () => {
             <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-teal-600 group-hover:translate-x-1 transition-all" />
           </Link>
 
-          <Link to="/admin/materi" className="card-elevated rounded-2xl p-5 hover:-translate-y-1 hover:shadow-xl transition-all flex items-center gap-4 group">
+          <Link to="/admin/quiz-manager" className="card-elevated rounded-2xl p-5 hover:-translate-y-1 hover:shadow-xl transition-all flex items-center gap-4 group border-2 border-amber-200/60 dark:border-amber-800/40">
             <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-orange-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-orange-500/30 group-hover:scale-110 transition-transform">
               <ListChecks className="w-6 h-6 text-white" />
             </div>

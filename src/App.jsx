@@ -6,6 +6,9 @@ import { Toaster } from 'react-hot-toast'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminRoute from './components/AdminRoute'
 import PWAInstallBanner from './components/PWAInstallBanner'
+import QuizGabut from './pages/QuizGabut';
+
+import AdminQuizManager from './pages/admin/AdminQuizManager';
 
 
 const LandingPage = lazy(() => import('./pages/LandingPage'))
@@ -101,6 +104,8 @@ function App() {
             <Route path="/admin/rumus" element={<AdminRoute><AdminFormulaManager /></AdminRoute>} />
             <Route path="/admin/ujian" element={<AdminRoute><AdminExamManager /></AdminRoute>} />
             <Route path="/admin/ujian/:examId/results" element={<AdminRoute><AdminExamResults /></AdminRoute>} />
+            <Route path="/kuis-gabut" element={<QuizGabut />} />
+            <Route path="/admin/quiz-manager" element={<AdminQuizManager />} />
             
           </Routes>
         </Suspense>

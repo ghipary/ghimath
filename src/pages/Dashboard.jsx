@@ -5,8 +5,9 @@ import Navbar from '../components/Navbar';
 import StreakBadge from '../components/StreakBadge';
 import { db } from '../firebase';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { BookOpen, Trophy, Clock, ChevronRight, PlayCircle, Loader, Target, TrendingUp, Sparkles, Zap, BarChart3, Flame, CheckCircle } from 'lucide-react';
+import { BookOpen, Trophy, Clock, ChevronRight, PlayCircle, Loader, Target, TrendingUp, Sparkles, Zap, BarChart3, Flame, CheckCircle, Dices } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import toast from 'react-hot-toast';
 
 const getTodayDate = () => {
   const now = new Date();
@@ -52,15 +53,30 @@ const Dashboard = () => {
           return;
         }
 
-        // ⚡ CEK STATUS KUIS HARIAN (dibungkus try-catch sendiri biar gak ganggu data lain)
+        // ⚡ CEK STATUS KUIS HARIAN
         try {
           const today = getTodayDate();
           const dailyRef = doc(db, 'dailyChallenges', `${user.uid}_${today}`);
           const dailySnap = await getDoc(dailyRef);
-          setDailyStatus(dailySnap.exists() ? dailySnap.data() : null);
+          const status = dailySnap.exists() ? dailySnap.data() : null;
+          setDailyStatus(status);
+
+          // ⚡ NOTIFIKASI JIKA BELUM DIKERJAKAN
+          if (!status || status.completed !== true) {
+            toast('🔥 Kuis Harian belum dikerjakan! Yuk kerjakan sekarang untuk menjaga streak-mu.', {
+              icon: '⏰',
+              duration: 6000,
+              style: {
+                borderRadius: '12px',
+                background: '#1e293b',
+                color: '#fff',
+                border: '1px solid #f59e0b',
+              },
+            });
+          }
         } catch (dailyErr) {
           console.warn('Gagal cek kuis harian:', dailyErr.message);
-          setDailyStatus(null); // treat sebagai "belum dikerjakan"
+          setDailyStatus(null);
         }
 
         const matQuery = query(collection(db, 'materials'), where('published', '==', true));
@@ -168,7 +184,6 @@ const Dashboard = () => {
   };
   const trend = getTrend();
 
-  // ⚡ Status kuis harian
   const dailyDone = dailyStatus?.completed === true;
   const dailyAvailable = dailyStatus !== undefined;
 
@@ -194,17 +209,16 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {/* ⚡ KUIS HARIAN CARD (PROMINENT) */}
+        {/* ⚡ KUIS HARIAN CARD */}
         {dailyAvailable && (
           <Link
             to="/kuis-harian"
-            className={`block relative overflow-hidden rounded-2xl p-5 sm:p-6 mb-6 transition-all group hover:-translate-y-1 shadow-xl hover:shadow-2xl ${
+            className={`block relative overflow-hidden rounded-2xl p-5 sm:p-6 mb-4 transition-all group hover:-translate-y-1 shadow-xl hover:shadow-2xl ${
               dailyDone
                 ? 'bg-gradient-to-br from-teal-500 via-emerald-600 to-teal-700'
                 : 'bg-gradient-to-br from-amber-400 via-orange-500 to-pink-500'
             }`}
           >
-            {/* Background decoration */}
             <div className="absolute top-0 right-0 w-40 h-40 bg-white/15 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700"></div>
             <div className="absolute bottom-0 left-0 w-32 h-32 bg-yellow-300/20 rounded-full blur-2xl"></div>
             
@@ -242,6 +256,36 @@ const Dashboard = () => {
             </div>
           </Link>
         )}
+
+        {/* ⚡ FITUR BARU: KUIS ACAK (GAME GABUT) */}
+        <Link
+          to="/kuis-gabut"
+          className="block relative overflow-hidden rounded-2xl p-5 sm:p-6 mb-6 transition-all group hover:-translate-y-1 shadow-xl hover:shadow-2xl bg-gradient-to-br from-indigo-500 via-purple-600 to-fuchsia-600"
+        >
+          <div className="absolute top-0 right-0 w-40 h-40 bg-white/15 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700"></div>
+          <div className="absolute bottom-0 left-0 w-32 h-32 bg-pink-300/20 rounded-full blur-2xl"></div>
+          
+          <div className="relative z-10 flex items-center justify-between gap-4 text-white">
+            <div className="flex-1 min-w-0">
+              <div className="inline-flex items-center gap-1.5 bg-white/25 backdrop-blur-sm border border-white/30 text-white text-[10px] font-bold px-2.5 py-1 rounded-full mb-2">
+                <Dices className="w-3 h-3" />
+                KUIS ACAK (GAME GABUT)
+              </div>
+              <h3 className="text-lg sm:text-xl font-bold mb-1">
+                Main Kuis Acak Sepuasnya! 🎲
+              </h3>
+              <p className="text-white/90 text-xs sm:text-sm leading-relaxed">
+                Soal diambil acak dari seluruh materi. Bisa dikerjakan berkali-kali, skor tetap masuk rata-rata!
+              </p>
+            </div>
+
+            <div className="flex-shrink-0 text-center">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white/20 backdrop-blur-sm border-2 border-white/40 flex items-center justify-center group-hover:bg-white/30 group-hover:scale-110 transition-all">
+                <PlayCircle className="w-8 h-8 sm:w-10 sm:h-10" />
+              </div>
+            </div>
+          </div>
+        </Link>
 
         {/* 🔥 STREAK BADGE */}
         {streakData.current > 0 && (
