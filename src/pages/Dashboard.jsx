@@ -8,6 +8,7 @@ import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firesto
 import { BookOpen, Trophy, Clock, ChevronRight, PlayCircle, Loader, Target, TrendingUp, Sparkles, Zap, BarChart3, Flame, CheckCircle, Dices } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import toast from 'react-hot-toast';
+import WelcomeBubble from '../components/WelcomeBubble';
 
 const getTodayDate = () => {
   const now = new Date();
@@ -192,6 +193,9 @@ const Dashboard = () => {
       <div className="grid-pattern"></div>
       <Navbar />
 
+      {/* ⚡ Balon Chat Sambutan */}
+      <WelcomeBubble dailyDone={dailyDone} />
+     
       <div className="page-content max-w-5xl mx-auto px-3 sm:px-4 pt-8 sm:pt-12 pb-6">
         
         {/* Header Sapaan */}

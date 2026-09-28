@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import { db } from '../firebase';
 import { collection, getDocs } from 'firebase/firestore';
-import { Trophy, Medal, Crown, Loader, ChevronLeft, Sparkles, School, GraduationCap, Flame, Sprout, Zap, Rocket, Gem, Clock, BookOpen, Target, Layers, Award, BookMarked, TrendingUp, UserPlus, BarChart3 } from 'lucide-react';
+import { Trophy, Medal, Crown, Loader, ChevronLeft, Sparkles, School, GraduationCap, Flame, Sprout, Zap, Rocket, Gem, Clock, Target, BookMarked, TrendingUp, UserPlus, X, Brain, Info, Star, Award } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const MIN_QUIZ = 3;
@@ -37,6 +37,45 @@ const fmtMinutes = (seconds) => {
   return rem > 0 ? `${h}j ${rem}m` : `${h} jam`;
 };
 
+// ⚡ SMART SCORE CONFIG - Pakai Lucide Icons, bukan emoji
+const getSmartScoreConfig = (score) => {
+  if (score >= 85) return { 
+    gradient: 'from-amber-400 via-yellow-500 to-orange-500', 
+    glow: 'shadow-amber-500/50', 
+    label: 'Genius', 
+    Icon: Crown,
+    badgeGradient: 'from-amber-400 to-orange-500'
+  };
+  if (score >= 70) return { 
+    gradient: 'from-teal-400 via-cyan-500 to-teal-600', 
+    glow: 'shadow-teal-500/50', 
+    label: 'Pintar', 
+    Icon: Sparkles,
+    badgeGradient: 'from-teal-400 to-cyan-500'
+  };
+  if (score >= 55) return { 
+    gradient: 'from-blue-400 via-indigo-500 to-blue-600', 
+    glow: 'shadow-blue-500/50', 
+    label: 'Baik', 
+    Icon: Star,
+    badgeGradient: 'from-blue-400 to-indigo-500'
+  };
+  if (score >= 40) return { 
+    gradient: 'from-purple-400 via-fuchsia-500 to-purple-600', 
+    glow: 'shadow-purple-500/50', 
+    label: 'Cukup', 
+    Icon: Award,
+    badgeGradient: 'from-purple-400 to-fuchsia-500'
+  };
+  return { 
+    gradient: 'from-slate-400 via-slate-500 to-slate-600', 
+    glow: 'shadow-slate-500/50', 
+    label: 'Pemula', 
+    Icon: Sprout,
+    badgeGradient: 'from-slate-400 to-slate-500'
+  };
+};
+
 const Avatar = ({ photoURL, name, size = 'md', rank }) => {
   const sizeClasses = {
     sm: 'w-10 h-10 text-sm',
@@ -61,19 +100,9 @@ const Avatar = ({ photoURL, name, size = 'md', rank }) => {
   return (
     <div className="relative flex-shrink-0">
       {hasValidPhoto ? (
-        <img 
-          src={photoURL} 
-          alt={name}
-          className={`${sizeClasses[size]} rounded-full object-cover border-2 border-white dark:border-slate-700 shadow-md`}
-          onError={(e) => {
-            e.target.style.display = 'none';
-            e.target.nextSibling.style.display = 'flex';
-          }}
-        />
+        <img src={photoURL} alt={name} className={`${sizeClasses[size]} rounded-full object-cover border-2 border-white dark:border-slate-700 shadow-md`} />
       ) : null}
-      <div 
-        className={`${sizeClasses[size]} bg-gradient-to-br from-teal-400 via-teal-600 to-cyan-600 rounded-full flex items-center justify-center shadow-md border-2 border-white dark:border-slate-700 ${hasValidPhoto ? 'hidden' : 'flex'}`}
-      >
+      <div className={`${sizeClasses[size]} bg-gradient-to-br from-teal-400 via-teal-600 to-cyan-600 rounded-full flex items-center justify-center shadow-md border-2 border-white dark:border-slate-700 ${hasValidPhoto ? 'hidden' : 'flex'}`}>
         <span className="font-bold text-white">{name?.[0]?.toUpperCase() || 'S'}</span>
       </div>
       {rankBadge}
@@ -81,14 +110,57 @@ const Avatar = ({ photoURL, name, size = 'md', rank }) => {
   );
 };
 
+// ⚡ KOMPONEN: Kotak Ikon Premium untuk Podium
+const RankIconBox = ({ rank }) => {
+  if (rank === 1) {
+    return (
+      <div className="w-12 h-12 bg-gradient-to-br from-amber-400 via-yellow-500 to-orange-500 rounded-2xl flex items-center justify-center shadow-xl shadow-amber-500/50 border-2 border-white/30 relative">
+        <Trophy className="w-6 h-6 text-white drop-shadow-lg" />
+        <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-br from-yellow-300 to-amber-500 rounded-full flex items-center justify-center shadow-md border border-white/50">
+          <Crown className="w-2.5 h-2.5 text-white" />
+        </div>
+      </div>
+    );
+  }
+  if (rank === 2) {
+    return (
+      <div className="w-11 h-11 bg-gradient-to-br from-slate-300 via-slate-400 to-slate-500 rounded-2xl flex items-center justify-center shadow-lg shadow-slate-400/50 border-2 border-white/30">
+        <Medal className="w-5 h-5 text-white drop-shadow-md" />
+      </div>
+    );
+  }
+  if (rank === 3) {
+    return (
+      <div className="w-11 h-11 bg-gradient-to-br from-orange-400 via-amber-600 to-orange-700 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/50 border-2 border-white/30">
+        <Award className="w-5 h-5 text-white drop-shadow-md" />
+      </div>
+    );
+  }
+  return null;
+};
+
+// ⚡ KOMPONEN: Ikon Smart Score Premium (kotak gradient)
+const SmartScoreIcon = ({ score, size = 'sm' }) => {
+  const config = getSmartScoreConfig(score);
+  const IconComponent = config.Icon;
+  const sizeClasses = size === 'sm' ? 'w-4 h-4' : size === 'md' ? 'w-5 h-5' : 'w-6 h-6';
+  
+  return (
+    <div className={`bg-gradient-to-br ${config.badgeGradient} rounded-lg p-1 shadow-md flex items-center justify-center`}>
+      <IconComponent className={`${sizeClasses} text-white drop-shadow-sm`} />
+    </div>
+  );
+};
+
 const Leaderboard = () => {
   const { user } = useAuth();
-  
   const [allUsers, setAllUsers] = useState({});
   const [allResults, setAllResults] = useState([]);
   const [allProgress, setAllProgress] = useState([]);
   const [allExams, setAllExams] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [showInfo, setShowInfo] = useState(false);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -115,7 +187,6 @@ const Leaderboard = () => {
     if (user) fetchAll();
   }, [user]);
 
-  // ⚡ HITUNG LEADERBOARD UMUM (GABUNGAN SEMUA STATISTIK)
   const leaderboard = useMemo(() => {
     const userResults = {};
     allResults.forEach((r) => {
@@ -151,25 +222,22 @@ const Leaderboard = () => {
       const exams = userExams[uid] || [];
       const avgExam = exams.length > 0 ? Math.round(exams.reduce((s, e) => s + (e.score || 0), 0) / exams.length) : 0;
 
-      // Fastest Avg (rata-rata waktu tercepat dari semua kuis, exclude ujian)
       const validTimes = results.filter(r => r.bestTime && r.bestTime > 0);
       const fastestAvg = validTimes.length > 0 ? validTimes.reduce((s, r) => s + r.bestTime, 0) / validTimes.length : 0;
 
-      // Highest Avg (rata-rata nilai tertinggi)
       const highestAvg = count > 0 ? Math.round(results.reduce((s, r) => s + (r.score || 0), 0) / count) : 0;
 
       list.push({
         uid,
         name: userInfo.name || 'Siswa',
+        email: userInfo.email || '',
         level: userInfo.level || '-',
         grade: userInfo.grade || null,
         school: userInfo.school || '',
         photoURL: userInfo.photoURL || '',
         currentStreak: userInfo.currentStreak || 0,
-        longestStreak: userInfo.longestStreak || 0,
         avgScore,
         quizCount: count,
-        totalScore,
         avgExam,
         fastestAvg,
         highestAvg,
@@ -180,17 +248,56 @@ const Leaderboard = () => {
       });
     });
 
+    const qualifiedUsers = list.filter(u => u.qualified && !u.isAdmin);
+    
+    const maxMaterials = Math.max(...qualifiedUsers.map(u => u.completedMaterials), 1);
+    const maxQuizCount = Math.max(...qualifiedUsers.map(u => u.quizCount), 1);
+    const maxStreak = Math.max(...qualifiedUsers.map(u => u.currentStreak), 1);
+    const maxReading = Math.max(...qualifiedUsers.map(u => u.readingSeconds), 1);
+    
+    const validFastestArr = qualifiedUsers.filter(u => u.fastestAvg > 0).map(u => u.fastestAvg);
+    const minFastest = validFastestArr.length > 0 ? Math.min(...validFastestArr) : 1;
+    const maxFastest = validFastestArr.length > 0 ? Math.max(...validFastestArr) : 1;
+
+    list.forEach(item => {
+      if (!item.qualified || item.isAdmin) {
+        item.smartScore = 0;
+        return;
+      }
+      
+      const normMaterials = (item.completedMaterials / maxMaterials) * 100;
+      const normQuizCount = (item.quizCount / maxQuizCount) * 100;
+      const normStreak = (item.currentStreak / maxStreak) * 100;
+      const normReading = (item.readingSeconds / maxReading) * 100;
+      
+      let normFastest = 0;
+      if (item.fastestAvg > 0 && maxFastest !== minFastest) {
+        normFastest = ((maxFastest - item.fastestAvg) / (maxFastest - minFastest)) * 100;
+      } else if (item.fastestAvg > 0) {
+        normFastest = 100;
+      }
+      
+      const smartScore = 
+        (item.avgScore * 0.35) +
+        (item.avgExam * 0.20) +
+        (normMaterials * 0.15) +
+        (normQuizCount * 0.10) +
+        (normStreak * 0.10) +
+        (normFastest * 0.05) +
+        (normReading * 0.05);
+      
+      item.smartScore = Math.round(smartScore);
+    });
+
     list.sort((a, b) => {
       if (a.isAdmin !== b.isAdmin) return a.isAdmin ? 1 : -1;
       if (a.qualified !== b.qualified) return b.qualified - a.qualified;
-      if (b.avgScore !== a.avgScore) return b.avgScore - a.avgScore;
-      return b.quizCount - a.quizCount;
+      if (b.smartScore !== a.smartScore) return b.smartScore - a.smartScore;
+      return b.avgScore - a.avgScore;
     });
 
     return list.map((item, idx) => ({ ...item, rank: idx + 1 }));
   }, [allResults, allProgress, allUsers, allExams]);
-
-  const myRank = useMemo(() => leaderboard.find((i) => i.uid === user.uid), [leaderboard, user]);
 
   if (loading) {
     return (
@@ -218,133 +325,111 @@ const Leaderboard = () => {
           <div className="w-14 h-14 bg-gradient-to-br from-amber-400 via-orange-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-xl shadow-orange-500/30">
             <Trophy className="w-7 h-7 text-white" />
           </div>
-          <div>
+          <div className="flex-1">
             <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-amber-600 via-orange-500 to-pink-500 dark:from-amber-400 dark:via-orange-400 dark:to-pink-400 bg-clip-text text-transparent">
               Leaderboard
             </h1>
             <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base">
-              Peringkat semua siswa berdasarkan rata-rata nilai (min. {MIN_QUIZ} kuis)
+              Peringkat siswa berdasarkan <strong className="text-amber-600 dark:text-amber-400">Smart Score</strong> (gabungan semua aspek).
             </p>
           </div>
+          <button 
+            onClick={() => setShowInfo(!showInfo)}
+            className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-500/20 border border-amber-300 dark:border-amber-500/30 flex items-center justify-center hover:bg-amber-200 dark:hover:bg-amber-500/30 transition-all flex-shrink-0"
+          >
+            <Info className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+          </button>
         </div>
-      </div>
 
-      <div className="page-content max-w-4xl mx-auto px-4 py-4 space-y-6 sm:space-y-8">
-        {/* Kartu Peringkat Kamu */}
-        {myRank && (
-          <div className="relative overflow-hidden rounded-2xl p-5 sm:p-6 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:via-indigo-950 dark:to-slate-900 text-slate-800 dark:text-white shadow-xl border border-slate-300 dark:border-slate-700/50 transition-colors">
-            <div className="absolute top-0 right-0 w-48 h-48 bg-white/40 dark:bg-white/5 rounded-full blur-3xl"></div>
-            <div className="absolute bottom-0 left-0 w-32 h-32 bg-indigo-300/30 dark:bg-indigo-500/10 rounded-full blur-2xl"></div>
-            <div className="relative z-10 flex items-center gap-4 flex-wrap">
-              <Avatar photoURL={myRank.photoURL} name={myRank.name} size="lg" />
-
-              <div className="flex-1 min-w-0">
-                <p className="text-slate-500 dark:text-slate-300 text-sm mb-1 flex items-center gap-1.5 font-medium">
-                  <Sparkles className="w-4 h-4 text-amber-500 dark:text-amber-400" /> Peringkat Kamu
+        {showInfo && (
+          <div className="mt-4 card-elevated rounded-2xl p-5 border-2 border-amber-200 dark:border-amber-800/50">
+            <div className="flex items-start gap-3">
+              <Brain className="w-6 h-6 text-amber-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                  Cara Menghitung Smart Score
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                  Smart Score menggabungkan semua aspek performa belajarmu menjadi satu nilai (0-100).
                 </p>
-                <h2 className="text-3xl sm:text-4xl font-bold mb-1">#{myRank.rank}</h2>
-                <div className="flex items-center gap-3 flex-wrap">
-                  <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm">
-                    Rata-rata Kuis: <span className="font-bold text-slate-900 dark:text-white">{myRank.avgScore}</span> • Ujian: <span className="font-bold text-slate-900 dark:text-white">{myRank.avgExam}</span>
-                  </p>
-                  <StreakChip streak={myRank.currentStreak} />
-                  {myRank.isAdmin && (
-                    <span className="text-[10px] font-bold bg-amber-100 dark:bg-amber-400/20 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-400/30 px-2 py-0.5 rounded-full">
-                      ⚙️ Admin
-                    </span>
-                  )}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                  <div className="bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-lg border border-amber-200 dark:border-amber-800/50">
+                    <span className="font-bold text-amber-700 dark:text-amber-400">35%</span> <span className="text-gray-600 dark:text-gray-400">Nilai Kuis</span>
+                  </div>
+                  <div className="bg-fuchsia-50 dark:bg-fuchsia-900/20 px-3 py-2 rounded-lg border border-fuchsia-200 dark:border-fuchsia-800/50">
+                    <span className="font-bold text-fuchsia-700 dark:text-fuchsia-400">20%</span> <span className="text-gray-600 dark:text-gray-400">Nilai Ujian</span>
+                  </div>
+                  <div className="bg-emerald-50 dark:bg-emerald-900/20 px-3 py-2 rounded-lg border border-emerald-200 dark:border-emerald-800/50">
+                    <span className="font-bold text-emerald-700 dark:text-emerald-400">15%</span> <span className="text-gray-600 dark:text-gray-400">Materi Selesai</span>
+                  </div>
+                  <div className="bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800/50">
+                    <span className="font-bold text-blue-700 dark:text-blue-400">10%</span> <span className="text-gray-600 dark:text-gray-400">Jumlah Kuis</span>
+                  </div>
+                  <div className="bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg border border-red-200 dark:border-red-800/50">
+                    <span className="font-bold text-red-700 dark:text-red-400">10%</span> <span className="text-gray-600 dark:text-gray-400">Day Streak</span>
+                  </div>
+                  <div className="bg-rose-50 dark:bg-rose-900/20 px-3 py-2 rounded-lg border border-rose-200 dark:border-rose-800/50">
+                    <span className="font-bold text-rose-700 dark:text-rose-400">5%</span> <span className="text-gray-600 dark:text-gray-400">Kecepatan</span>
+                  </div>
+                  <div className="bg-cyan-50 dark:bg-cyan-900/20 px-3 py-2 rounded-lg border border-cyan-200 dark:border-cyan-800/50">
+                    <span className="font-bold text-cyan-700 dark:text-cyan-400">5%</span> <span className="text-gray-600 dark:text-gray-400">Waktu Baca</span>
+                  </div>
                 </div>
-                {!myRank.qualified && !myRank.isAdmin && (
-                  <p className="text-[11px] text-amber-700 dark:text-amber-200 mt-1 font-semibold bg-amber-100 dark:bg-amber-500/20 border border-amber-300 dark:border-amber-500/30 px-2 py-0.5 rounded-full inline-block">
-                    Kerjakan {MIN_QUIZ - myRank.quizCount} kuis lagi untuk masuk ranking
-                  </p>
-                )}
-              </div>
-              <div className="text-right">
-                <div className="text-5xl sm:text-6xl font-extrabold drop-shadow-sm text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-600 dark:from-amber-200 dark:to-orange-400">{myRank.avgScore}</div>
-                <p className="text-slate-500 dark:text-slate-300 text-xs font-medium">rata-rata</p>
-              </div>
-            </div>
-            
-            {/* ⚡ KOTAK STATISTIK BERWARNA (LIGHT & DARK MODE) */}
-            <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-slate-300 dark:border-slate-700/50">
-              <div className="text-center bg-fuchsia-100 dark:bg-gradient-to-br dark:from-fuchsia-500 dark:to-purple-600 rounded-xl p-3 shadow-sm dark:shadow-lg dark:shadow-fuchsia-500/30 border border-fuchsia-300 dark:border-fuchsia-400/30 hover:-translate-y-1 transition-transform">
-                <Target className="w-5 h-5 text-fuchsia-600 dark:text-white mx-auto mb-1.5 drop-shadow-sm" />
-                <p className="text-sm font-bold text-fuchsia-800 dark:text-white drop-shadow-sm">{myRank.avgExam}</p>
-                <p className="text-[10px] text-fuchsia-600 dark:text-white/90 font-medium">Rata-rata Ujian</p>
-              </div>
-              <div className="text-center bg-blue-100 dark:bg-gradient-to-br dark:from-blue-500 dark:to-cyan-500 rounded-xl p-3 shadow-sm dark:shadow-lg dark:shadow-blue-500/30 border border-blue-300 dark:border-blue-400/30 hover:-translate-y-1 transition-transform">
-                <Clock className="w-5 h-5 text-blue-600 dark:text-white mx-auto mb-1.5 drop-shadow-sm" />
-                <p className="text-sm font-bold text-blue-800 dark:text-white drop-shadow-sm">{fmtMinutes(myRank.readingSeconds)}</p>
-                <p className="text-[10px] text-blue-600 dark:text-white/90 font-medium">Waktu Baca</p>
-              </div>
-              <div className="text-center bg-emerald-100 dark:bg-gradient-to-br dark:from-emerald-400 dark:to-teal-500 rounded-xl p-3 shadow-sm dark:shadow-lg dark:shadow-emerald-500/30 border border-emerald-300 dark:border-emerald-400/30 hover:-translate-y-1 transition-transform">
-                <BookMarked className="w-5 h-5 text-emerald-600 dark:text-white mx-auto mb-1.5 drop-shadow-sm" />
-                <p className="text-sm font-bold text-emerald-800 dark:text-white drop-shadow-sm">{myRank.completedMaterials} materi</p>
-                <p className="text-[10px] text-emerald-600 dark:text-white/90 font-medium">Selesai</p>
-              </div>
-              <div className="text-center bg-amber-100 dark:bg-gradient-to-br dark:from-amber-400 dark:to-orange-500 rounded-xl p-3 shadow-sm dark:shadow-lg dark:shadow-amber-500/30 border border-amber-300 dark:border-amber-400/30 hover:-translate-y-1 transition-transform">
-                <Trophy className="w-5 h-5 text-amber-600 dark:text-white mx-auto mb-1.5 drop-shadow-sm" />
-                <p className="text-sm font-bold text-amber-800 dark:text-white drop-shadow-sm">{myRank.quizCount} kuis</p>
-                <p className="text-[10px] text-amber-600 dark:text-white/90 font-medium">Dikerjakan</p>
-              </div>
-              <div className="text-center bg-rose-100 dark:bg-gradient-to-br dark:from-rose-500 dark:to-red-600 rounded-xl p-3 shadow-sm dark:shadow-lg dark:shadow-rose-500/30 border border-rose-300 dark:border-rose-400/30 hover:-translate-y-1 transition-transform">
-                <Zap className="w-5 h-5 text-rose-600 dark:text-white mx-auto mb-1.5 drop-shadow-sm" />
-                <p className="text-sm font-bold text-rose-800 dark:text-white drop-shadow-sm">{fmtMinutes(myRank.fastestAvg)}</p>
-                <p className="text-[10px] text-rose-600 dark:text-white/90 font-medium">Tercepat (Avg)</p>
-              </div>
-              <div className="text-center bg-violet-100 dark:bg-gradient-to-br dark:from-violet-500 dark:to-indigo-600 rounded-xl p-3 shadow-sm dark:shadow-lg dark:shadow-violet-500/30 border border-violet-300 dark:border-violet-400/30 hover:-translate-y-1 transition-transform">
-                <TrendingUp className="w-5 h-5 text-violet-600 dark:text-white mx-auto mb-1.5 drop-shadow-sm" />
-                <p className="text-sm font-bold text-violet-800 dark:text-white drop-shadow-sm">{myRank.highestAvg}</p>
-                <p className="text-[10px] text-violet-600 dark:text-white/90 font-medium">Nilai Tertinggi</p>
-              </div>
-              <div className="text-center bg-cyan-100 dark:bg-gradient-to-br dark:from-cyan-400 dark:to-sky-500 rounded-xl p-3 shadow-sm dark:shadow-lg dark:shadow-cyan-500/30 border border-cyan-300 dark:border-cyan-400/30 col-span-2 hover:-translate-y-1 transition-transform">
-                <BarChart3 className="w-5 h-5 text-cyan-600 dark:text-white mx-auto mb-1.5 drop-shadow-sm" />
-                <p className="text-sm font-bold text-cyan-800 dark:text-white drop-shadow-sm">{myRank.quizCount} Kuis & {myRank.completedMaterials} Materi</p>
-                <p className="text-[10px] text-cyan-600 dark:text-white/90 font-medium">Progres Terbanyak</p>
               </div>
             </div>
           </div>
         )}
+      </div>
 
-        {/* Podium Top 3 */}
+      <div className="page-content max-w-4xl mx-auto px-4 py-4 space-y-6 sm:space-y-8">
+        {/* Podium Top 3 - dengan Icon Box Premium */}
         {hasPodium && (
           <div className="grid grid-cols-3 gap-3 md:gap-4 items-end">
+            {/* Rank 2 */}
             <div className="flex flex-col items-center pt-8">
-              <div className="relative mb-2">
+              <div className="relative mb-3">
                 <Avatar photoURL={top2.photoURL} name={top2.name} size="lg" />
               </div>
-              <Medal className="w-5 h-5 text-slate-400 mb-1" />
-              <p className="text-xs md:text-sm font-bold text-gray-900 dark:text-white text-center truncate w-full">{top2.name}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold">{top2.avgScore} ⭐</p>
+              <RankIconBox rank={2} />
+              <p className="text-xs md:text-sm font-bold text-gray-900 dark:text-white text-center truncate w-full mt-2">{top2.name}</p>
+              <div className={`inline-flex items-center gap-1 bg-gradient-to-r ${getSmartScoreConfig(top2.smartScore).gradient} text-white px-2.5 py-1 rounded-lg text-xs font-bold shadow-md mt-1`}>
+                <Brain className="w-3 h-3" /> {top2.smartScore}
+              </div>
               <div className="mt-1"><StreakChip streak={top2.currentStreak} /></div>
             </div>
 
+            {/* Rank 1 */}
             <div className="flex flex-col items-center">
-              <Crown className="w-8 h-8 text-amber-500 mb-1 animate-bounce" />
-              <div className="relative mb-2">
-                <Avatar photoURL={top1.photoURL} name={top1.name} size="xl" rank={1} />
+              <div className="relative mb-3">
+                <Avatar photoURL={top1.photoURL} name={top1.name} size="xl" />
               </div>
-              <p className="text-sm md:text-base font-bold text-gray-900 dark:text-white text-center truncate w-full">{top1.name}</p>
-              <p className="text-xs md:text-sm font-bold bg-gradient-to-r from-amber-600 to-orange-600 dark:from-amber-400 dark:to-orange-400 bg-clip-text text-transparent">
-                {top1.avgScore} ⭐
-              </p>
+              <RankIconBox rank={1} />
+              <p className="text-sm md:text-base font-bold text-gray-900 dark:text-white text-center truncate w-full mt-2">{top1.name}</p>
+              <div className={`inline-flex items-center gap-1 bg-gradient-to-r ${getSmartScoreConfig(top1.smartScore).gradient} text-white px-3 py-1.5 rounded-xl text-sm font-bold shadow-lg mt-1`}>
+                <Brain className="w-4 h-4" /> {top1.smartScore}
+              </div>
+              <div className={`inline-flex items-center gap-1 bg-gradient-to-r ${getSmartScoreConfig(top1.smartScore).badgeGradient} text-white px-2.5 py-0.5 rounded-full text-[10px] font-bold shadow-sm mt-1.5`}>
+                <SmartScoreIcon score={top1.smartScore} size="sm" />
+                <span>{getSmartScoreConfig(top1.smartScore).label}</span>
+              </div>
               <div className="mt-1"><StreakChip streak={top1.currentStreak} /></div>
             </div>
 
+            {/* Rank 3 */}
             <div className="flex flex-col items-center pt-8">
-              <div className="relative mb-2">
+              <div className="relative mb-3">
                 <Avatar photoURL={top3.photoURL} name={top3.name} size="lg" />
               </div>
-              <Medal className="w-5 h-5 text-orange-400 mb-1" />
-              <p className="text-xs md:text-sm font-bold text-gray-900 dark:text-white text-center truncate w-full">{top3.name}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold">{top3.avgScore} ⭐</p>
+              <RankIconBox rank={3} />
+              <p className="text-xs md:text-sm font-bold text-gray-900 dark:text-white text-center truncate w-full mt-2">{top3.name}</p>
+              <div className={`inline-flex items-center gap-1 bg-gradient-to-r ${getSmartScoreConfig(top3.smartScore).gradient} text-white px-2.5 py-1 rounded-lg text-xs font-bold shadow-md mt-1`}>
+                <Brain className="w-3 h-3" /> {top3.smartScore}
+              </div>
               <div className="mt-1"><StreakChip streak={top3.currentStreak} /></div>
             </div>
           </div>
         )}
 
-        {/* Daftar Lengkap */}
         <div className="card-elevated rounded-2xl overflow-hidden">
           <div className="px-5 sm:px-6 py-4 border-b border-gray-100 dark:border-slate-700/50 bg-gradient-to-r from-gray-50/50 to-amber-50/30 dark:from-slate-800/50 dark:to-slate-800/30">
             <div className="flex items-center justify-between flex-wrap gap-2">
@@ -353,7 +438,7 @@ const Leaderboard = () => {
                 Peringkat Lengkap
               </h3>
               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                <UserPlus className="w-3.5 h-3.5" /> {leaderboard.length} siswa
+                <UserPlus className="w-3.5 h-3.5" /> {leaderboard.length} siswa • Klik untuk detail
               </span>
             </div>
           </div>
@@ -369,14 +454,16 @@ const Leaderboard = () => {
               {leaderboard.map((item) => {
                 const isMe = item.uid === user.uid;
                 const isEmpty = item.quizCount === 0;
+                const smartConfig = getSmartScoreConfig(item.smartScore);
                 return (
-                  <div
+                  <button
                     key={item.uid}
-                    className={`flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 sm:px-6 py-3.5 sm:py-4 transition-colors ${
+                    onClick={() => setSelectedUser(item)}
+                    className={`w-full text-left flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 sm:px-6 py-3.5 sm:py-4 transition-colors cursor-pointer ${
                       isMe
                         ? 'bg-gradient-to-r from-teal-50 via-cyan-50 to-transparent dark:from-teal-900/20 dark:via-cyan-900/10 dark:to-transparent border-l-4 border-teal-500'
                         : !item.qualified && !item.isAdmin
-                          ? 'opacity-60'
+                          ? 'opacity-60 hover:opacity-100'
                           : 'hover:bg-gray-50 dark:hover:bg-slate-800/30'
                     }`}
                   >
@@ -392,9 +479,7 @@ const Leaderboard = () => {
                           </p>
                           <StreakChip streak={item.currentStreak} />
                           {isEmpty && !item.isAdmin && (
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
-                              Belum mulai
-                            </span>
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400">Belum mulai</span>
                           )}
                           {!isEmpty && !item.qualified && !item.isAdmin && (
                             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400">
@@ -414,7 +499,7 @@ const Leaderboard = () => {
                               <span className="text-gray-300 dark:text-slate-600">•</span>
                               <span className="flex items-center gap-1 truncate">
                                 <School className="w-3 h-3" />
-                                <span className="truncate max-w-[120px] sm:max-w-none" title={item.school}>{item.school}</span>
+                                <span className="truncate max-w-[120px] sm:max-w-none">{item.school}</span>
                               </span>
                             </>
                           )}
@@ -423,45 +508,149 @@ const Leaderboard = () => {
                     </div>
 
                     <div className="flex-1 w-full sm:w-auto mt-2 sm:mt-0">
-                      {/* ⚡ BADGE STATISTIK BERWARNA UNTUK SEMUA USER (LIGHT & DARK) */}
                       <div className="flex flex-wrap gap-1.5">
-                        <span className="inline-flex items-center gap-1 bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-500/20 dark:text-fuchsia-300 border border-fuchsia-200 dark:border-fuchsia-500/30 px-2 py-1 rounded-md text-[10px] font-bold shadow-sm">
-                          <Target className="w-3 h-3" /> {item.avgExam} Ujian
+                        <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30 px-2 py-1 rounded-md text-[10px] font-bold">
+                          <Trophy className="w-3 h-3" /> Kuis: {item.avgScore}
                         </span>
-                        <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300 border border-blue-200 dark:border-blue-500/30 px-2 py-1 rounded-md text-[10px] font-bold shadow-sm">
+                        <span className="inline-flex items-center gap-1 bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-500/20 dark:text-fuchsia-300 border border-fuchsia-200 dark:border-fuchsia-500/30 px-2 py-1 rounded-md text-[10px] font-bold">
+                          <Target className="w-3 h-3" /> Ujian: {item.avgExam}
+                        </span>
+                        <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300 border border-blue-200 dark:border-blue-500/30 px-2 py-1 rounded-md text-[10px] font-bold">
                           <Clock className="w-3 h-3" /> {fmtMinutes(item.readingSeconds)}
                         </span>
-                        <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 px-2 py-1 rounded-md text-[10px] font-bold shadow-sm">
+                        <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 px-2 py-1 rounded-md text-[10px] font-bold">
                           <BookMarked className="w-3 h-3" /> {item.completedMaterials} Materi
                         </span>
-                        <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30 px-2 py-1 rounded-md text-[10px] font-bold shadow-sm">
-                          <Trophy className="w-3 h-3" /> {item.quizCount} Kuis
-                        </span>
-                        <span className="inline-flex items-center gap-1 bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300 border border-rose-200 dark:border-rose-500/30 px-2 py-1 rounded-md text-[10px] font-bold shadow-sm">
-                          <Zap className="w-3 h-3" /> {fmtMinutes(item.fastestAvg)} (Avg)
-                        </span>
-                        <span className="inline-flex items-center gap-1 bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300 border border-violet-200 dark:border-violet-500/30 px-2 py-1 rounded-md text-[10px] font-bold shadow-sm">
-                          <TrendingUp className="w-3 h-3" /> {item.highestAvg} (Max)
+                        <span className="inline-flex items-center gap-1 bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300 border border-rose-200 dark:border-rose-500/30 px-2 py-1 rounded-md text-[10px] font-bold">
+                          <Zap className="w-3 h-3" /> {fmtMinutes(item.fastestAvg)}
                         </span>
                       </div>
                     </div>
 
                     <div className="text-right flex-shrink-0 w-full sm:w-auto mt-2 sm:mt-0 flex sm:flex-col justify-between items-center sm:items-end border-t sm:border-t-0 pt-2 sm:pt-0 border-gray-100 dark:border-slate-700">
-                      <p className={`font-bold text-lg ${isMe ? 'text-teal-600 dark:text-teal-400' : isEmpty ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-white'}`}>
-                        {item.avgScore}
-                      </p>
-                      <p className="text-[10px] text-gray-400">rata-rata kuis</p>
-                      <p className="text-[10px] text-teal-600 dark:text-teal-400 font-semibold">
-                        {item.avgExam} ujian
-                      </p>
+                      <div className={`inline-flex items-center gap-1.5 bg-gradient-to-r ${smartConfig.gradient} text-white pl-1.5 pr-3 py-1.5 rounded-xl font-bold shadow-md`}>
+                        <div className="bg-white/25 rounded-lg p-1 flex items-center justify-center backdrop-blur-sm">
+                          <smartConfig.Icon className="w-3.5 h-3.5 text-white" />
+                        </div>
+                        <span className="text-lg">{item.smartScore}</span>
+                      </div>
+                      <p className="text-[10px] text-gray-400 mt-1">Smart Score</p>
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
           )}
         </div>
       </div>
+
+      {/* MODAL PROFIL */}
+      {selectedUser && (
+        <div 
+          className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4"
+          onClick={() => setSelectedUser(null)}
+        >
+          <div 
+            className="relative w-full max-w-xs overflow-hidden shadow-2xl rounded-3xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={`absolute -inset-1 bg-gradient-to-br ${getSmartScoreConfig(selectedUser.smartScore).gradient} rounded-3xl blur-md opacity-60`}></div>
+            
+            <div className="relative bg-white dark:bg-slate-900 rounded-3xl overflow-hidden">
+              <div className={`relative bg-gradient-to-br ${getSmartScoreConfig(selectedUser.smartScore).gradient} px-4 pt-5 pb-12 text-center`}>
+                <button 
+                  onClick={() => setSelectedUser(null)}
+                  className="absolute top-3 right-3 p-1.5 bg-white/20 hover:bg-white/40 rounded-full text-white transition-colors z-10"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                <div className="text-white">
+                  <p className="text-[10px] font-bold uppercase tracking-wider opacity-90 mb-0.5">
+                    Peringkat #{selectedUser.rank}
+                  </p>
+                  <div className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm px-2.5 py-1 rounded-full border border-white/30">
+                    <SmartScoreIcon score={selectedUser.smartScore} size="sm" />
+                    <span className="text-xs font-bold">{getSmartScoreConfig(selectedUser.smartScore).label}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="relative -mt-10 flex justify-center">
+                <div className="p-1 bg-white dark:bg-slate-900 rounded-full shadow-lg">
+                  <Avatar photoURL={selectedUser.photoURL} name={selectedUser.name} size="lg" />
+                </div>
+              </div>
+
+              <div className="px-4 pt-2 text-center">
+                <h2 className="text-base font-bold text-gray-900 dark:text-white truncate">{selectedUser.name}</h2>
+                <div className="flex items-center justify-center gap-1.5 mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">
+                  <GraduationCap className="w-3 h-3" />
+                  {selectedUser.level}{selectedUser.grade ? ` • Kelas ${selectedUser.grade}` : ''}
+                </div>
+                {selectedUser.school && (
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 truncate">{selectedUser.school}</p>
+                )}
+                {selectedUser.currentStreak > 0 && (
+                  <div className="flex justify-center mt-2">
+                    <StreakChip streak={selectedUser.currentStreak} />
+                  </div>
+                )}
+              </div>
+
+              <div className="px-4 pt-3">
+                <div className={`relative text-center bg-gradient-to-br ${getSmartScoreConfig(selectedUser.smartScore).gradient} rounded-2xl py-3 shadow-lg ${getSmartScoreConfig(selectedUser.smartScore).glow}`}>
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="bg-white/25 rounded-lg p-1.5 backdrop-blur-sm">
+                      <Brain className="w-4 h-4 text-white" />
+                    </div>
+                    <span className="text-2xl font-extrabold text-white leading-none">{selectedUser.smartScore}</span>
+                  </div>
+                  <p className="text-[9px] text-white/90 font-bold uppercase tracking-wider mt-1.5">Smart Score</p>
+                </div>
+              </div>
+
+              <div className="p-4 grid grid-cols-3 gap-2">
+                <div className="text-center bg-amber-50 dark:bg-amber-500/10 rounded-xl py-2.5 px-1 border border-amber-200 dark:border-amber-500/30">
+                  <Trophy className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 mx-auto mb-1" />
+                  <p className="text-sm font-bold text-amber-700 dark:text-amber-300">{selectedUser.avgScore}</p>
+                  <p className="text-[8px] text-amber-600/80 dark:text-amber-400/80 font-semibold leading-tight">Rata Kuis</p>
+                </div>
+                <div className="text-center bg-fuchsia-50 dark:bg-fuchsia-500/10 rounded-xl py-2.5 px-1 border border-fuchsia-200 dark:border-fuchsia-500/30">
+                  <Target className="w-3.5 h-3.5 text-fuchsia-600 dark:text-fuchsia-400 mx-auto mb-1" />
+                  <p className="text-sm font-bold text-fuchsia-700 dark:text-fuchsia-300">{selectedUser.avgExam}</p>
+                  <p className="text-[8px] text-fuchsia-600/80 dark:text-fuchsia-400/80 font-semibold leading-tight">Rata Ujian</p>
+                </div>
+                <div className="text-center bg-rose-50 dark:bg-rose-500/10 rounded-xl py-2.5 px-1 border border-rose-200 dark:border-rose-500/30">
+                  <Zap className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 mx-auto mb-1" />
+                  <p className="text-sm font-bold text-rose-700 dark:text-rose-300">{fmtMinutes(selectedUser.fastestAvg).split(' ')[0]}</p>
+                  <p className="text-[8px] text-rose-600/80 dark:text-rose-400/80 font-semibold leading-tight">Tercepat</p>
+                </div>
+                <div className="text-center bg-blue-50 dark:bg-blue-500/10 rounded-xl py-2.5 px-1 border border-blue-200 dark:border-blue-500/30">
+                  <Clock className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 mx-auto mb-1" />
+                  <p className="text-sm font-bold text-blue-700 dark:text-blue-300">{fmtMinutes(selectedUser.readingSeconds).split(' ')[0]}</p>
+                  <p className="text-[8px] text-blue-600/80 dark:text-blue-400/80 font-semibold leading-tight">Waktu Baca</p>
+                </div>
+                <div className="text-center bg-emerald-50 dark:bg-emerald-500/10 rounded-xl py-2.5 px-1 border border-emerald-200 dark:border-emerald-500/30">
+                  <BookMarked className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 mx-auto mb-1" />
+                  <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300">{selectedUser.completedMaterials}</p>
+                  <p className="text-[8px] text-emerald-600/80 dark:text-emerald-400/80 font-semibold leading-tight">Materi</p>
+                </div>
+                <div className="text-center bg-violet-50 dark:bg-violet-500/10 rounded-xl py-2.5 px-1 border border-violet-200 dark:border-violet-500/30">
+                  <TrendingUp className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 mx-auto mb-1" />
+                  <p className="text-sm font-bold text-violet-700 dark:text-violet-300">{selectedUser.highestAvg}</p>
+                  <p className="text-[8px] text-violet-600/80 dark:text-violet-400/80 font-semibold leading-tight">Tertinggi</p>
+                </div>
+              </div>
+
+              <div className="pb-4 text-center">
+                <p className="text-[9px] text-gray-400 dark:text-gray-500">
+                  Total <span className="font-bold text-gray-600 dark:text-gray-300">{selectedUser.quizCount}</span> kuis dikerjakan
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
