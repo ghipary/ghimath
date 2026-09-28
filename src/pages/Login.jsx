@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Calculator, Mail, Lock, AlertCircle, Globe, Sparkles, Eye, EyeOff } from 'lucide-react';
+import Logo from '../components/Logo';
+import { Mail, Lock, AlertCircle, Globe, Sparkles, Eye, EyeOff } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -54,18 +55,20 @@ const Login = () => {
           <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-teal-400/10 to-cyan-500/5 rounded-full blur-2xl"></div>
           
           <div className="relative">
-            {/* Logo */}
+            {/* ⚡ LOGO GHIMATH */}
             <div className="text-center mb-8">
-              <div className="inline-flex w-16 h-16 bg-gradient-to-br from-teal-400 via-teal-600 to-cyan-600 rounded-2xl items-center justify-center shadow-lg shadow-teal-500/30 mb-4">
-                <Calculator className="w-8 h-8 text-white" />
+              <div className="flex items-center justify-center gap-3 mb-3">
+                <Logo size={56} />
+                <span className="text-2xl font-bold bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 dark:from-teal-400 dark:via-cyan-400 dark:to-blue-400 bg-clip-text text-transparent">
+                  GhiMath
+                </span>
               </div>
-              <h2 className="text-3xl font-bold bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 dark:from-teal-400 dark:via-cyan-400 dark:to-blue-400 bg-clip-text text-transparent">
-                Masuk GhiMath
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Masuk ke Akunmu
               </h2>
-              <p className="text-gray-500 dark:text-gray-400 mt-2 text-sm">Lanjutkan belajarmu di sini</p>
+              <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Lanjutkan belajarmu di sini</p>
             </div>
 
-            {/* Error */}
             {error && (
               <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-xl flex items-center gap-2 text-red-600 dark:text-red-400 text-sm">
                 <AlertCircle className="w-5 h-5 flex-shrink-0" />
@@ -73,7 +76,6 @@ const Login = () => {
               </div>
             )}
 
-            {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Email</label>
@@ -128,14 +130,12 @@ const Login = () => {
               </button>
             </form>
 
-            {/* Divider */}
             <div className="flex items-center my-6">
               <div className="flex-1 border-t border-gray-200 dark:border-slate-700"></div>
               <span className="px-3 text-sm text-gray-500 dark:text-gray-400 font-medium">atau</span>
               <div className="flex-1 border-t border-gray-200 dark:border-slate-700"></div>
             </div>
 
-            {/* Google */}
             <button 
               onClick={handleGoogleLogin}
               disabled={loading}
@@ -145,7 +145,6 @@ const Login = () => {
               Masuk dengan Google
             </button>
 
-            {/* Link Register */}
             <p className="text-center mt-6 text-gray-600 dark:text-gray-400 text-sm">
               Belum punya akun? <Link to="/register" className="text-teal-600 dark:text-teal-400 font-semibold hover:underline">Daftar di sini</Link>
             </p>

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Calculator, Mail, Lock, User, AlertCircle, Sparkles, Eye, EyeOff, Check } from 'lucide-react';
+import Logo from '../components/Logo';
+import { Mail, Lock, User, AlertCircle, Sparkles, Eye, EyeOff, Check } from 'lucide-react';
 
 const Register = () => {
   const [name, setName] = useState('');
@@ -16,7 +17,6 @@ const Register = () => {
   const { register } = useAuth();
   const navigate = useNavigate();
 
-  // ⚡ Hitung kekuatan password
   const getPasswordStrength = (pwd) => {
     if (!pwd) return { score: 0, label: '', color: '', bg: '' };
     let score = 0;
@@ -73,15 +73,18 @@ const Register = () => {
           <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-violet-400/10 to-pink-500/5 rounded-full blur-2xl"></div>
           
           <div className="relative">
-            {/* Logo */}
+            {/* ⚡ LOGO GHIMATH */}
             <div className="text-center mb-8">
-              <div className="inline-flex w-16 h-16 bg-gradient-to-br from-violet-500 via-purple-600 to-pink-500 rounded-2xl items-center justify-center shadow-lg shadow-purple-500/30 mb-4">
-                <Calculator className="w-8 h-8 text-white" />
+              <div className="flex items-center justify-center gap-3 mb-3">
+                <Logo size={56} />
+                <span className="text-2xl font-bold bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 dark:from-teal-400 dark:via-cyan-400 dark:to-blue-400 bg-clip-text text-transparent">
+                  GhiMath
+                </span>
               </div>
-              <h2 className="text-3xl font-bold bg-gradient-to-r from-violet-600 via-purple-600 to-pink-500 dark:from-violet-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
-                Daftar GhiMath
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Buat Akun Baru
               </h2>
-              <p className="text-gray-500 dark:text-gray-400 mt-2 text-sm">Mulai perjalanan belajarmu sekarang</p>
+              <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Mulai perjalanan belajarmu sekarang</p>
             </div>
 
             {error && (
@@ -124,7 +127,6 @@ const Register = () => {
                 </div>
               </div>
 
-              {/* Password dengan Toggle + Strength Indicator */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Password</label>
                 <div className="relative">
@@ -149,7 +151,6 @@ const Register = () => {
                   </button>
                 </div>
 
-                {/* Strength Indicator */}
                 {password && (
                   <div className="mt-2">
                     <div className="flex gap-1 mb-1">
@@ -171,7 +172,6 @@ const Register = () => {
                 )}
               </div>
 
-              {/* Konfirmasi Password dengan Toggle */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Konfirmasi Password</label>
                 <div className="relative">

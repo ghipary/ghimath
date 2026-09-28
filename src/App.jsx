@@ -6,11 +6,14 @@ import { Toaster } from 'react-hot-toast'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminRoute from './components/AdminRoute'
 import PWAInstallBanner from './components/PWAInstallBanner'
+import ScrollToTop from './components/ScrollToTop'
 import QuizGabut from './pages/QuizGabut';
 
 import AdminQuizManager from './pages/admin/AdminQuizManager';
 import TestMateri from './pages/TestMateri';
-
+import NotFound from './pages/NotFound';
+import FAQ from './pages/FAQ';
+import Tentang from './pages/Tentang';
 
 const LandingPage = lazy(() => import('./pages/LandingPage'))
 const Login = lazy(() => import('./pages/Login'))
@@ -58,6 +61,9 @@ function App() {
   return (
     <AuthProvider>
       <Router>
+        {/* ⚡ ScrollToTop: Otomatis scroll ke atas setiap pindah halaman */}
+        <ScrollToTop />
+
         <Toaster 
           position="top-right"
           toastOptions={{
@@ -105,10 +111,15 @@ function App() {
             <Route path="/admin/rumus" element={<AdminRoute><AdminFormulaManager /></AdminRoute>} />
             <Route path="/admin/ujian" element={<AdminRoute><AdminExamManager /></AdminRoute>} />
             <Route path="/admin/ujian/:examId/results" element={<AdminRoute><AdminExamResults /></AdminRoute>} />
+            <Route path="/admin/quiz-manager" element={<AdminRoute><AdminQuizManager /></AdminRoute>} />
+
             <Route path="/kuis-gabut" element={<QuizGabut />} />
-            <Route path="/admin/quiz-manager" element={<AdminQuizManager />} />
             <Route path="/test-materi" element={<TestMateri />} />
             
+            <Route path="/faq" element={<FAQ />} />
+            <Route path="/tentang" element={<Tentang />} />
+
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
 
