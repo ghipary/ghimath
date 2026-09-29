@@ -4,7 +4,7 @@ import Navbar from '../components/Navbar';
 import { db } from '../firebase';
 import { collection, getDocs, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { Search, Loader, BookMarked, Star, Filter, Printer, Copy, Check, BookOpen, Sparkles } from 'lucide-react';
+import { Search, Loader, BookMarked, Star, Filter, Printer, Copy, Check, BookOpen, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import toast from 'react-hot-toast';
@@ -22,7 +22,7 @@ const fixLatex = (s) => {
     'pi','alpha','beta','gamma','delta','theta','lambda','mu','sigma','omega',
     'infty','pm','mp','neq','leq','geq','approx','equiv','partial','nabla',
     'vec','hat','bar','dot','ddot','tilde','overline','mathrm','mathbf',
-    'quad','qquad','text','begin','end','displaystyle','overline'];
+    'quad','qquad','text','begin','end','displaystyle','overline', 'lvert', 'rvert'];
   commands.sort((a,b) => b.length - a.length);
   commands.forEach((cmd) => {
     const regex = new RegExp(`(?<![\\\\a-zA-Z])${cmd}(?=[{\\s\\[a-zA-Z(])`, 'g');
@@ -38,25 +38,17 @@ const sanitizeLatex = (s) => {
   if (!s) return '';
   let text = String(s);
 
-  // ⚡ FIX 0 (BARU): Kurung kurawal salah di \begin & \end
-  // \begin{\pmatrix} → \begin{pmatrix}
   text = text.replace(/\\begin\{([^}]*?)([a-zA-Z]+)\}/g, '\\begin{$2}');
   text = text.replace(/\\end\{([^}]*?)([a-zA-Z]+)\}/g, '\\end{$2}');
-  // Fix: \begin{\pmatrix} (dengan p) → tetap hilangkan kurung
   text = text.replace(/\\begin\{[^a-zA-Z]*([a-zA-Z]+)\}/g, '\\begin{$1}');
   text = text.replace(/\\end\{[^a-zA-Z]*([a-zA-Z]+)\}/g, '\\end{$1}');
 
-  // ⚡ FIX 0b (BARU): \( \) dari inline math leak → hilangkan
   text = text.replace(/\\\(/g, '(');
   text = text.replace(/\\\)/g, ')');
 
-  // 1. Fix `\dx`, `\dy`, dll
   text = text.replace(/\\d([a-zA-Z])\b/g, '\\, d$1');
-
-  // 2. Fix single-letter command invalid
   text = text.replace(/\\([xyzqvwu])(?![a-zA-Z])/g, '$1');
 
-  // 3. Fix unicode Greek → LaTeX
   const greekMap = {
     'α': '\\alpha ', 'β': '\\beta ', 'γ': '\\gamma ', 'δ': '\\delta ',
     'ε': '\\epsilon ', 'ζ': '\\zeta ', 'η': '\\eta ', 'θ': '\\theta ',
@@ -72,7 +64,6 @@ const sanitizeLatex = (s) => {
     text = text.split(unicode).join(latex);
   });
 
-  // 4. Fix unicode operators
   text = text
     .replace(/×/g, '\\times ')
     .replace(/÷/g, '\\div ')
@@ -92,16 +83,13 @@ const sanitizeLatex = (s) => {
     .replace(/⇒/g, '\\Rightarrow ')
     .replace(/⇔/g, '\\Leftrightarrow ');
 
-  // 5. Fix `\ ` di dalam matrix → `\\`
   if (/\\begin\{/.test(text)) {
     text = text.replace(/\s\\\s+([&\\])/g, ' \\\\ $1');
     text = text.replace(/\s\\\s+$/g, ' \\\\ ');
   }
 
-  // 6. Fix double backslash
   text = text.replace(/\\\\([a-zA-Z])/g, '\\$1');
 
-  // 7. Rapikan spaces (kecuali di dalam matrix)
   if (!/\\begin\{/.test(text)) {
     text = text.replace(/\s+/g, ' ').trim();
   }
@@ -126,9 +114,6 @@ const ultraSanitize = (text) => {
   return s;
 };
 
-// ═══════════════════════════════════════════════════════════
-// PERSIAPAN UMUM: panggil semua sanitizer berurutan
-// ═══════════════════════════════════════════════════════════
 const prepare = (latex) => {
   let s = fixLatex(latex);
   s = sanitizeLatex(s);
@@ -144,32 +129,27 @@ const renderKatex = (latex) => {
   
   const base = prepare(latex);
   
-  // Attempt 1: normal
   try {
     return katex.renderToString(base, { throwOnError: true, displayMode: false, strict: false });
   } catch (e) { console.warn('KaTeX 1 gagal:', e.message); }
   
-  // Attempt 2: strip single-letter commands lagi
   try {
     let s = base.replace(/\\([xyzqvwub])(?![a-zA-Z])/g, '$1');
     return katex.renderToString(s, { throwOnError: true, displayMode: false, strict: false });
   } catch (e) { console.warn('KaTeX 2 gagal:', e.message); }
   
-  // Attempt 3: ganti \; jadi space
   try {
     let s = base.replace(/\\;/g, '\\ ').replace(/\\,/g, ' ');
     s = s.replace(/\\([xyzqvwub])(?![a-zA-Z])/g, '$1');
     return katex.renderToString(s, { throwOnError: true, displayMode: false, strict: false });
   } catch (e) { console.warn('KaTeX 3 gagal:', e.message); }
   
-  // Attempt 4: matrix fix
   try {
     let s = base.replace(/\\([xyzqvwub])(?![a-zA-Z])/g, '$1');
     s = s.replace(/\s\\\s+/g, ' \\\\ ');
     return katex.renderToString(s, { throwOnError: true, displayMode: false, strict: false });
   } catch (e) { console.warn('KaTeX 4 gagal:', e.message); }
 
-  // LAST RESORT: tampilkan versi sudah di-fix dalam abu-abu (readable, bukan merah)
   let cleaned = base
     .replace(/\\begin\{([^}]+)\}/g, '[$1] ')
     .replace(/\\end\{([^}]+)\}/g, ' ')
@@ -187,19 +167,28 @@ const renderKatex = (latex) => {
 };
 
 // ═══════════════════════════════════════════════════════════
-// AUTO-DETECT LATEX untuk title & description
+// AUTO-DETECT LATEX (DIPERBARUI: Deteksi @command & tanpa backslash)
 // ═══════════════════════════════════════════════════════════
 const autoDetectLatex = (text) => {
   if (!text) return '';
   if (/\$/.test(text)) return text;
   
-  let result = text;
+  // ⚡ FIX: Terapkan fixLatex dulu agar kata seperti 'frac' otomatis jadi '\frac'
+  let result = fixLatex(text); 
+  
+  const hasStandardLatex = /\\[a-zA-Z]+/.test(result);
   const hasSuperscript = /\b[A-Za-z]\^\d+\b/.test(result);
   const hasSubscript = /\b[A-Za-z]_\d+\b/.test(result);
   const hasMathSymbols = /[±×÷√π≥≤≠∞∫∑]/.test(result);
   
-  if (!hasSuperscript && !hasSubscript && !hasMathSymbols) return result;
+  if (!hasStandardLatex && !hasSuperscript && !hasSubscript && !hasMathSymbols) return result;
   
+  // ⚡ Bungkus perintah KaTeX standar dengan $ agar terdeteksi sebagai math
+  if (hasStandardLatex) {
+    // Regex untuk menangkap \command atau \command{argumen}
+    result = result.replace(/(\\[a-zA-Z]+(?:\{[^}]*\})*)/g, '$$$1$$');
+  }
+
   result = result
     .replace(/±/g, ' $\\pm$ ')
     .replace(/×/g, ' $\\times$ ')
@@ -208,7 +197,11 @@ const autoDetectLatex = (text) => {
     .replace(/≥/g, ' $\\geq$ ')
     .replace(/≤/g, ' $\\leq$ ')
     .replace(/≠/g, ' $\\neq$ ')
-    .replace(/∞/g, ' $\\infty$ ');
+    .replace(/∞/g, ' $\\infty$ ')
+    .replace(/∫/g, ' $\\int$ ')
+    .replace(/∑/g, ' $\\sum$ ')
+    .replace(/√/g, ' $\\sqrt$ ')
+    .replace(/∂/g, ' $\\partial$ ');
   
   result = result.replace(/(?<!\$)\b([A-Za-z])\^(\d+)\b(?!\$)/g, '$$$1^{$2}$$');
   result = result.replace(/(?<!\$)\b([A-Za-z])_(\d+)\b(?!\$)/g, '$$$1_{$2}$$');
@@ -250,6 +243,7 @@ const FormulaBank = () => {
   const [filterTopic, setFilterTopic] = useState('all');
   const [showOnlyBookmark, setShowOnlyBookmark] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
+  const [expandedId, setExpandedId] = useState(null);
 
   useEffect(() => {
     const fetchFormulas = async () => {
@@ -414,7 +408,7 @@ const FormulaBank = () => {
                   {items.map((f) => (
                     <div
                       key={f.id}
-                      className="card-elevated rounded-2xl p-5 relative group hover:-translate-y-1 transition-all"
+                      className="card-elevated rounded-2xl p-5 relative group hover:-translate-y-1 transition-all flex flex-col"
                     >
                       <button
                         onClick={() => toggleBookmark(f)}
@@ -445,7 +439,37 @@ const FormulaBank = () => {
                         />
                       )}
 
-                      <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-slate-700/50">
+                      {/* ⚡ TOMBOL & SECTION CARA + CONTOH SOAL */}
+                      {(f.cara || f.contoh_soal) && (
+                        <div className="mt-auto border-t border-gray-100 dark:border-slate-700/50 pt-3">
+                          <button
+                            onClick={() => setExpandedId(expandedId === f.id ? null : f.id)}
+                            className="w-full flex items-center justify-between text-xs font-bold text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 transition-colors"
+                          >
+                            <span>{expandedId === f.id ? 'Sembunyikan Detail' : 'Lihat Cara & Contoh Soal'}</span>
+                            {expandedId === f.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          </button>
+                          
+                          {expandedId === f.id && (
+                            <div className="mt-3 space-y-3 text-sm bg-gray-50 dark:bg-slate-800/50 p-3 rounded-xl border border-gray-100 dark:border-slate-700">
+                              {f.cara && (
+                                <div>
+                                  <strong className="text-gray-800 dark:text-gray-200 block mb-1 text-xs uppercase tracking-wider">💡 Cara Penggunaan:</strong>
+                                  <div className="text-gray-600 dark:text-gray-400 whitespace-pre-wrap leading-relaxed text-xs" dangerouslySetInnerHTML={{ __html: renderTextWithLatex(f.cara) }} />
+                                </div>
+                              )}
+                              {f.contoh_soal && (
+                                <div>
+                                  <strong className="text-gray-800 dark:text-gray-200 block mb-1 text-xs uppercase tracking-wider">📝 Contoh Soal:</strong>
+                                  <div className="text-gray-600 dark:text-gray-400 whitespace-pre-wrap leading-relaxed text-xs" dangerouslySetInnerHTML={{ __html: renderTextWithLatex(f.contoh_soal) }} />
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between pt-3 mt-3 border-t border-gray-100 dark:border-slate-700/50">
                         <span className="text-[10px] text-gray-400">
                           {f.materialTitle || ''}
                         </span>

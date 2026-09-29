@@ -4,7 +4,7 @@ import Navbar from '../../components/Navbar';
 import { db } from '../../firebase';
 import { collection, getDocs, doc, addDoc, updateDoc, deleteDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
-import { ArrowLeft, Sparkles, Loader, Trash2, Wand2, CheckCircle, X, AlertTriangle, CheckSquare, Square, Plus, Edit2, Save, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Sparkles, Loader, Trash2, Wand2, CheckCircle, X, AlertTriangle, CheckSquare, Square, Plus, Edit2, Save, Eye, EyeOff, ListPlus, Upload, ClipboardList } from 'lucide-react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import toast from 'react-hot-toast';
@@ -39,22 +39,12 @@ const fixLatex = (s) => {
 const sanitizeLatex = (s) => {
   if (!s) return '';
   let text = String(s);
-
-  // Fix \begin{\pmatrix} → \begin{pmatrix}
   text = text.replace(/\\begin\{[^a-zA-Z]*([a-zA-Z]+)\}/g, '\\begin{$1}');
   text = text.replace(/\\end\{[^a-zA-Z]*([a-zA-Z]+)\}/g, '\\end{$1}');
-
-  // Fix \( \) dari inline math leak
   text = text.replace(/\\\(/g, '(');
   text = text.replace(/\\\)/g, ')');
-
-  // Fix \dx, \dy
   text = text.replace(/\\d([a-zA-Z])\b/g, '\\, d$1');
-
-  // Fix single-letter command invalid (\x, \y, \z, \q, \v, \w, \u)
   text = text.replace(/\\([xyzqvwu])(?![a-zA-Z])/g, '$1');
-
-  // Fix unicode Greek
   const greekMap = {
     'α': '\\alpha ', 'β': '\\beta ', 'γ': '\\gamma ', 'δ': '\\delta ',
     'ε': '\\epsilon ', 'ζ': '\\zeta ', 'η': '\\eta ', 'θ': '\\theta ',
@@ -69,8 +59,6 @@ const sanitizeLatex = (s) => {
   Object.entries(greekMap).forEach(([unicode, latex]) => {
     text = text.split(unicode).join(latex);
   });
-
-  // Fix unicode operators
   text = text
     .replace(/×/g, '\\times ')
     .replace(/÷/g, '\\div ')
@@ -89,27 +77,17 @@ const sanitizeLatex = (s) => {
     .replace(/←/g, '\\leftarrow ')
     .replace(/⇒/g, '\\Rightarrow ')
     .replace(/⇔/g, '\\Leftrightarrow ');
-
-  // Fix \ (backslash space) di dalam matrix → \\
   if (/\\begin\{/.test(text)) {
     text = text.replace(/\s\\\s+([&\\])/g, ' \\\\ $1');
     text = text.replace(/\s\\\s+$/g, ' \\\\ ');
   }
-
-  // Fix double backslash
   text = text.replace(/\\\\([a-zA-Z])/g, '\\$1');
-
-  // Rapikan spaces
   if (!/\\begin\{/.test(text)) {
     text = text.replace(/\s+/g, ' ').trim();
   }
-
   return text;
 };
 
-// ═══════════════════════════════════════════════════════════
-// ULTRA SANITIZE
-// ═══════════════════════════════════════════════════════════
 const ultraSanitize = (text) => {
   if (!text) return '';
   let s = String(text);
@@ -124,9 +102,6 @@ const ultraSanitize = (text) => {
   return s;
 };
 
-// ═══════════════════════════════════════════════════════════
-// PREPARE: Gabungan semua fix
-// ═══════════════════════════════════════════════════════════
 const prepare = (latex) => {
   let s = fixLatex(latex);
   s = sanitizeLatex(s);
@@ -143,7 +118,21 @@ const DEFAULT_FORM = {
   grade: 10,
   materialId: '',
   materialTitle: '',
+  cara: '',
+  contoh_soal: '',
 };
+
+// ═══════════════════════════════════════════════════════════
+// TEMPLATE CONTOH BULK INPUT (Menggunakan KaTeX Standar)
+// ═══════════════════════════════════════════════════════════
+const BULK_TEMPLATE_EXAMPLE = `# Format: Judul | Rumus LaTeX | Deskripsi | Topik | Jenjang | Kelas | Cara Penggunaan | Contoh Soal
+# Baris diawali # akan diabaikan sebagai komentar
+# Pemisah kolom bisa pakai | atau ; atau TAB
+# PENTING: Gunakan backslash (\) standar KaTeX. Contoh: \\frac, \\sqrt, \\pi
+
+Rumus Pythagoras | a^2 + b^2 = c^2 | Berlaku untuk segitiga siku-siku | Geometri | SMP | 8 | Kuadratkan sisi miring, lalu jumlahkan kuadrat sisi tegak lurus | Jika a=3 dan b=4, maka c = \\sqrt{3^2 + 4^2} = 5
+Rumus ABC | x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a} | Akar-akar persamaan kuadrat | Aljabar | SMA | 10 | Substitusikan nilai a, b, dan c dari persamaan ke dalam rumus | Tentukan akar dari x^2 - 5x + 6 = 0
+Luas Lingkaran | L = \\pi r^2 | Luas lingkaran dengan jari-jari r | Geometri | SMP | 8 | Kalikan nilai pi (3.14) dengan kuadrat jari-jari | Jika jari-jari r = 7, maka L = 3.14 x 49 = 153.86`;
 
 const AdminFormulaManager = () => {
   const { user } = useAuth();
@@ -171,6 +160,17 @@ const AdminFormulaManager = () => {
   const [formData, setFormData] = useState(DEFAULT_FORM);
   const [formSaving, setFormSaving] = useState(false);
   const [showFormulaPreview, setShowFormulaPreview] = useState(true);
+
+  // ⚡ BULK INPUT STATE
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkText, setBulkText] = useState('');
+  const [bulkPreview, setBulkPreview] = useState([]);
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [bulkDelimiter, setBulkDelimiter] = useState('|');
+  const [bulkDefaultLevel, setBulkDefaultLevel] = useState('SMA');
+  const [bulkDefaultGrade, setBulkDefaultGrade] = useState(10);
+  const [bulkDefaultTopic, setBulkDefaultTopic] = useState('Lainnya');
+  const [bulkParseErrors, setBulkParseErrors] = useState([]);
 
   const fetchData = async () => {
     try {
@@ -277,6 +277,8 @@ const AdminFormulaManager = () => {
       grade: f.grade || 10,
       materialId: f.materialId || '',
       materialTitle: f.materialTitle || '',
+      cara: f.cara || '',
+      contoh_soal: f.contoh_soal || '',
     });
     setIsEditing(true);
     setCurrentId(f.id);
@@ -304,6 +306,8 @@ const AdminFormulaManager = () => {
         grade: Number(formData.grade),
         materialId: formData.materialId || '',
         materialTitle: materialTitle || 'Manual',
+        cara: formData.cara.trim(),
+        contoh_soal: formData.contoh_soal.trim(),
         updatedAt: serverTimestamp(),
       };
 
@@ -332,7 +336,148 @@ const AdminFormulaManager = () => {
     setFormSaving(false);
   };
 
-  // ═══ AI EXTRACT (PROMPT BARU!) ═══
+  // ═══════════════════════════════════════════════════════════
+  // ⚡ BULK INPUT: PARSE TEXT
+  // ═══════════════════════════════════════════════════════════
+  const parseBulkText = () => {
+    if (!bulkText.trim()) {
+      toast.error('Template masih kosong!');
+      return;
+    }
+
+    const lines = bulkText.split(/\r?\n/);
+    const parsed = [];
+    const errors = [];
+
+    let delimRegex;
+    if (bulkDelimiter === 'TAB') delimRegex = /\t/;
+    else if (bulkDelimiter === ';') delimRegex = /\s*;\s*/;
+    else delimRegex = /\s*\|\s*/;
+
+    lines.forEach((rawLine, idx) => {
+      const line = rawLine.trim();
+      if (!line || line.startsWith('#') || line.startsWith('//')) return;
+
+      const cols = line.split(delimRegex).map(c => c.trim());
+
+      if (cols.length < 2) {
+        errors.push({ line: idx + 1, reason: 'Kurang dari 2 kolom (butuh minimal Judul + Rumus)', raw: line });
+        return;
+      }
+
+      const title = cols[0] || '';
+      const formula = cols[1] || '';
+      const description = cols[2] || '';
+      const topic = cols[3] || bulkDefaultTopic;
+      const level = (cols[4] || bulkDefaultLevel).toUpperCase();
+      const grade = cols[5] ? Number(cols[5]) : bulkDefaultGrade;
+      const cara = cols[6] || '';
+      const contoh_soal = cols[7] || '';
+
+      if (!title) {
+        errors.push({ line: idx + 1, reason: 'Judul kosong', raw: line });
+        return;
+      }
+      if (!formula) {
+        errors.push({ line: idx + 1, reason: 'Rumus kosong', raw: line });
+        return;
+      }
+
+      const validLevel = LEVELS.includes(level) ? level : bulkDefaultLevel;
+      const validGrades = validLevel === 'SMP' ? GRADES_SMP : GRADES_SMA;
+      const validGrade = validGrades.includes(grade) ? grade : (validLevel === 'SMP' ? 7 : 10);
+
+      parsed.push({
+        title,
+        formula,
+        description,
+        topic: TOPICS.includes(topic) ? topic : bulkDefaultTopic,
+        level: validLevel,
+        grade: validGrade,
+        materialId: '',
+        materialTitle: 'Bulk Import',
+        cara,
+        contoh_soal,
+        selected: true,
+      });
+    });
+
+    setBulkPreview(parsed);
+    setBulkParseErrors(errors);
+
+    if (parsed.length === 0) {
+      toast.error('Tidak ada rumus valid yang bisa di-parse');
+    } else {
+      toast.success(`✅ ${parsed.length} rumus berhasil di-parse${errors.length > 0 ? `, ${errors.length} baris error` : ''}`);
+    }
+  };
+
+  const handleBulkSave = async () => {
+    const toSave = bulkPreview.filter(f => f.selected);
+    if (toSave.length === 0) return toast.error('Tidak ada rumus yang dipilih');
+
+    setBulkSaving(true);
+    try {
+      const chunks = [];
+      for (let i = 0; i < toSave.length; i += 500) {
+        chunks.push(toSave.slice(i, i + 500));
+      }
+
+      let totalSaved = 0;
+      for (const chunk of chunks) {
+        const batch = writeBatch(db);
+        chunk.forEach((f) => {
+          const newRef = doc(collection(db, 'formulas'));
+          batch.set(newRef, {
+            title: f.title,
+            formula: f.formula,
+            description: f.description,
+            topic: f.topic,
+            level: f.level,
+            grade: Number(f.grade),
+            materialId: f.materialId || '',
+            materialTitle: f.materialTitle || 'Bulk Import',
+            cara: f.cara || '',
+            contoh_soal: f.contoh_soal || '',
+            bookmarkedBy: [],
+            createdBy: user.uid,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          });
+        });
+        await batch.commit();
+        totalSaved += chunk.length;
+      }
+
+      toast.success(`🎉 ${totalSaved} rumus berhasil disimpan!`);
+      setBulkPreview([]);
+      setBulkText('');
+      setBulkParseErrors([]);
+      setShowBulkModal(false);
+      fetchData();
+    } catch (err) {
+      console.error(err);
+      toast.error('Gagal simpan bulk: ' + err.message);
+    }
+    setBulkSaving(false);
+  };
+
+  const handleBulkToggleSelect = (idx) => {
+    setBulkPreview(prev => prev.map((x, i) => i === idx ? { ...x, selected: !x.selected } : x));
+  };
+
+  const handleBulkToggleAll = (checked) => {
+    setBulkPreview(prev => prev.map(x => ({ ...x, selected: checked })));
+  };
+
+  const handleLoadTemplate = () => {
+    setBulkText(BULK_TEMPLATE_EXAMPLE);
+    setBulkPreview([]);
+    setBulkParseErrors([]);
+    toast.success('Template contoh dimuat! Silakan edit sesuai kebutuhan.');
+  };
+
+  // ═══ AI EXTRACT ═══
   const extractFormulasFromMaterial = async (material, retryCount = 0) => {
     const plainContent = String(material.content || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').slice(0, 3000);
 
@@ -347,54 +492,21 @@ Konten: ${plainContent}
 OUTPUT HARUS JSON VALID:
 {
   "formulas": [
-    {"title": "Judul singkat max 40 char", "formula": "LaTeX dengan @ pengganti backslash", "description": "Penjelasan singkat"}
+    {"title": "Judul singkat max 40 char", "formula": "LaTeX standar (gunakan backslash \\ untuk command)", "description": "Penjelasan singkat", "cara": "Langkah-langkah penggunaan rumus", "contoh_soal": "Contoh soal dan pembahasannya"}
   ]
 }
 
 ⚠️ ATURAN LATEX (WAJIB DIPATUHI):
-
-1. Tulis SEMUA backslash "\\" sebagai "@".
-   - \\frac → @frac
-   - \\sqrt → @sqrt
-   - \\cos → @cos
-   - \\theta → @theta
-
-2. JANGAN pakai @x, @y, @z, @q, @v, @w, @u — TIDAK VALID di LaTeX!
-   ❌ SALAH: "@x cos @theta"
-   ✅ BENAR: "x @cos @theta"
-
-3. Untuk spasi antar rumus, pakai @quad atau @; atau @,
-   ❌ JANGAN pakai @ (backslash + spasi)
-   ✅ BENAR: "@cos t = x @quad @sin t = y"
-
-4. Untuk matriks, pakai @begin{pmatrix}...@end{pmatrix}
-   ❌ JANGAN: @begin{@pmatrix} atau @begin{\\pmatrix}
-   ✅ BENAR: "@begin{pmatrix} a & b @\\ c & d @end{pmatrix}"
-
+1. Gunakan backslash standar (\\). Contoh: \\frac, \\sqrt, \\pi, \\pm.
+2. JANGAN pakai @ sebagai pengganti backslash.
+3. Untuk spasi antar rumus, pakai \\quad atau \\; atau \\,
+4. Untuk matriks, pakai \\begin{pmatrix}...\\end{pmatrix}
 5. Untuk inline math, JANGAN pakai \\( \\) — langsung tulis saja
-   ❌ SALAH: "\\(x @neq 0)"
-   ✅ BENAR: "(x @neq 0)"
-
-6. Untuk integral, pakai @, dx atau dx biasa
-   ❌ JANGAN: "@dx"
-   ✅ BENAR: "@int e^{ax} @, dx"
-
-7. Untuk pecahan: @frac{pembilang}{penyebut}
-8. Untuk akar: @sqrt{x} atau @sqrt[n]{x}
-9. Untuk pangkat: x^{2} (JANGAN x^2 tanpa kurung kalau lebih dari 1 karakter)
+6. Untuk integral, pakai \\, dx atau dx biasa
+7. Untuk pecahan: \\frac{pembilang}{penyebut}
+8. Untuk akar: \\sqrt{x} atau \\sqrt[n]{x}
+9. Untuk pangkat: x^{2}
 10. Untuk subscript: x_{1}
-
-CONTOH BENAR:
-- "@cos t = x @quad @sin t = y @quad @tan t = @frac{y}{x} @quad (x @neq 0)"
-- "P'(@x @cos @theta - @y @sin @theta, @x @sin @theta + @y @cos @theta)"
-- "@begin{pmatrix} @cos @theta & -@sin @theta @\\ @sin @theta & @cos @theta @end{pmatrix}"
-- "@int e^{ax} @, dx = @frac{1}{a} e^{ax} + C"
-- "@lim_{x @to @infty} @frac{1}{x} = 0"
-
-CONTOH SALAH (JANGAN DITIRU):
-- "@x cos @theta" (ada @x — tidak valid)
-- "@cos t = x @ @sin t = y" (ada @ @)
-- "@begin{@pmatrix}" (kurung salah)
 
 Ambil 3-8 rumus penting. Output HANYA JSON.`;
 
@@ -509,30 +621,26 @@ Ambil 3-8 rumus penting. Output HANYA JSON.`;
     } catch (err) { toast.error('Gagal: ' + err.message); }
   };
 
-  // ⚡ RENDER KATEX dengan sanitize + fallback
+  // ⚡ RENDER KATEX
   const renderKatex = (latex) => {
     if (!latex) return '';
     const base = prepare(latex);
 
-    // Attempt 1
     try {
       return katex.renderToString(base, { throwOnError: true, displayMode: false, strict: false });
-    } catch (e) { /* console.warn('KaTeX 1 gagal:', e.message); */ }
+    } catch (e) { }
 
-    // Attempt 2
     try {
       let s = base.replace(/\\([xyzqvwub])(?![a-zA-Z])/g, '$1');
       return katex.renderToString(s, { throwOnError: true, displayMode: false, strict: false });
-    } catch (e) { /* console.warn('KaTeX 2 gagal:', e.message); */ }
+    } catch (e) { }
 
-    // Attempt 3
     try {
       let s = base.replace(/\\;/g, '\\ ').replace(/\\,/g, ' ');
       s = s.replace(/\\([xyzqvwub])(?![a-zA-Z])/g, '$1');
       return katex.renderToString(s, { throwOnError: true, displayMode: false, strict: false });
-    } catch (e) { /* console.warn('KaTeX 3 gagal:', e.message); */ }
+    } catch (e) { }
 
-    // Last resort
     const cleaned = base
       .replace(/\\begin\{([^}]+)\}/g, '[$1] ')
       .replace(/\\end\{([^}]+)\}/g, ' ')
@@ -571,6 +679,17 @@ Ambil 3-8 rumus penting. Output HANYA JSON.`;
             </h1>
             <p className="text-gray-600 dark:text-gray-400 text-sm">Total: {formulas.length} rumus</p>
           </div>
+          <button
+            onClick={() => {
+              setBulkText('');
+              setBulkPreview([]);
+              setBulkParseErrors([]);
+              setShowBulkModal(true);
+            }}
+            className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-5 py-3 rounded-xl font-bold shadow-lg shadow-blue-500/30"
+          >
+            <ListPlus className="w-5 h-5" /> Input Massal
+          </button>
           <button
             onClick={handleOpenAdd}
             className="flex items-center gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white px-5 py-3 rounded-xl font-bold shadow-lg shadow-teal-500/30"
@@ -619,6 +738,12 @@ Ambil 3-8 rumus penting. Output HANYA JSON.`;
 
         {formulas.length === 0 && (
           <div className="card-elevated rounded-2xl p-4 mb-6 flex justify-end gap-3 flex-wrap">
+            <button
+              onClick={() => setShowBulkModal(true)}
+              className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-5 py-3 rounded-xl font-bold shadow-lg"
+            >
+              <ListPlus className="w-5 h-5" /> Input Massal
+            </button>
             <button
               onClick={handleOpenAdd}
               className="flex items-center gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 text-white px-5 py-3 rounded-xl font-bold shadow-lg"
@@ -674,12 +799,254 @@ Ambil 3-8 rumus penting. Output HANYA JSON.`;
                   </div>
                   <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 text-center overflow-x-auto" dangerouslySetInnerHTML={{ __html: renderKatex(f.formula) }} />
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{f.description}</p>
+                  {(f.cara || f.contoh_soal) && (
+                     <div className="mt-2 text-[10px] text-teal-600 dark:text-teal-400 font-semibold flex gap-2">
+                        {f.cara && <span>✓ Ada Cara</span>}
+                        {f.contoh_soal && <span>✓ Ada Contoh Soal</span>}
+                     </div>
+                  )}
                 </div>
               );
             })}
           </div>
         )}
       </div>
+
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/* ⚡ MODAL BULK INPUT */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      {showBulkModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[150] flex items-center justify-center p-4 overflow-y-auto" onClick={() => !bulkSaving && setShowBulkModal(false)}>
+          <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-4xl shadow-2xl my-8 relative" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-blue-500 via-indigo-600 to-violet-600 p-5 rounded-t-3xl flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                  <ListPlus className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-white">Input Massal Rumus</h2>
+                  <p className="text-[10px] text-white/80">Paste template → Preview → Simpan sekaligus</p>
+                </div>
+              </div>
+              {!bulkSaving && (
+                <button onClick={() => setShowBulkModal(false)} className="p-2 rounded-full hover:bg-white/20">
+                  <X className="w-5 h-5 text-white" />
+                </button>
+              )}
+            </div>
+
+            <div className="p-5 sm:p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+              {/* INFO TEMPLATE */}
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-xl p-3 text-xs text-blue-800 dark:text-blue-300 space-y-1">
+                <p className="font-bold">📋 Format Template:</p>
+                <p><code className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono">Judul | Rumus LaTeX | Deskripsi | Topik | Jenjang | Kelas | Cara | Contoh Soal</code></p>
+                <p>• Kolom hanya <strong>Judul + Rumus</strong> yang wajib. Sisanya opsional.</p>
+                <p>• Baris dimulai <code className="bg-white dark:bg-slate-800 px-1 rounded">#</code> akan diabaikan (komentar).</p>
+                <p>• Gunakan <strong>KaTeX standar</strong> (contoh: <code className="bg-white dark:bg-slate-800 px-1 rounded">\frac{'{a}'}{'{b}'}</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">\sqrt{'{x}'}</code>).</p>
+              </div>
+
+              {/* DEFAULT SETTINGS */}
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Default Topik</label>
+                  <select
+                    value={bulkDefaultTopic}
+                    onChange={(e) => setBulkDefaultTopic(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white text-sm outline-none"
+                  >
+                    {TOPICS.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Default Jenjang</label>
+                  <select
+                    value={bulkDefaultLevel}
+                    onChange={(e) => {
+                      const newLevel = e.target.value;
+                      setBulkDefaultLevel(newLevel);
+                      setBulkDefaultGrade(newLevel === 'SMP' ? 7 : 10);
+                    }}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white text-sm outline-none"
+                  >
+                    {LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Default Kelas</label>
+                  <select
+                    value={bulkDefaultGrade}
+                    onChange={(e) => setBulkDefaultGrade(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white text-sm outline-none"
+                  >
+                    {(bulkDefaultLevel === 'SMP' ? GRADES_SMP : GRADES_SMA).map(g => <option key={g} value={g}>Kelas {g}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* DELIMITER SELECTOR */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Pemisah kolom:</label>
+                {['|', ';', 'TAB'].map((d) => (
+                  <button
+                    key={d}
+                    onClick={() => setBulkDelimiter(d)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      bulkDelimiter === d
+                        ? 'bg-blue-500 text-white shadow-md'
+                        : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300'
+                    }`}
+                  >
+                    {d === 'TAB' ? 'TAB' : `"${d}"`}
+                  </button>
+                ))}
+                <button
+                  onClick={handleLoadTemplate}
+                  className="ml-auto flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 hover:bg-violet-200"
+                >
+                  <ClipboardList className="w-3.5 h-3.5" /> Muat Contoh
+                </button>
+              </div>
+
+              {/* TEXTAREA */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                  Template Teks ({bulkText.split(/\r?\n/).filter(l => l.trim() && !l.trim().startsWith('#')).length} baris data)
+                </label>
+                <textarea
+                  value={bulkText}
+                  onChange={(e) => {
+                    setBulkText(e.target.value);
+                    setBulkPreview([]);
+                    setBulkParseErrors([]);
+                  }}
+                  rows={10}
+                  placeholder={BULK_TEMPLATE_EXAMPLE}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none font-mono text-xs resize-y"
+                />
+              </div>
+
+              {/* PARSE BUTTON */}
+              {bulkPreview.length === 0 && (
+                <button
+                  onClick={parseBulkText}
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold shadow-lg flex items-center justify-center gap-2"
+                >
+                  <Upload className="w-4 h-4" /> Parse & Preview
+                </button>
+              )}
+
+              {/* PARSE ERRORS */}
+              {bulkParseErrors.length > 0 && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-xl p-3">
+                  <p className="text-xs font-bold text-red-700 dark:text-red-400 mb-2 flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5" /> {bulkParseErrors.length} baris bermasalah:
+                  </p>
+                  <div className="max-h-32 overflow-y-auto space-y-1">
+                    {bulkParseErrors.slice(0, 10).map((err, i) => (
+                      <p key={i} className="text-[11px] text-red-600 dark:text-red-400 font-mono">
+                        Baris {err.line}: {err.reason}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* PREVIEW */}
+              {bulkPreview.length > 0 && (
+                <>
+                  <div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800/50 rounded-xl p-3 flex items-center justify-between">
+                    <p className="text-xs text-teal-800 dark:text-teal-300 font-semibold">
+                      ✅ <strong>{bulkPreview.filter(f => f.selected).length}</strong> dari <strong>{bulkPreview.length}</strong> rumus akan disimpan
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleBulkToggleAll(true)}
+                        className="text-[10px] font-bold px-2 py-1 rounded bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300"
+                      >
+                        Pilih Semua
+                      </button>
+                      <button
+                        onClick={() => handleBulkToggleAll(false)}
+                        className="text-[10px] font-bold px-2 py-1 rounded bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-gray-300"
+                      >
+                        Hapus Semua
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="max-h-72 overflow-y-auto space-y-2 border border-gray-200 dark:border-slate-700 rounded-xl p-2">
+                    {bulkPreview.map((f, idx) => (
+                      <div
+                        key={idx}
+                        className={`p-3 rounded-xl border-2 transition-all ${
+                          f.selected
+                            ? 'border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-900/10'
+                            : 'border-gray-200 dark:border-slate-700 opacity-50'
+                        }`}
+                      >
+                        <div className="flex items-start gap-2">
+                          <input
+                            type="checkbox"
+                            checked={f.selected}
+                            onChange={() => handleBulkToggleSelect(idx)}
+                            className="w-4 h-4 mt-1 rounded"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                              <p className="font-semibold text-sm text-gray-900 dark:text-white">{f.title}</p>
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300">
+                                {f.topic}
+                              </span>
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300">
+                                {f.level} • K{f.grade}
+                              </span>
+                            </div>
+                            <div
+                              className="bg-white dark:bg-slate-800 rounded-lg p-2 my-1 overflow-x-auto text-center"
+                              dangerouslySetInnerHTML={{ __html: renderKatex(f.formula) }}
+                            />
+                            {f.description && (
+                              <p className="text-[10px] text-gray-500 dark:text-gray-400">{f.description}</p>
+                            )}
+                            {(f.cara || f.contoh_soal) && (
+                              <div className="mt-1 text-[9px] text-teal-600 dark:text-teal-400 font-semibold flex gap-2">
+                                {f.cara && <span>✓ Cara</span>}
+                                {f.contoh_soal && <span>✓ Contoh Soal</span>}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* ACTIONS */}
+                  <div className="flex gap-3 pt-2 border-t border-gray-200 dark:border-slate-700">
+                    <button
+                      onClick={() => { setBulkPreview([]); setBulkParseErrors([]); }}
+                      disabled={bulkSaving}
+                      className="flex-1 py-3 rounded-xl bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-200 font-semibold disabled:opacity-50"
+                    >
+                      ← Edit Template
+                    </button>
+                    <button
+                      onClick={handleBulkSave}
+                      disabled={bulkSaving || bulkPreview.filter(f => f.selected).length === 0}
+                      className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-500 via-indigo-600 to-violet-600 text-white font-bold disabled:opacity-40 shadow-lg flex items-center justify-center gap-2"
+                    >
+                      {bulkSaving ? (
+                        <><Loader className="w-4 h-4 animate-spin" /> Menyimpan...</>
+                      ) : (
+                        <><Save className="w-4 h-4" /> Simpan {bulkPreview.filter(f => f.selected).length} Rumus</>
+                      )}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL FORM TAMBAH/EDIT */}
       {showFormModal && (
@@ -753,6 +1120,28 @@ Ambil 3-8 rumus penting. Output HANYA JSON.`;
                   placeholder="Penjelasan singkat tentang rumus ini..."
                   rows={2}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 outline-none resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Cara Penggunaan</label>
+                <textarea
+                  value={formData.cara}
+                  onChange={(e) => setFormData({ ...formData, cara: e.target.value })}
+                  placeholder="Langkah-langkah menggunakan rumus ini..."
+                  rows={3}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 outline-none resize-y"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Contoh Soal</label>
+                <textarea
+                  value={formData.contoh_soal}
+                  onChange={(e) => setFormData({ ...formData, contoh_soal: e.target.value })}
+                  placeholder="Contoh soal dan pembahasannya..."
+                  rows={3}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 outline-none resize-y"
                 />
               </div>
 
@@ -990,6 +1379,12 @@ Ambil 3-8 rumus penting. Output HANYA JSON.`;
                             <p className="font-semibold text-sm text-gray-900 dark:text-white">{f.title}</p>
                             <div className="bg-white dark:bg-slate-800 rounded-lg p-2 my-2 overflow-x-auto text-center" dangerouslySetInnerHTML={{ __html: renderKatex(f.formula) }} />
                             <p className="text-[10px] text-gray-500 dark:text-gray-400">{f.description}</p>
+                            {(f.cara || f.contoh_soal) && (
+                              <div className="mt-1 text-[9px] text-teal-600 dark:text-teal-400 font-semibold flex gap-2">
+                                {f.cara && <span>✓ Cara</span>}
+                                {f.contoh_soal && <span>✓ Contoh Soal</span>}
+                              </div>
+                            )}
                             <p className="text-[9px] text-gray-400 mt-1">📚 {f.materialTitle}</p>
                           </div>
                         </div>
