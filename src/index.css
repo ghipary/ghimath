@@ -197,20 +197,9 @@ button:focus-visible, a[class*="rounded"]:focus-visible {
 .ql-editor h2 { font-size: 1.4rem; font-weight: 700; margin: 1rem 0 0.5rem; }
 .ql-editor h3 { font-size: 1.2rem; font-weight: 600; margin: 0.8rem 0 0.4rem; }
 .ql-editor p { margin: 0.5rem 0; }
-.ql-editor ul {
-  list-style-type: disc !important;
-  padding-left: 1.75rem !important;
-  margin: 0.75rem 0 !important;
-}
-.ql-editor ol {
-  list-style-type: decimal !important;
-  padding-left: 1.75rem !important;
-  margin: 0.75rem 0 !important;
-}
-.ql-editor li {
-  display: list-item !important;
-  margin: 0.35rem 0 !important;
-}
+.ql-editor ul { list-style-type: disc !important; padding-left: 1.75rem !important; margin: 0.75rem 0 !important; }
+.ql-editor ol { list-style-type: decimal !important; padding-left: 1.75rem !important; margin: 0.75rem 0 !important; }
+.ql-editor li { display: list-item !important; margin: 0.35rem 0 !important; }
 .ql-editor blockquote {
   border-left: 4px solid #14b8a6;
   padding-left: 1rem;
@@ -219,15 +208,8 @@ button:focus-visible, a[class*="rounded"]:focus-visible {
   color: #64748b;
 }
 
-.ql-toolbar {
-  border-top-left-radius: 12px;
-  border-top-right-radius: 12px;
-  background: #f8fafc;
-}
-.ql-container {
-  border-bottom-left-radius: 12px;
-  border-bottom-right-radius: 12px;
-}
+.ql-toolbar { border-top-left-radius: 12px; border-top-right-radius: 12px; background: #f8fafc; }
+.ql-container { border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; }
 
 .dark .ql-toolbar { background: #1e293b; border-color: #334155; }
 .dark .ql-container { background: #1e293b; border-color: #334155; color: #e2e8f0; }
@@ -271,7 +253,6 @@ button:focus-visible, a[class*="rounded"]:focus-visible {
 }
 .dark .material-content { color: #cbd5e1 !important; }
 
-/* ⚡ KECUALIKAN KaTeX + SVG dari override agresif */
 .material-content *:not(.katex):not(.katex *):not(svg):not(svg *):not(.math-frac):not(.math-frac *) {
   white-space: normal !important;
   word-break: normal !important;
@@ -282,47 +263,17 @@ button:focus-visible, a[class*="rounded"]:focus-visible {
   font-family: 'MathHybrid', 'Plus Jakarta Sans', system-ui, sans-serif;
 }
 
-.material-content h1 {
-  font-size: clamp(1.25rem, 5vw, 1.75rem);
-  font-weight: 700;
-  margin: 1.25rem 0 0.6rem;
-  color: #0f172a;
-}
+.material-content h1 { font-size: clamp(1.25rem, 5vw, 1.75rem); font-weight: 700; margin: 1.25rem 0 0.6rem; color: #0f172a; }
 .dark .material-content h1 { color: #f1f5f9 !important; }
-
-.material-content h2 {
-  font-size: clamp(1.1rem, 4.5vw, 1.35rem);
-  font-weight: 700;
-  margin: 1rem 0 0.5rem;
-  color: #0f172a;
-}
+.material-content h2 { font-size: clamp(1.1rem, 4.5vw, 1.35rem); font-weight: 700; margin: 1rem 0 0.5rem; color: #0f172a; }
 .dark .material-content h2 { color: #f1f5f9 !important; }
-
-.material-content h3 {
-  font-size: clamp(1rem, 4vw, 1.15rem);
-  font-weight: 600;
-  margin: 0.85rem 0 0.4rem;
-  color: #0f172a;
-}
+.material-content h3 { font-size: clamp(1rem, 4vw, 1.15rem); font-weight: 600; margin: 0.85rem 0 0.4rem; color: #0f172a; }
 .dark .material-content h3 { color: #f1f5f9 !important; }
-
 .material-content p { margin: 0.6rem 0; }
 
-.material-content ul {
-  list-style-type: disc !important;
-  padding-left: 1.4rem !important;
-  margin: 0.6rem 0 !important;
-}
-.material-content ol {
-  list-style-type: decimal !important;
-  padding-left: 1.4rem !important;
-  margin: 0.6rem 0 !important;
-}
-.material-content li {
-  display: list-item !important;
-  margin: 0.3rem 0 !important;
-  padding-left: 0.15rem;
-}
+.material-content ul { list-style-type: disc !important; padding-left: 1.4rem !important; margin: 0.6rem 0 !important; }
+.material-content ol { list-style-type: decimal !important; padding-left: 1.4rem !important; margin: 0.6rem 0 !important; }
+.material-content li { display: list-item !important; margin: 0.3rem 0 !important; padding-left: 0.15rem; }
 
 .material-content blockquote {
   border-left: 4px solid #14b8a6;
@@ -332,21 +283,13 @@ button:focus-visible, a[class*="rounded"]:focus-visible {
   background: #f0fdfa;
   border-radius: 0 8px 8px 0;
 }
-.dark .material-content blockquote {
-  background: #134e4a33;
-  color: #99f6e4;
-}
+.dark .material-content blockquote { background: #134e4a33; color: #99f6e4; }
 
 .material-content strong { font-weight: 700; color: #0f172a; }
 .dark .material-content strong { color: #f1f5f9 !important; }
 .material-content em { font-style: italic; }
 
-.material-content img {
-  max-width: 100%;
-  height: auto;
-  border-radius: 8px;
-  display: block;
-}
+.material-content img { max-width: 100%; height: auto; border-radius: 8px; display: block; }
 
 .material-content pre,
 .material-content code {
@@ -355,11 +298,7 @@ button:focus-visible, a[class*="rounded"]:focus-visible {
   overflow-x: auto;
   max-width: 100%;
 }
-.material-content a {
-  color: #0d9488;
-  text-decoration: underline;
-  word-break: break-all !important;
-}
+.material-content a { color: #0d9488; text-decoration: underline; word-break: break-all !important; }
 .dark .material-content a { color: #2dd4bf !important; }
 
 /* ═══════════════════════════════════════════════════════════ */
@@ -494,9 +433,7 @@ button:focus-visible, a[class*="rounded"]:focus-visible {
 }
 
 .material-content .md-table thead tr,
-.md-table thead tr {
-  display: table-row !important;
-}
+.md-table thead tr { display: table-row !important; }
 
 .material-content .md-table th,
 .md-table th {
@@ -513,20 +450,13 @@ button:focus-visible, a[class*="rounded"]:focus-visible {
 }
 
 .material-content .md-table tbody,
-.md-table tbody {
-  display: table-row-group !important;
-}
+.md-table tbody { display: table-row-group !important; }
 
 .material-content .md-table tbody tr,
-.md-table tbody tr {
-  display: table-row !important;
-  background: #ffffff !important;
-}
+.md-table tbody tr { display: table-row !important; background: #ffffff !important; }
 
 .material-content .md-table tbody tr:nth-child(even),
-.md-table tbody tr:nth-child(even) {
-  background: #f8fafc !important;
-}
+.md-table tbody tr:nth-child(even) { background: #f8fafc !important; }
 
 .material-content .md-table td,
 .md-table td {
@@ -540,7 +470,6 @@ button:focus-visible, a[class*="rounded"]:focus-visible {
   background: transparent !important;
 }
 
-/* Dark mode */
 .dark .material-content .md-table,
 .dark .md-table {
   background: rgba(30, 41, 59, 0.7) !important;
@@ -555,14 +484,10 @@ button:focus-visible, a[class*="rounded"]:focus-visible {
 }
 
 .dark .material-content .md-table tbody tr,
-.dark .md-table tbody tr {
-  background: transparent !important;
-}
+.dark .md-table tbody tr { background: transparent !important; }
 
 .dark .material-content .md-table tbody tr:nth-child(even),
-.dark .md-table tbody tr:nth-child(even) {
-  background: rgba(15, 23, 42, 0.4) !important;
-}
+.dark .md-table tbody tr:nth-child(even) { background: rgba(15, 23, 42, 0.4) !important; }
 
 /* ═══════════════════════════════════════════════════════════ */
 /* MOBILE RESPONSIVE                                          */

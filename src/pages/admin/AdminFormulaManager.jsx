@@ -16,18 +16,122 @@ const LEVELS = ['SMP', 'SMA'];
 const GRADES_SMP = [7, 8, 9];
 const GRADES_SMA = [10, 11, 12];
 
+// ═══════════════════════════════════════════════════════════
+// FIX LATEX: Convert @ → \
+// ═══════════════════════════════════════════════════════════
 const fixLatex = (s) => {
   if (!s) return '';
   let fixed = String(s);
   fixed = fixed.replace(/@/g, '\\');
   fixed = fixed.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
-  const commands = ['frac','dfrac','tfrac','sqrt','times','cdot','div','left','right','sum','prod','int','lim','log','ln','sin','cos','tan','pi','alpha','beta','gamma','delta','theta','lambda','mu','sigma','omega','infty','pm','mp','neq','leq','geq','approx','equiv','partial','nabla','vec','hat','bar','dot','ddot','tilde','overline','mathrm','mathbf'];
+  const commands = ['frac','dfrac','tfrac','sqrt','times','cdot','div','left','right','sum','prod','int','lim','log','ln','sin','cos','tan','pi','alpha','beta','gamma','delta','theta','lambda','mu','sigma','omega','infty','pm','mp','neq','leq','geq','approx','equiv','partial','nabla','vec','hat','bar','dot','ddot','tilde','overline','mathrm','mathbf','quad','qquad','text','begin','end'];
   commands.sort((a,b) => b.length - a.length);
   commands.forEach((cmd) => {
     const regex = new RegExp(`(?<![\\\\a-zA-Z])${cmd}(?=[{\\s\\[a-zA-Z(])`, 'g');
     fixed = fixed.replace(regex, `\\${cmd}`);
   });
   return fixed;
+};
+
+// ═══════════════════════════════════════════════════════════
+// SANITIZE: Fix syntax yang sering error
+// ═══════════════════════════════════════════════════════════
+const sanitizeLatex = (s) => {
+  if (!s) return '';
+  let text = String(s);
+
+  // Fix \begin{\pmatrix} → \begin{pmatrix}
+  text = text.replace(/\\begin\{[^a-zA-Z]*([a-zA-Z]+)\}/g, '\\begin{$1}');
+  text = text.replace(/\\end\{[^a-zA-Z]*([a-zA-Z]+)\}/g, '\\end{$1}');
+
+  // Fix \( \) dari inline math leak
+  text = text.replace(/\\\(/g, '(');
+  text = text.replace(/\\\)/g, ')');
+
+  // Fix \dx, \dy
+  text = text.replace(/\\d([a-zA-Z])\b/g, '\\, d$1');
+
+  // Fix single-letter command invalid (\x, \y, \z, \q, \v, \w, \u)
+  text = text.replace(/\\([xyzqvwu])(?![a-zA-Z])/g, '$1');
+
+  // Fix unicode Greek
+  const greekMap = {
+    'α': '\\alpha ', 'β': '\\beta ', 'γ': '\\gamma ', 'δ': '\\delta ',
+    'ε': '\\epsilon ', 'ζ': '\\zeta ', 'η': '\\eta ', 'θ': '\\theta ',
+    'ι': '\\iota ', 'κ': '\\kappa ', 'λ': '\\lambda ', 'μ': '\\mu ',
+    'ν': '\\nu ', 'ξ': '\\xi ', 'π': '\\pi ', 'ρ': '\\rho ',
+    'σ': '\\sigma ', 'τ': '\\tau ', 'φ': '\\phi ', 'χ': '\\chi ',
+    'ψ': '\\psi ', 'ω': '\\omega ',
+    'Γ': '\\Gamma ', 'Δ': '\\Delta ', 'Θ': '\\Theta ',
+    'Λ': '\\Lambda ', 'Ξ': '\\Xi ', 'Π': '\\Pi ',
+    'Σ': '\\Sigma ', 'Φ': '\\Phi ', 'Ψ': '\\Psi ', 'Ω': '\\Omega ',
+  };
+  Object.entries(greekMap).forEach(([unicode, latex]) => {
+    text = text.split(unicode).join(latex);
+  });
+
+  // Fix unicode operators
+  text = text
+    .replace(/×/g, '\\times ')
+    .replace(/÷/g, '\\div ')
+    .replace(/±/g, '\\pm ')
+    .replace(/≥/g, '\\geq ')
+    .replace(/≤/g, '\\leq ')
+    .replace(/≠/g, '\\neq ')
+    .replace(/∞/g, '\\infty ')
+    .replace(/√/g, '\\sqrt ')
+    .replace(/∑/g, '\\sum ')
+    .replace(/∫/g, '\\int ')
+    .replace(/∂/g, '\\partial ')
+    .replace(/∆/g, '\\Delta ')
+    .replace(/·/g, '\\cdot ')
+    .replace(/→/g, '\\to ')
+    .replace(/←/g, '\\leftarrow ')
+    .replace(/⇒/g, '\\Rightarrow ')
+    .replace(/⇔/g, '\\Leftrightarrow ');
+
+  // Fix \ (backslash space) di dalam matrix → \\
+  if (/\\begin\{/.test(text)) {
+    text = text.replace(/\s\\\s+([&\\])/g, ' \\\\ $1');
+    text = text.replace(/\s\\\s+$/g, ' \\\\ ');
+  }
+
+  // Fix double backslash
+  text = text.replace(/\\\\([a-zA-Z])/g, '\\$1');
+
+  // Rapikan spaces
+  if (!/\\begin\{/.test(text)) {
+    text = text.replace(/\s+/g, ' ').trim();
+  }
+
+  return text;
+};
+
+// ═══════════════════════════════════════════════════════════
+// ULTRA SANITIZE
+// ═══════════════════════════════════════════════════════════
+const ultraSanitize = (text) => {
+  if (!text) return '';
+  let s = String(text);
+  s = s.replace(/[\u200B-\u200D\uFEFF\u00AD]/g, '');
+  s = s.replace(/\u00A0/g, ' ');
+  s = s.replace(/\t/g, ' ');
+  s = s.normalize('NFC');
+  s = s.replace(/\\+$/, '');
+  s = s.replace(/\\\s*;/g, '\\;');
+  s = s.replace(/\\\s+,/g, '\\,');
+  s = s.replace(/\s+/g, ' ').trim();
+  return s;
+};
+
+// ═══════════════════════════════════════════════════════════
+// PREPARE: Gabungan semua fix
+// ═══════════════════════════════════════════════════════════
+const prepare = (latex) => {
+  let s = fixLatex(latex);
+  s = sanitizeLatex(s);
+  s = ultraSanitize(s);
+  return s;
 };
 
 const DEFAULT_FORM = {
@@ -60,7 +164,7 @@ const AdminFormulaManager = () => {
   const [deleteAllConfirm, setDeleteAllConfirm] = useState('');
   const [deletingBulk, setDeletingBulk] = useState(false);
 
-  // ⚡ FORM MODAL STATE
+  // FORM MODAL STATE
   const [showFormModal, setShowFormModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentId, setCurrentId] = useState(null);
@@ -111,13 +215,11 @@ const AdminFormulaManager = () => {
       for (let i = 0; i < selectedFormulaIds.length; i += 500) {
         chunks.push(selectedFormulaIds.slice(i, i + 500));
       }
-
       for (const chunk of chunks) {
         const batch = writeBatch(db);
         chunk.forEach((id) => batch.delete(doc(db, 'formulas', id)));
         await batch.commit();
       }
-
       toast.success(`${selectedFormulaIds.length} rumus dihapus! 🗑️`);
       setSelectedFormulaIds([]);
       fetchData();
@@ -140,13 +242,11 @@ const AdminFormulaManager = () => {
       for (let i = 0; i < allIds.length; i += 500) {
         chunks.push(allIds.slice(i, i + 500));
       }
-
       for (const chunk of chunks) {
         const batch = writeBatch(db);
         chunk.forEach((id) => batch.delete(doc(db, 'formulas', id)));
         await batch.commit();
       }
-
       toast.success(`🧹 ${allIds.length} rumus DIHAPUS SEMUA!`);
       setShowDeleteAllModal(false);
       setDeleteAllConfirm('');
@@ -159,7 +259,7 @@ const AdminFormulaManager = () => {
     setDeletingBulk(false);
   };
 
-  // ═══ FORM MANUAL ═══
+  // FORM MANUAL
   const handleOpenAdd = () => {
     setFormData(DEFAULT_FORM);
     setIsEditing(false);
@@ -189,7 +289,6 @@ const AdminFormulaManager = () => {
 
     setFormSaving(true);
     try {
-      // Resolve material title kalau ada materialId
       let materialTitle = formData.materialTitle;
       if (formData.materialId && !materialTitle) {
         const mat = materials.find(m => m.id === formData.materialId);
@@ -233,7 +332,7 @@ const AdminFormulaManager = () => {
     setFormSaving(false);
   };
 
-  // ═══ AI Extract ═══
+  // ═══ AI EXTRACT (PROMPT BARU!) ═══
   const extractFormulasFromMaterial = async (material, retryCount = 0) => {
     const plainContent = String(material.content || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').slice(0, 3000);
 
@@ -252,11 +351,50 @@ OUTPUT HARUS JSON VALID:
   ]
 }
 
-⚠️ ATURAN LATEX: Tulis SEMUA backslash "\\" sebagai "@".
-- \\frac{n}{2} → "@frac{n}{2}"
-- \\sqrt{x} → "@sqrt{x}"
-- \\times → "@times"
-- x^{2} → "x^{2}" (tanpa @ karena tidak ada backslash)
+⚠️ ATURAN LATEX (WAJIB DIPATUHI):
+
+1. Tulis SEMUA backslash "\\" sebagai "@".
+   - \\frac → @frac
+   - \\sqrt → @sqrt
+   - \\cos → @cos
+   - \\theta → @theta
+
+2. JANGAN pakai @x, @y, @z, @q, @v, @w, @u — TIDAK VALID di LaTeX!
+   ❌ SALAH: "@x cos @theta"
+   ✅ BENAR: "x @cos @theta"
+
+3. Untuk spasi antar rumus, pakai @quad atau @; atau @,
+   ❌ JANGAN pakai @ (backslash + spasi)
+   ✅ BENAR: "@cos t = x @quad @sin t = y"
+
+4. Untuk matriks, pakai @begin{pmatrix}...@end{pmatrix}
+   ❌ JANGAN: @begin{@pmatrix} atau @begin{\\pmatrix}
+   ✅ BENAR: "@begin{pmatrix} a & b @\\ c & d @end{pmatrix}"
+
+5. Untuk inline math, JANGAN pakai \\( \\) — langsung tulis saja
+   ❌ SALAH: "\\(x @neq 0)"
+   ✅ BENAR: "(x @neq 0)"
+
+6. Untuk integral, pakai @, dx atau dx biasa
+   ❌ JANGAN: "@dx"
+   ✅ BENAR: "@int e^{ax} @, dx"
+
+7. Untuk pecahan: @frac{pembilang}{penyebut}
+8. Untuk akar: @sqrt{x} atau @sqrt[n]{x}
+9. Untuk pangkat: x^{2} (JANGAN x^2 tanpa kurung kalau lebih dari 1 karakter)
+10. Untuk subscript: x_{1}
+
+CONTOH BENAR:
+- "@cos t = x @quad @sin t = y @quad @tan t = @frac{y}{x} @quad (x @neq 0)"
+- "P'(@x @cos @theta - @y @sin @theta, @x @sin @theta + @y @cos @theta)"
+- "@begin{pmatrix} @cos @theta & -@sin @theta @\\ @sin @theta & @cos @theta @end{pmatrix}"
+- "@int e^{ax} @, dx = @frac{1}{a} e^{ax} + C"
+- "@lim_{x @to @infty} @frac{1}{x} = 0"
+
+CONTOH SALAH (JANGAN DITIRU):
+- "@x cos @theta" (ada @x — tidak valid)
+- "@cos t = x @ @sin t = y" (ada @ @)
+- "@begin{@pmatrix}" (kurung salah)
 
 Ambil 3-8 rumus penting. Output HANYA JSON.`;
 
@@ -371,10 +509,40 @@ Ambil 3-8 rumus penting. Output HANYA JSON.`;
     } catch (err) { toast.error('Gagal: ' + err.message); }
   };
 
+  // ⚡ RENDER KATEX dengan sanitize + fallback
   const renderKatex = (latex) => {
+    if (!latex) return '';
+    const base = prepare(latex);
+
+    // Attempt 1
     try {
-      return katex.renderToString(fixLatex(latex), { throwOnError: false, displayMode: false });
-    } catch { return latex; }
+      return katex.renderToString(base, { throwOnError: true, displayMode: false, strict: false });
+    } catch (e) { /* console.warn('KaTeX 1 gagal:', e.message); */ }
+
+    // Attempt 2
+    try {
+      let s = base.replace(/\\([xyzqvwub])(?![a-zA-Z])/g, '$1');
+      return katex.renderToString(s, { throwOnError: true, displayMode: false, strict: false });
+    } catch (e) { /* console.warn('KaTeX 2 gagal:', e.message); */ }
+
+    // Attempt 3
+    try {
+      let s = base.replace(/\\;/g, '\\ ').replace(/\\,/g, ' ');
+      s = s.replace(/\\([xyzqvwub])(?![a-zA-Z])/g, '$1');
+      return katex.renderToString(s, { throwOnError: true, displayMode: false, strict: false });
+    } catch (e) { /* console.warn('KaTeX 3 gagal:', e.message); */ }
+
+    // Last resort
+    const cleaned = base
+      .replace(/\\begin\{([^}]+)\}/g, '[$1] ')
+      .replace(/\\end\{([^}]+)\}/g, ' ')
+      .replace(/\\\\/g, ' | ')
+      .replace(/&/g, ' | ')
+      .replace(/\\/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const escaped = String(cleaned).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return `<code style="font-family: ui-monospace, monospace; font-size: 0.85em; color: #64748b; word-break: break-word;">${escaped}</code>`;
   };
 
   if (loading) {
@@ -513,7 +681,7 @@ Ambil 3-8 rumus penting. Output HANYA JSON.`;
         )}
       </div>
 
-      {/* ⚡ MODAL FORM TAMBAH/EDIT */}
+      {/* MODAL FORM TAMBAH/EDIT */}
       {showFormModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[200] flex items-center justify-center p-4 overflow-y-auto" onClick={() => !formSaving && setShowFormModal(false)}>
           <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl my-8 relative" onClick={(e) => e.stopPropagation()}>
@@ -712,7 +880,7 @@ Ambil 3-8 rumus penting. Output HANYA JSON.`;
         </div>
       )}
 
-      {/* MODAL AI EXTRACT (existing) */}
+      {/* MODAL AI EXTRACT */}
       {showExtractModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4 overflow-y-auto" onClick={() => !extracting && !saving && setShowExtractModal(false)}>
           <div className="bg-white dark:bg-slate-800 rounded-3xl max-w-3xl w-full shadow-2xl my-8 relative" onClick={(e) => e.stopPropagation()}>

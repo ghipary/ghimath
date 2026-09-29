@@ -3,12 +3,13 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import StreakBadge from '../components/StreakBadge';
+import WelcomeBubble from '../components/WelcomeBubble';
+import FeedbackModal from '../components/FeedbackModal';
 import { db } from '../firebase';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { BookOpen, Trophy, Clock, ChevronRight, PlayCircle, Loader, Target, TrendingUp, Sparkles, Zap, BarChart3, Flame, CheckCircle, Dices } from 'lucide-react';
+import { BookOpen, Trophy, Clock, ChevronRight, PlayCircle, Loader, Target, TrendingUp, Sparkles, Zap, BarChart3, Flame, CheckCircle, Dices, MessageSquareHeart } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import toast from 'react-hot-toast';
-import WelcomeBubble from '../components/WelcomeBubble';
 
 const getTodayDate = () => {
   const now = new Date();
@@ -23,6 +24,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showFeedback, setShowFeedback] = useState(false);
   const [stats, setStats] = useState({
     totalPublished: 0,
     completedCount: 0,
@@ -32,7 +34,7 @@ const Dashboard = () => {
   const [lastMaterial, setLastMaterial] = useState(null);
   const [recommendations, setRecommendations] = useState([]);
   const [quizHistory, setQuizHistory] = useState([]);
-  const [dailyStatus, setDailyStatus] = useState(undefined); // undefined = loading, null = belum ada, obj = ada
+  const [dailyStatus, setDailyStatus] = useState(undefined);
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -54,7 +56,6 @@ const Dashboard = () => {
           return;
         }
 
-        // ⚡ CEK STATUS KUIS HARIAN
         try {
           const today = getTodayDate();
           const dailyRef = doc(db, 'dailyChallenges', `${user.uid}_${today}`);
@@ -62,7 +63,6 @@ const Dashboard = () => {
           const status = dailySnap.exists() ? dailySnap.data() : null;
           setDailyStatus(status);
 
-          // ⚡ NOTIFIKASI JIKA BELUM DIKERJAKAN
           if (!status || status.completed !== true) {
             toast('🔥 Kuis Harian belum dikerjakan! Yuk kerjakan sekarang untuk menjaga streak-mu.', {
               icon: '⏰',
@@ -193,12 +193,10 @@ const Dashboard = () => {
       <div className="grid-pattern"></div>
       <Navbar />
 
-      {/* ⚡ Balon Chat Sambutan */}
       <WelcomeBubble dailyDone={dailyDone} />
      
       <div className="page-content max-w-5xl mx-auto px-3 sm:px-4 pt-8 sm:pt-12 pb-6">
         
-        {/* Header Sapaan */}
         <div className="mb-6 sm:mb-8">
           <div className="inline-flex items-center gap-2 bg-white/60 dark:bg-slate-800/60 backdrop-blur-md border border-teal-200/50 dark:border-teal-800/50 px-3 py-1.5 rounded-full text-xs font-semibold text-teal-700 dark:text-teal-400 mb-4 shadow-sm">
             <Sparkles className="w-3.5 h-3.5" />
@@ -213,7 +211,6 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {/* ⚡ KUIS HARIAN CARD */}
         {dailyAvailable && (
           <Link
             to="/kuis-harian"
@@ -261,7 +258,6 @@ const Dashboard = () => {
           </Link>
         )}
 
-        {/* ⚡ FITUR BARU: KUIS ACAK (GAME GABUT) */}
         <Link
           to="/kuis-gabut"
           className="block relative overflow-hidden rounded-2xl p-5 sm:p-6 mb-6 transition-all group hover:-translate-y-1 shadow-xl hover:shadow-2xl bg-gradient-to-br from-indigo-500 via-purple-600 to-fuchsia-600"
@@ -291,17 +287,12 @@ const Dashboard = () => {
           </div>
         </Link>
 
-        {/* 🔥 STREAK BADGE */}
         {streakData.current > 0 && (
           <div className="mb-6 sm:mb-8">
-            <StreakBadge 
-              current={streakData.current} 
-              longest={streakData.longest} 
-            />
+            <StreakBadge current={streakData.current} longest={streakData.longest} />
           </div>
         )}
 
-        {/* PROGRESS CARD */}
         <div className="card-elevated card-accent rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8">
           <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
             <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-3">
@@ -341,7 +332,6 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
           
           <div className="md:col-span-2 space-y-4 sm:space-y-6">
-            {/* Lanjutkan Belajar */}
             <div className="card-elevated rounded-2xl p-4 sm:p-6">
               <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 via-teal-600 to-cyan-600 flex items-center justify-center shadow-lg shadow-teal-500/30">
@@ -384,7 +374,6 @@ const Dashboard = () => {
               )}
             </div>
 
-            {/* MINI CHART */}
             {miniChartData.length >= 2 && (
               <div className="card-elevated rounded-2xl p-4 sm:p-6">
                 <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
@@ -414,18 +403,8 @@ const Dashboard = () => {
                 <div className="w-full h-32 -ml-2">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={miniChartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                      <XAxis 
-                        dataKey="name" 
-                        tick={{ fontSize: 10, fill: '#94a3b8' }}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <YAxis 
-                        domain={[0, 100]} 
-                        tick={{ fontSize: 10, fill: '#94a3b8' }}
-                        axisLine={false}
-                        tickLine={false}
-                      />
+                      <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                       <Tooltip content={<MiniTooltip />} />
                       <Line 
                         type="monotone" 
@@ -445,7 +424,6 @@ const Dashboard = () => {
               </div>
             )}
 
-            {/* Rekomendasi */}
             <div className="card-elevated rounded-2xl p-4 sm:p-6">
               <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 via-cyan-600 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
@@ -477,7 +455,6 @@ const Dashboard = () => {
 
           <div className="space-y-4 sm:space-y-6">
             
-            {/* Total Skor */}
             <Link 
               to="/leaderboard"
               className="block relative overflow-hidden rounded-2xl p-4 sm:p-6 bg-gradient-to-br from-amber-400 via-orange-500 to-pink-500 text-white shadow-xl hover:shadow-2xl transition-all group hover:-translate-y-1"
@@ -503,7 +480,6 @@ const Dashboard = () => {
               </div>
             </Link>
             
-            {/* Pilih Materi */}
             <Link 
               to="/materi"
               className="block relative overflow-hidden bg-gradient-to-br from-teal-500 via-cyan-600 to-blue-700 rounded-2xl shadow-xl hover:shadow-2xl p-4 sm:p-6 text-white transition-all group hover:-translate-y-1"
@@ -525,6 +501,21 @@ const Dashboard = () => {
 
         </div>
       </div>
+
+      {/* ⚡ Floating Button: Refleksi & Saran */}
+      <button
+        onClick={() => setShowFeedback(true)}
+        className="fixed bottom-6 right-6 z-40 group flex items-center gap-2 bg-gradient-to-r from-violet-500 via-purple-600 to-fuchsia-600 hover:from-violet-600 hover:to-fuchsia-700 text-white font-bold px-4 py-3.5 rounded-2xl shadow-2xl shadow-purple-500/40 transition-all hover:scale-105"
+        title="Kirim Refleksi & Saran"
+      >
+        <MessageSquareHeart className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+        <span className="hidden sm:inline text-sm">Refleksi</span>
+      </button>
+
+      <FeedbackModal 
+        isOpen={showFeedback} 
+        onClose={() => setShowFeedback(false)} 
+      />
     </div>
   );
 };
