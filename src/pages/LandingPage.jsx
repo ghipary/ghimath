@@ -9,11 +9,11 @@ import {
   BookOpen, Trophy, ChevronRight, Sparkles, Users, FileText, 
   GraduationCap, TrendingUp, Sparkle, Award, Target, CheckCircle,
   BarChart3, Calculator, Medal, Compass, Lightbulb, Rocket,
-  ArrowRight, Play, Zap, HelpCircle
+  ArrowRight, Play, Zap, HelpCircle, Lock
 } from 'lucide-react';
 
 /* ═══════════════════════════════════════════════════ */
-/* ⚡ HELPER: ANIMASI SCROLL (Intersection Observer)  */
+/* ⚡ HELPER: ANIMASI SCROLL                          */
 /* ═══════════════════════════════════════════════════ */
 const useScrollReveal = (options = {}) => {
   const ref = useRef(null);
@@ -40,7 +40,6 @@ const useScrollReveal = (options = {}) => {
   return [ref, isVisible];
 };
 
-// Wrapper untuk animasi
 const Reveal = ({ children, delay = 0, direction = 'up' }) => {
   const [ref, isVisible] = useScrollReveal();
   
@@ -78,7 +77,6 @@ const LandingPage = () => {
     loading: true,
   });
 
-  // ⚡ FETCH REAL DATA dari Firestore
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -89,10 +87,7 @@ const LandingPage = () => {
           getDocs(collection(db, 'formulas')).catch(() => ({ docs: [] })),
         ]);
 
-        // User non-admin
         const realUsers = usersSnap.docs.filter((d) => d.data().role !== 'admin');
-
-        // Materi published saja
         const publishedMaterials = materialsSnap.docs.filter(
           (d) => d.data().published === true
         );
@@ -112,7 +107,6 @@ const LandingPage = () => {
     fetchStats();
   }, []);
 
-  // ⚡ Format angka
   const fmt = (num) => {
     if (num === 0) return '0';
     if (num < 10) return `${num}`;
@@ -134,9 +128,10 @@ const LandingPage = () => {
         <div className="absolute top-10 left-10 w-64 h-64 bg-teal-400/20 dark:bg-teal-500/10 rounded-full blur-3xl -z-10 animate-float-custom"></div>
         <div className="absolute bottom-10 right-10 w-72 h-72 bg-violet-400/15 dark:bg-violet-500/10 rounded-full blur-3xl -z-10 animate-float-reverse"></div>
 
+        {/* ⚡ Badge: Hapus klaim #1 */}
         <div className="inline-flex items-center gap-2 bg-white/70 dark:bg-slate-800/60 backdrop-blur-md border border-teal-200/60 dark:border-teal-800/50 text-teal-700 dark:text-teal-300 px-4 py-2 rounded-full text-sm font-semibold mb-6 shadow-sm">
           <Sparkles className="w-4 h-4" />
-          Media Pembelajaran Interaktif #1
+          Media Pembelajaran Matematika Interaktif
         </div>
 
         <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold text-gray-900 dark:text-white leading-[1.1] mb-6 max-w-4xl">
@@ -153,12 +148,13 @@ const LandingPage = () => {
           Belajar mandiri kapan saja, di mana saja.
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-4 mb-16">
+        {/* ⚡ CTA: Teks lebih jelas */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-4">
           <Link 
             to={user ? "/dashboard" : "/register"}
             className="group flex items-center justify-center gap-2 bg-gradient-to-r from-teal-500 via-cyan-600 to-teal-600 hover:from-teal-600 hover:to-cyan-700 text-white px-8 py-4 rounded-2xl text-lg font-bold transition-all shadow-xl shadow-teal-500/30 hover:-translate-y-1"
           >
-            {user ? 'Lanjut Belajar' : 'Mulai Belajar Gratis'}
+            {user ? 'Lanjut Belajar' : 'Daftar Gratis'}
             <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
           </Link>
           <Link 
@@ -166,11 +162,17 @@ const LandingPage = () => {
             className="flex items-center justify-center gap-2 card-elevated text-gray-800 dark:text-white px-8 py-4 rounded-2xl text-lg font-semibold transition-all hover:-translate-y-1"
           >
             <Play className="w-5 h-5" />
-            Lihat Materi
+            Jelajahi Tanpa Login
           </Link>
         </div>
 
-        {/* STATS — 4 KOLOM */}
+        {/* ⚡ Keterangan kecil */}
+        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-12 flex items-center gap-1.5">
+          <CheckCircle className="w-3.5 h-3.5 text-teal-500" />
+          Lihat daftar materi & bank rumus gratis tanpa perlu daftar
+        </p>
+
+        {/* STATS */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 max-w-4xl w-full">
           <div className="text-center group">
             <div className="w-12 h-12 mx-auto bg-gradient-to-br from-teal-400 to-cyan-600 rounded-2xl flex items-center justify-center shadow-lg shadow-teal-500/30 mb-3 group-hover:scale-110 transition-transform">
@@ -217,14 +219,14 @@ const LandingPage = () => {
           <p className="mt-8 text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
             <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
             <span className="font-medium">
-              {stats.users} siswa sudah bergabung dari seluruh Indonesia
+              {stats.users} siswa sudah bergabung
             </span>
           </p>
         )}
       </section>
 
       {/* ═══════════════════════════════════════════ */}
-      {/* SECTION 2: FITUR UNGGULAN (6 KARTU)         */}
+      {/* SECTION 2: FITUR UNGGULAN                   */}
       {/* ═══════════════════════════════════════════ */}
       <section className="page-content py-20 px-4">
         <div className="max-w-7xl mx-auto">
@@ -301,8 +303,12 @@ const LandingPage = () => {
               </div>
             </Reveal>
 
+            {/* ⚡ Fitur Leaderboard: Tambah info login */}
             <Reveal delay={400}>
-              <div className="group card-elevated p-7 rounded-3xl transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl h-full">
+              <div className="group card-elevated p-7 rounded-3xl transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl h-full relative">
+                <div className="absolute top-4 right-4 inline-flex items-center gap-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  <Lock className="w-2.5 h-2.5" /> Perlu Login
+                </div>
                 <div className="w-14 h-14 bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600 rounded-2xl flex items-center justify-center mb-5 shadow-lg shadow-blue-500/30 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
                   <Medal className="w-7 h-7 text-white" />
                 </div>
@@ -310,13 +316,17 @@ const LandingPage = () => {
                   Leaderboard
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                  Bersaing dengan siswa se-Indonesia. Naik peringkat, tunjukkan kemampuanmu, dan raih posisi teratas!
+                  Bersaing dengan siswa se-Indonesia dan raih posisi teratas. Login dulu untuk ikut berkompetisi!
                 </p>
               </div>
             </Reveal>
 
+            {/* ⚡ Fitur Sertifikat: Tambah syarat */}
             <Reveal delay={500}>
-              <div className="group card-elevated p-7 rounded-3xl transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl h-full">
+              <div className="group card-elevated p-7 rounded-3xl transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl h-full relative">
+                <div className="absolute top-4 right-4 inline-flex items-center gap-1 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  <Lock className="w-2.5 h-2.5" /> Perlu Login
+                </div>
                 <div className="w-14 h-14 bg-gradient-to-br from-yellow-400 via-amber-500 to-orange-600 rounded-2xl flex items-center justify-center mb-5 shadow-lg shadow-amber-500/30 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
                   <Award className="w-7 h-7 text-white" />
                 </div>
@@ -324,7 +334,7 @@ const LandingPage = () => {
                   Sertifikat
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                  Dapatkan sertifikat resmi setelah mencapai target belajar. Cetak atau bagikan ke media sosial!
+                  Dapatkan sertifikat setelah menyelesaikan 5 materi & 5 kuis. Cetak atau bagikan ke media sosial!
                 </p>
               </div>
             </Reveal>
@@ -334,7 +344,7 @@ const LandingPage = () => {
       </section>
 
       {/* ═══════════════════════════════════════════ */}
-      {/* SECTION 3: CARA KERJA (3 LANGKAH)           */}
+      {/* SECTION 3: CARA KERJA                       */}
       {/* ═══════════════════════════════════════════ */}
       <section className="page-content py-20 px-4 bg-gradient-to-b from-transparent via-teal-50/30 to-transparent dark:via-teal-950/20">
         <div className="max-w-6xl mx-auto">
@@ -404,7 +414,7 @@ const LandingPage = () => {
       </section>
 
       {/* ═══════════════════════════════════════════ */}
-      {/* SECTION 4: UNTUK SIAPA (3 KARTU)            */}
+      {/* SECTION 4: UNTUK SIAPA                      */}
       {/* ═══════════════════════════════════════════ */}
       <section className="page-content py-20 px-4">
         <div className="max-w-6xl mx-auto">
@@ -475,7 +485,7 @@ const LandingPage = () => {
               </div>
             </Reveal>
 
-            {/* Publik */}
+            {/* ⚡ Publik: Update klaim */}
             <Reveal delay={300}>
               <div className="card-elevated rounded-3xl p-7 h-full border-t-4 border-amber-400">
                 <div className="w-14 h-14 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center mb-5 shadow-lg shadow-amber-500/30">
@@ -486,10 +496,10 @@ const LandingPage = () => {
                 </h3>
                 <ul className="space-y-3">
                   {[
-                    'Lihat materi preview tanpa login',
-                    'Coba kuis gratis',
+                    'Lihat daftar materi tanpa login',
                     'Akses bank rumus gratis',
-                    'Login untuk fitur lengkap',
+                    'Coba Kuis Acak (Game Gabut)',
+                    'Daftar untuk fitur lengkap',
                   ].map((item, i) => (
                     <li key={i} className="flex items-start gap-2.5 text-sm text-gray-600 dark:text-gray-300">
                       <CheckCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />

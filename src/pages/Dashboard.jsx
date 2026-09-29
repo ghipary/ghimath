@@ -235,7 +235,7 @@ const Dashboard = () => {
                 <p className="text-white/90 text-xs sm:text-sm leading-relaxed">
                   {dailyDone 
                     ? 'Kembali besok untuk kuis baru dengan soal berbeda.'
-                    : '5 soal acak dari materi jenjangmu. Bisa menambah nilai rata-rata kuis kamu!'}
+                    : '5 soal acak dari materi jenjangmu. Bisa menambah nilai rata-rata kuis kamu! Kerjakan sekali sehari untuk menjaga streak.'}
                 </p>
               </div>
 
