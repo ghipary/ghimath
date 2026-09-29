@@ -43,6 +43,7 @@ const AdminAnalytics = lazy(() => import('./pages/admin/AdminAnalytics'))
 const AdminFormulaManager = lazy(() => import('./pages/admin/AdminFormulaManager'))
 const AdminExamManager = lazy(() => import('./pages/admin/AdminExamManager'))
 const AdminExamResults = lazy(() => import('./pages/admin/AdminExamResults'))
+const AdminFeedback = lazy(() => import('./pages/admin/AdminFeedback'))
 
 const PageLoader = () => (
   <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
@@ -113,6 +114,7 @@ function App() {
             <Route path="/admin/ujian" element={<AdminRoute><AdminExamManager /></AdminRoute>} />
             <Route path="/admin/ujian/:examId/results" element={<AdminRoute><AdminExamResults /></AdminRoute>} />
             <Route path="/admin/quiz-manager" element={<AdminRoute><AdminQuizManager /></AdminRoute>} />
+            <Route path="/admin/feedback" element={<AdminRoute><AdminFeedback /></AdminRoute>} />
 
             <Route path="/kuis-gabut" element={<QuizGabut />} />
             <Route path="/test-materi" element={<TestMateri />} />
