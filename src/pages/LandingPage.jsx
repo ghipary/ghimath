@@ -5,7 +5,7 @@ import Footer from '../components/Footer';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { collection, getDocs } from 'firebase/firestore';
-import { 
+import {
   BookOpen, Trophy, ChevronRight, Sparkles, Users, FileText, 
   GraduationCap, TrendingUp, Sparkle, Award, Target, CheckCircle,
   BarChart3, Calculator, Medal, Compass, Lightbulb, Rocket,
@@ -162,14 +162,18 @@ const LandingPage = () => {
             className="flex items-center justify-center gap-2 card-elevated text-gray-800 dark:text-white px-8 py-4 rounded-2xl text-lg font-semibold transition-all hover:-translate-y-1"
           >
             <Play className="w-5 h-5" />
-            Jelajahi Tanpa Login
+            {/* 👇 UBAH: Teks tombol berubah sesuai status login */}
+            {user ? 'Jelajahi Materi' : 'Jelajahi Tanpa Login'}
           </Link>
         </div>
 
         {/* ⚡ Keterangan kecil */}
         <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-12 flex items-center gap-1.5">
           <CheckCircle className="w-3.5 h-3.5 text-teal-500" />
-          Lihat daftar materi & bank rumus gratis tanpa perlu daftar
+          {/* 👇 UBAH: Teks keterangan berubah sesuai status login */}
+          {user 
+            ? 'Akses semua materi dan bank rumus selengkapnya' 
+            : 'Lihat daftar materi & bank rumus gratis tanpa perlu daftar'}
         </p>
 
         {/* STATS */}
@@ -215,11 +219,12 @@ const LandingPage = () => {
           </div>
         </div>
 
+        {/* ⚡ REFRAMING: Angka nyata dijadikan "siswa perintis" */}
         {stats.users > 0 && (
           <p className="mt-8 text-xs sm:text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
             <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
             <span className="font-medium">
-              {stats.users} siswa sudah bergabung
+              <strong className="text-teal-600 dark:text-teal-400">{stats.users} siswa perintis</strong> sudah bergabung — jadilah yang berikutnya! 🚀
             </span>
           </p>
         )}
@@ -533,9 +538,10 @@ const LandingPage = () => {
                 <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
                   Siap Mulai Belajar?
                 </h2>
+                {/* ⚡ REFRAMING: Angka nyata dijadikan tantangan 100 siswa perintis */}
                 <p className="text-cyan-50 text-base md:text-lg mb-8 max-w-xl mx-auto">
                   {stats.users > 0 
-                    ? `Bergabung dengan ${stats.users}+ siswa lainnya dan rasakan bedanya belajar matematika dengan GhiMath.`
+                    ? `Jadilah salah satu dari 100 siswa perintis GhiMath — saat ini ${stats.users} sudah bergabung!`
                     : 'Daftar gratis sekarang dan rasakan bedanya belajar matematika dengan GhiMath.'
                   }
                 </p>

@@ -74,7 +74,7 @@ const ExamList = () => {
           📝 Ujian
         </h1>
         <p className="text-gray-600 dark:text-gray-400 mb-6">
-          Ujian resmi dengan timer & soal acak. Pastikan kamu siap sebelum mulai!
+          Ujian resmi dengan timer & soal acak. Lihat deskripsi file soal sebelum mulai, lalu login untuk mengerjakan.
         </p>
       </div>
 

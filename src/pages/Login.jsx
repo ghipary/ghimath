@@ -1,8 +1,32 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Logo from '../components/Logo';
 import { Mail, Lock, AlertCircle, Globe, Sparkles, Eye, EyeOff, Check } from 'lucide-react';
+
+// ⚡ Copywriting dinamis berdasarkan konteks halaman asal
+const CONTEXT_COPY = {
+  leaderboard: {
+    badge: 'Ingin lihat peringkatmu? 🏆',
+    title: 'Login Dulu Yuk!',
+    subtitle: 'Bersaing dengan siswa lain dari seluruh Indonesia.',
+  },
+  ujian: {
+    badge: 'Siap uji kemampuanmu? 📝',
+    title: 'Login Dulu Yuk!',
+    subtitle: 'Untuk mengikuti ujian, kamu perlu masuk dulu. Gratis, kok!',
+  },
+  materi: {
+    badge: 'Lanjutkan belajar? 📚',
+    title: 'Login Dulu Yuk!',
+    subtitle: 'Untuk membaca materi lengkap, kamu perlu masuk dulu.',
+  },
+  default: {
+    badge: 'Selamat datang kembali 👋',
+    title: 'Masuk ke Akunmu',
+    subtitle: 'Lanjutkan belajarmu di sini.',
+  },
+};
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -13,6 +37,11 @@ const Login = () => {
   
   const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // ⚡ Ambil konteks dari state (dikirim oleh Navbar)
+  const fromContext = location.state?.from || 'default';
+  const copy = CONTEXT_COPY[fromContext] || CONTEXT_COPY.default;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -47,7 +76,7 @@ const Login = () => {
         <div className="text-center mb-6">
           <div className="inline-flex items-center gap-2 bg-white/70 dark:bg-slate-800/60 backdrop-blur-md border border-teal-200/60 dark:border-teal-800/50 px-3 py-1.5 rounded-full text-xs font-semibold text-teal-700 dark:text-teal-400 shadow-sm">
             <Sparkles className="w-3.5 h-3.5" />
-            Selamat datang kembali
+            {copy.badge}
           </div>
         </div>
 
@@ -64,12 +93,12 @@ const Login = () => {
                 </span>
               </div>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Masuk ke Akunmu
+                {copy.title}
               </h2>
-              <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Lanjutkan belajarmu di sini</p>
+              <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">{copy.subtitle}</p>
             </div>
 
-            {/* ⚡ Highlight gratis */}
+            {/* Highlight gratis */}
             <div className="flex flex-wrap items-center justify-center gap-3 mb-6 text-xs">
               <span className="inline-flex items-center gap-1 text-teal-600 dark:text-teal-400 font-semibold">
                 <Check className="w-3.5 h-3.5" /> Gratis selamanya

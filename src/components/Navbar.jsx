@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Menu, X, Moon, Sun, LayoutDashboard, LogOut, Settings, 
-  User, Trophy, Search, Home, BookOpen, Sparkles, FileText
+  User, Trophy, Search, Home, BookOpen, Sparkles, FileText, Lock
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { doc, getDoc } from 'firebase/firestore';
@@ -62,6 +62,8 @@ const Navbar = () => {
   const [darkMode, setDarkMode] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  // ⚡ State untuk pop-up login
+  const [loginPrompt, setLoginPrompt] = useState({ show: false, type: null });
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -71,7 +73,32 @@ const Navbar = () => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
-  // Base class untuk menu desktop (padding dikurangi biar hemat tempat)
+  // ⚡ FUNGSI UTAMA: Klik Leaderboard/Ujian → cek login → pop-up atau navigate
+  const handleProtectedClick = (path, type) => {
+    setIsOpen(false); // tutup menu mobile kalau sedang terbuka
+
+    if (!user) {
+      // Belum login → tampilkan pop-up
+      setLoginPrompt({ show: true, type });
+    } else {
+      // Sudah login → langsung ke halaman tujuan
+      navigate(path);
+    }
+  };
+
+  // ⚡ Copywriting pop-up
+  const loginPromptContent = {
+    leaderboard: {
+      title: 'Ingin lihat peringkatmu? 🏆',
+      message: 'Untuk melihat leaderboard harus login terlebih dahulu yaaaa 😊',
+    },
+    ujian: {
+      title: 'Siap uji kemampuanmu? 📝',
+      message: 'Untuk mengikuti ujian, kamu perlu login terlebih dahulu yaaaa 😊',
+    },
+  };
+
+  // Base class untuk menu desktop
   const baseDesktop = "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-sm font-medium transition-all duration-200 border whitespace-nowrap";
 
   const desktopLinkClass = (path) => {
@@ -93,6 +120,13 @@ const Navbar = () => {
       return `${baseDesktop} text-red-700 dark:text-red-300 bg-red-50/80 dark:bg-red-900/30 border-red-200/50 dark:border-red-700/50 shadow-sm font-bold`;
     }
     return `${baseDesktop} text-red-600 dark:text-red-400 hover:bg-red-50/80 dark:hover:bg-red-900/30 border-transparent hover:border-red-200 dark:hover:border-red-700/50`;
+  };
+
+  const desktopLeaderboardClass = () => {
+    if (isActive('/leaderboard')) {
+      return `${baseDesktop} text-amber-700 dark:text-amber-300 bg-amber-50/80 dark:bg-amber-900/30 border-amber-200/50 dark:border-amber-700/50 shadow-sm font-bold`;
+    }
+    return `${baseDesktop} text-gray-600 dark:text-gray-300 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-gray-100/80 dark:hover:bg-slate-800/60 border-transparent hover:border-gray-200 dark:hover:border-slate-700/50`;
   };
 
   const desktopAdminClass = () => {
@@ -162,15 +196,21 @@ const Navbar = () => {
     }
   };
 
+  // ⚡ Tombol "Login Sekarang" di dalam pop-up
+  const goToLogin = () => {
+    const type = loginPrompt.type;
+    setLoginPrompt({ show: false, type: null });
+    navigate('/login', { state: { from: type } });
+  };
+
   return (
     <>
       <nav className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-gray-200/60 dark:border-slate-700/60 shadow-sm transition-all duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          {/* === LAYOUT SIMETRIS: flex-1 di kiri & kanan, center di tengah === */}
           <div className="flex justify-between items-center h-16">
             
-            {/* KOLOM KIRI: Logo (flex-1 agar seimbang) */}
+            {/* KOLOM KIRI: Logo */}
             <div className="flex-1 flex justify-start">
               <Link to="/" className="flex items-center gap-2.5 cursor-pointer group flex-shrink-0">
                 <div className="group-hover:scale-105 transition-transform">
@@ -190,15 +230,26 @@ const Navbar = () => {
               <Link to="/materi" className={desktopLinkClass('/materi')}>
                 <BookOpen className="w-4 h-4" /> <span className="hidden xl:inline">Materi</span>
               </Link>
-              <Link to="/leaderboard" className={desktopLinkClass('/leaderboard')}>
+
+              {/* ⚡ LEADERBOARD: Pakai BUTTON, bukan Link */}
+              <button
+                onClick={() => handleProtectedClick('/leaderboard', 'leaderboard')}
+                className={desktopLeaderboardClass()}
+              >
                 <Trophy className="w-4 h-4" /> <span className="hidden xl:inline">Leaderboard</span>
-              </Link>
+              </button>
+
               <Link to="/rumus" className={desktopRumusClass()}>
                 <Sparkles className="w-4 h-4" /> <span className="hidden xl:inline">Rumus</span>
               </Link>
-              <Link to="/ujian" className={desktopUjianClass()}>
+
+              {/* ⚡ UJIAN: Pakai BUTTON, bukan Link */}
+              <button
+                onClick={() => handleProtectedClick('/ujian', 'ujian')}
+                className={desktopUjianClass()}
+              >
                 <FileText className="w-4 h-4" /> <span className="hidden xl:inline">Ujian</span>
-              </Link>
+              </button>
               
               {isAdmin && (
                 <Link to="/admin" className={desktopAdminClass()}>
@@ -207,13 +258,11 @@ const Navbar = () => {
               )}
             </div>
 
-            {/* KOLOM KANAN: Tombol Aksi (flex-1 agar seimbang) */}
+            {/* KOLOM KANAN: Tombol Aksi */}
             <div className="flex-1 flex justify-end items-center gap-1.5">
               
-              {/* Aksi Desktop */}
               <div className="hidden lg:flex items-center gap-1.5">
                 
-                {/* Search cuma ikon, buang tulisan Cari & Ctrl+K */}
                 <button 
                   onClick={() => setShowSearch(true)}
                   className="p-2 rounded-xl bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors group border border-transparent hover:border-gray-300 dark:hover:border-slate-600"
@@ -228,7 +277,6 @@ const Navbar = () => {
 
                 {user ? (
                   <div className="flex items-center gap-1.5">
-                    {/* Teks Dashboard, Profil, Keluar cuma muncul di layar 2xl (monitor gede) */}
                     <Link to="/dashboard" className={desktopLinkClass('/dashboard')} title="Dashboard">
                       <LayoutDashboard className="w-4 h-4" /> <span className="hidden 2xl:inline">Dashboard</span>
                     </Link>
@@ -273,7 +321,6 @@ const Navbar = () => {
 
             </div>
           </div>
-          {/* === END LAYOUT === */}
 
         </div>
 
@@ -286,9 +333,34 @@ const Navbar = () => {
           <div className="px-4 space-y-2">
             <MobileLink to="/" icon={Home} label="Beranda" color="teal" isActive={isActive} onClick={() => setIsOpen(false)} />
             <MobileLink to="/materi" icon={BookOpen} label="Materi" color="teal" isActive={isActive} onClick={() => setIsOpen(false)} />
-            <MobileLink to="/leaderboard" icon={Trophy} label="Leaderboard" color="amber" isActive={isActive} onClick={() => setIsOpen(false)} />
+
+            {/* ⚡ Leaderboard mobile: intercept */}
+            <MobileLink 
+              to="/leaderboard" 
+              icon={Trophy} 
+              label="Leaderboard" 
+              color="amber" 
+              isActive={isActive} 
+              onClick={(e) => {
+                e.preventDefault();
+                handleProtectedClick('/leaderboard', 'leaderboard');
+              }} 
+            />
+
             <MobileLink to="/rumus" icon={Sparkles} label="Bank Rumus" color="violet" isActive={isActive} onClick={() => setIsOpen(false)} />
-            <MobileLink to="/ujian" icon={FileText} label="Ujian" color="red" isActive={isActive} onClick={() => setIsOpen(false)} />
+
+            {/* ⚡ Ujian mobile: intercept */}
+            <MobileLink 
+              to="/ujian" 
+              icon={FileText} 
+              label="Ujian" 
+              color="red" 
+              isActive={isActive} 
+              onClick={(e) => {
+                e.preventDefault();
+                handleProtectedClick('/ujian', 'ujian');
+              }} 
+            />
             
             {isAdmin && (
               <MobileLink to="/admin" icon={Settings} label="Admin Panel" color="amber" isActive={isActive} onClick={() => setIsOpen(false)} />
@@ -332,6 +404,56 @@ const Navbar = () => {
           </div>
         </div>
       </nav>
+
+      {/* ⚡ MODAL POP-UP LOGIN PROMPT */}
+      {loginPrompt.show && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4"
+          onClick={() => setLoginPrompt({ show: false, type: null })}
+        >
+          <div 
+            className="bg-white dark:bg-slate-800 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-teal-400/20 to-cyan-500/10 rounded-full blur-3xl"></div>
+            
+            <button 
+              onClick={() => setLoginPrompt({ show: false, type: null })}
+              className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors z-10"
+            >
+              <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+            </button>
+
+            <div className="relative">
+              <div className="w-16 h-16 bg-gradient-to-br from-teal-400 via-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-teal-500/30">
+                <Lock className="w-8 h-8 text-white" />
+              </div>
+
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white text-center mb-2">
+                {loginPromptContent[loginPrompt.type]?.title}
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 text-center mb-6 leading-relaxed">
+                {loginPromptContent[loginPrompt.type]?.message}
+              </p>
+
+              <div className="flex flex-col gap-3">
+                <button 
+                  onClick={goToLogin}
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-teal-500/30 hover:shadow-xl hover:-translate-y-0.5"
+                >
+                  Login Sekarang
+                </button>
+                <button 
+                  onClick={() => setLoginPrompt({ show: false, type: null })}
+                  className="w-full text-center py-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 font-medium transition-colors"
+                >
+                  Nanti Saja
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <GlobalSearch isOpen={showSearch} onClose={() => setShowSearch(false)} />
     </>
