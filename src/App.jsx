@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react'
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { Toaster } from 'react-hot-toast'
 
@@ -14,6 +14,7 @@ import TestMateri from './pages/TestMateri';
 import NotFound from './pages/NotFound';
 import FAQ from './pages/FAQ';
 import Tentang from './pages/Tentang';
+
 
 const LandingPage = lazy(() => import('./pages/LandingPage'))
 const Login = lazy(() => import('./pages/Login'))
@@ -118,6 +119,9 @@ function App() {
             
             <Route path="/faq" element={<FAQ />} />
             <Route path="/tentang" element={<Tentang />} />
+            
+            {/* ⚡ Redirect /kuis ke /materi biar gak 404 */}
+            <Route path="/kuis" element={<Navigate to="/materi" replace />} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

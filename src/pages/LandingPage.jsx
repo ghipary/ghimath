@@ -355,7 +355,6 @@ const LandingPage = () => {
 
           <div className="relative grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-6">
             
-            {/* Garis penghubung desktop */}
             <div className="hidden md:block absolute top-16 left-[16%] right-[16%] h-0.5 bg-gradient-to-r from-teal-300 via-violet-300 to-amber-300 dark:from-teal-700 dark:via-violet-700 dark:to-amber-700"></div>
 
             <Reveal delay={0}>
@@ -489,8 +488,8 @@ const LandingPage = () => {
                   {[
                     'Lihat materi preview tanpa login',
                     'Coba kuis gratis',
-                    'Lihat leaderboard publik',
                     'Akses bank rumus gratis',
+                    'Login untuk fitur lengkap',
                   ].map((item, i) => (
                     <li key={i} className="flex items-start gap-2.5 text-sm text-gray-600 dark:text-gray-300">
                       <CheckCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
