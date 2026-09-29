@@ -10,30 +10,238 @@ import 'katex/dist/katex.min.css';
 import toast from 'react-hot-toast';
 
 // ═══════════════════════════════════════════════════════════
-// FIX LATEX: Convert @ → \ + clean control chars + fallback
+// FIX LATEX: Convert @ → \
 // ═══════════════════════════════════════════════════════════
 const fixLatex = (s) => {
   if (!s) return '';
   let fixed = String(s);
-  // 1. Convert @ → \ (dari prompt style baru)
   fixed = fixed.replace(/@/g, '\\');
-  // 2. Remove control chars
   fixed = fixed.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
-  // 3. Fix common LaTeX commands yang kehilangan backslash (fallback)
   const commands = ['frac','dfrac','tfrac','sqrt','times','cdot','div',
     'left','right','sum','prod','int','lim','log','ln','sin','cos','tan',
     'pi','alpha','beta','gamma','delta','theta','lambda','mu','sigma','omega',
     'infty','pm','mp','neq','leq','geq','approx','equiv','partial','nabla',
-    'vec','hat','bar','dot','ddot','tilde','overline','mathrm','mathbf'];
+    'vec','hat','bar','dot','ddot','tilde','overline','mathrm','mathbf',
+    'quad','qquad','text','begin','end','displaystyle','overline'];
   commands.sort((a,b) => b.length - a.length);
   commands.forEach((cmd) => {
-    // Match cmd tanpa backslash di depannya, diikuti { atau [ atau ( atau spasi
     const regex = new RegExp(`(?<![\\\\a-zA-Z])${cmd}(?=[{\\s\\[a-zA-Z(])`, 'g');
     fixed = fixed.replace(regex, `\\${cmd}`);
   });
   return fixed;
 };
 
+// ═══════════════════════════════════════════════════════════
+// SANITIZE LATEX
+// ═══════════════════════════════════════════════════════════
+const sanitizeLatex = (s) => {
+  if (!s) return '';
+  let text = String(s);
+
+  // ⚡ FIX 0 (BARU): Kurung kurawal salah di \begin & \end
+  // \begin{\pmatrix} → \begin{pmatrix}
+  text = text.replace(/\\begin\{([^}]*?)([a-zA-Z]+)\}/g, '\\begin{$2}');
+  text = text.replace(/\\end\{([^}]*?)([a-zA-Z]+)\}/g, '\\end{$2}');
+  // Fix: \begin{\pmatrix} (dengan p) → tetap hilangkan kurung
+  text = text.replace(/\\begin\{[^a-zA-Z]*([a-zA-Z]+)\}/g, '\\begin{$1}');
+  text = text.replace(/\\end\{[^a-zA-Z]*([a-zA-Z]+)\}/g, '\\end{$1}');
+
+  // ⚡ FIX 0b (BARU): \( \) dari inline math leak → hilangkan
+  text = text.replace(/\\\(/g, '(');
+  text = text.replace(/\\\)/g, ')');
+
+  // 1. Fix `\dx`, `\dy`, dll
+  text = text.replace(/\\d([a-zA-Z])\b/g, '\\, d$1');
+
+  // 2. Fix single-letter command invalid
+  text = text.replace(/\\([xyzqvwu])(?![a-zA-Z])/g, '$1');
+
+  // 3. Fix unicode Greek → LaTeX
+  const greekMap = {
+    'α': '\\alpha ', 'β': '\\beta ', 'γ': '\\gamma ', 'δ': '\\delta ',
+    'ε': '\\epsilon ', 'ζ': '\\zeta ', 'η': '\\eta ', 'θ': '\\theta ',
+    'ι': '\\iota ', 'κ': '\\kappa ', 'λ': '\\lambda ', 'μ': '\\mu ',
+    'ν': '\\nu ', 'ξ': '\\xi ', 'π': '\\pi ', 'ρ': '\\rho ',
+    'σ': '\\sigma ', 'τ': '\\tau ', 'φ': '\\phi ', 'χ': '\\chi ',
+    'ψ': '\\psi ', 'ω': '\\omega ',
+    'Γ': '\\Gamma ', 'Δ': '\\Delta ', 'Θ': '\\Theta ',
+    'Λ': '\\Lambda ', 'Ξ': '\\Xi ', 'Π': '\\Pi ',
+    'Σ': '\\Sigma ', 'Φ': '\\Phi ', 'Ψ': '\\Psi ', 'Ω': '\\Omega ',
+  };
+  Object.entries(greekMap).forEach(([unicode, latex]) => {
+    text = text.split(unicode).join(latex);
+  });
+
+  // 4. Fix unicode operators
+  text = text
+    .replace(/×/g, '\\times ')
+    .replace(/÷/g, '\\div ')
+    .replace(/±/g, '\\pm ')
+    .replace(/≥/g, '\\geq ')
+    .replace(/≤/g, '\\leq ')
+    .replace(/≠/g, '\\neq ')
+    .replace(/∞/g, '\\infty ')
+    .replace(/√/g, '\\sqrt ')
+    .replace(/∑/g, '\\sum ')
+    .replace(/∫/g, '\\int ')
+    .replace(/∂/g, '\\partial ')
+    .replace(/∆/g, '\\Delta ')
+    .replace(/·/g, '\\cdot ')
+    .replace(/→/g, '\\to ')
+    .replace(/←/g, '\\leftarrow ')
+    .replace(/⇒/g, '\\Rightarrow ')
+    .replace(/⇔/g, '\\Leftrightarrow ');
+
+  // 5. Fix `\ ` di dalam matrix → `\\`
+  if (/\\begin\{/.test(text)) {
+    text = text.replace(/\s\\\s+([&\\])/g, ' \\\\ $1');
+    text = text.replace(/\s\\\s+$/g, ' \\\\ ');
+  }
+
+  // 6. Fix double backslash
+  text = text.replace(/\\\\([a-zA-Z])/g, '\\$1');
+
+  // 7. Rapikan spaces (kecuali di dalam matrix)
+  if (!/\\begin\{/.test(text)) {
+    text = text.replace(/\s+/g, ' ').trim();
+  }
+
+  return text;
+};
+
+// ═══════════════════════════════════════════════════════════
+// ULTRA SANITIZE: Invisible chars
+// ═══════════════════════════════════════════════════════════
+const ultraSanitize = (text) => {
+  if (!text) return '';
+  let s = String(text);
+  s = s.replace(/[\u200B-\u200D\uFEFF\u00AD]/g, '');
+  s = s.replace(/\u00A0/g, ' ');
+  s = s.replace(/\t/g, ' ');
+  s = s.normalize('NFC');
+  s = s.replace(/\\+$/, '');
+  s = s.replace(/\\\s*;/g, '\\;');
+  s = s.replace(/\\\s+,/g, '\\,');
+  s = s.replace(/\s+/g, ' ').trim();
+  return s;
+};
+
+// ═══════════════════════════════════════════════════════════
+// PERSIAPAN UMUM: panggil semua sanitizer berurutan
+// ═══════════════════════════════════════════════════════════
+const prepare = (latex) => {
+  let s = fixLatex(latex);
+  s = sanitizeLatex(s);
+  s = ultraSanitize(s);
+  return s;
+};
+
+// ═══════════════════════════════════════════════════════════
+// RENDER KATEX — 4-Layer Fallback
+// ═══════════════════════════════════════════════════════════
+const renderKatex = (latex) => {
+  if (!latex) return '';
+  
+  const base = prepare(latex);
+  
+  // Attempt 1: normal
+  try {
+    return katex.renderToString(base, { throwOnError: true, displayMode: false, strict: false });
+  } catch (e) { console.warn('KaTeX 1 gagal:', e.message); }
+  
+  // Attempt 2: strip single-letter commands lagi
+  try {
+    let s = base.replace(/\\([xyzqvwub])(?![a-zA-Z])/g, '$1');
+    return katex.renderToString(s, { throwOnError: true, displayMode: false, strict: false });
+  } catch (e) { console.warn('KaTeX 2 gagal:', e.message); }
+  
+  // Attempt 3: ganti \; jadi space
+  try {
+    let s = base.replace(/\\;/g, '\\ ').replace(/\\,/g, ' ');
+    s = s.replace(/\\([xyzqvwub])(?![a-zA-Z])/g, '$1');
+    return katex.renderToString(s, { throwOnError: true, displayMode: false, strict: false });
+  } catch (e) { console.warn('KaTeX 3 gagal:', e.message); }
+  
+  // Attempt 4: matrix fix
+  try {
+    let s = base.replace(/\\([xyzqvwub])(?![a-zA-Z])/g, '$1');
+    s = s.replace(/\s\\\s+/g, ' \\\\ ');
+    return katex.renderToString(s, { throwOnError: true, displayMode: false, strict: false });
+  } catch (e) { console.warn('KaTeX 4 gagal:', e.message); }
+
+  // LAST RESORT: tampilkan versi sudah di-fix dalam abu-abu (readable, bukan merah)
+  let cleaned = base
+    .replace(/\\begin\{([^}]+)\}/g, '[$1] ')
+    .replace(/\\end\{([^}]+)\}/g, ' ')
+    .replace(/\\\\/g, ' | ')
+    .replace(/&/g, ' | ')
+    .replace(/\\/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  
+  const escaped = String(cleaned)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  return `<code style="font-family: ui-monospace, monospace; font-size: 0.85em; color: #64748b; word-break: break-word; line-height: 1.5; display: inline-block; padding: 4px 8px;">${escaped}</code>`;
+};
+
+// ═══════════════════════════════════════════════════════════
+// AUTO-DETECT LATEX untuk title & description
+// ═══════════════════════════════════════════════════════════
+const autoDetectLatex = (text) => {
+  if (!text) return '';
+  if (/\$/.test(text)) return text;
+  
+  let result = text;
+  const hasSuperscript = /\b[A-Za-z]\^\d+\b/.test(result);
+  const hasSubscript = /\b[A-Za-z]_\d+\b/.test(result);
+  const hasMathSymbols = /[±×÷√π≥≤≠∞∫∑]/.test(result);
+  
+  if (!hasSuperscript && !hasSubscript && !hasMathSymbols) return result;
+  
+  result = result
+    .replace(/±/g, ' $\\pm$ ')
+    .replace(/×/g, ' $\\times$ ')
+    .replace(/÷/g, ' $\\div$ ')
+    .replace(/π/g, ' $\\pi$ ')
+    .replace(/≥/g, ' $\\geq$ ')
+    .replace(/≤/g, ' $\\leq$ ')
+    .replace(/≠/g, ' $\\neq$ ')
+    .replace(/∞/g, ' $\\infty$ ');
+  
+  result = result.replace(/(?<!\$)\b([A-Za-z])\^(\d+)\b(?!\$)/g, '$$$1^{$2}$$');
+  result = result.replace(/(?<!\$)\b([A-Za-z])_(\d+)\b(?!\$)/g, '$$$1_{$2}$$');
+  result = result.replace(/\s+/g, ' ').trim();
+  
+  return result;
+};
+
+const renderTextWithLatex = (text) => {
+  if (!text) return '';
+  const detected = autoDetectLatex(text);
+  
+  if (/\$/.test(detected)) {
+    const parts = detected.split(/(\$[^$]+\$)/g);
+    return parts.map((part) => {
+      if (part.startsWith('$') && part.endsWith('$')) {
+        try {
+          let inner = prepare(part.slice(1, -1));
+          return katex.renderToString(inner, { throwOnError: true, displayMode: false, strict: false });
+        } catch {
+          let cleaned = prepare(part.slice(1, -1)).replace(/\\/g, '');
+          return `<code style="font-family: ui-monospace, monospace; font-size: 0.9em; color: #64748b;">${cleaned.replace(/</g, '&lt;')}</code>`;
+        }
+      }
+      return part.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }).join('');
+  }
+  return text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+};
+
+// ═══════════════════════════════════════════════════════════
+// KOMPONEN
+// ═══════════════════════════════════════════════════════════
 const FormulaBank = () => {
   const { user } = useAuth();
   const [formulas, setFormulas] = useState([]);
@@ -59,23 +267,18 @@ const FormulaBank = () => {
     fetchFormulas();
   }, []);
 
-  // Topic list
   const topics = ['all', ...Array.from(new Set(formulas.map((f) => f.topic).filter(Boolean)))];
 
-  // Filter
   const filtered = formulas.filter((f) => {
     const matchSearch = !searchTerm ||
       (f.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (f.formula || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (f.description || '').toLowerCase().includes(searchTerm.toLowerCase());
-
     const matchTopic = filterTopic === 'all' || f.topic === filterTopic;
     const matchBookmark = !showOnlyBookmark || (f.bookmarkedBy || []).includes(user?.uid);
-
     return matchSearch && matchTopic && matchBookmark;
   });
 
-  // Group by topic
   const grouped = {};
   filtered.forEach((f) => {
     const key = f.topic || 'Lainnya';
@@ -112,27 +315,13 @@ const FormulaBank = () => {
 
   const copyFormula = async (f) => {
     try {
-      // ⚡ Copy versi yang udah di-fix (backslash bener)
-      await navigator.clipboard.writeText(fixLatex(f.formula));
+      const textToCopy = prepare(f.formula);
+      await navigator.clipboard.writeText(textToCopy);
       setCopiedId(f.id);
       toast.success('Rumus dicopy!');
       setTimeout(() => setCopiedId(null), 2000);
     } catch {
       toast.error('Gagal copy');
-    }
-  };
-
-  // ⚡ Render KaTeX dengan fixLatex + fallback
-  const renderKatex = (latex) => {
-    try {
-      const fixed = fixLatex(latex);
-      return katex.renderToString(fixed, {
-        throwOnError: false,
-        displayMode: false,
-      });
-    } catch (err) {
-      console.warn('KaTeX error:', err);
-      return latex;
     }
   };
 
@@ -165,7 +354,6 @@ const FormulaBank = () => {
           Kumpulan rumus matematika siap pakai, tinggal copy & print!
         </p>
 
-        {/* Search + Filter */}
         <div className="card-elevated rounded-2xl p-4 mb-6">
           <div className="flex flex-col md:flex-row gap-3">
             <div className="relative flex-1">
@@ -207,7 +395,6 @@ const FormulaBank = () => {
           </div>
         </div>
 
-        {/* List */}
         {filtered.length === 0 ? (
           <div className="text-center py-20 card-elevated rounded-2xl">
             <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -229,10 +416,9 @@ const FormulaBank = () => {
                       key={f.id}
                       className="card-elevated rounded-2xl p-5 relative group hover:-translate-y-1 transition-all"
                     >
-                      {/* Bookmark button */}
                       <button
                         onClick={() => toggleBookmark(f)}
-                        className={`absolute top-3 right-3 p-2 rounded-full transition-all ${
+                        className={`absolute top-3 right-3 p-2 rounded-full transition-all z-10 ${
                           isBookmarked(f)
                             ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-500'
                             : 'bg-gray-100 dark:bg-slate-800 text-gray-400 hover:text-amber-500'
@@ -242,20 +428,21 @@ const FormulaBank = () => {
                         <Star className={`w-4 h-4 ${isBookmarked(f) ? 'fill-amber-500' : ''}`} />
                       </button>
 
-                      <h3 className="font-bold text-gray-900 dark:text-white mb-3 pr-10">
-                        {f.title}
-                      </h3>
+                      <h3 
+                        className="font-bold text-gray-900 dark:text-white mb-3 pr-10"
+                        dangerouslySetInnerHTML={{ __html: renderTextWithLatex(f.title) }}
+                      />
 
-                      {/* Formula (KaTeX dengan fixLatex) */}
                       <div
                         className="bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20 rounded-xl p-4 mb-3 text-center overflow-x-auto formula-display"
                         dangerouslySetInnerHTML={{ __html: renderKatex(f.formula) }}
                       />
 
                       {f.description && (
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                          {f.description}
-                        </p>
+                        <p 
+                          className="text-sm text-gray-600 dark:text-gray-400 mb-3"
+                          dangerouslySetInnerHTML={{ __html: renderTextWithLatex(f.description) }}
+                        />
                       )}
 
                       <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-slate-700/50">
