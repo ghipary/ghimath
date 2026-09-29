@@ -28,14 +28,12 @@ const sanitizeHtml = (html) => {
 // ⚡ Deteksi apakah konten pakai Markdown + LaTeX
 const isMarkdownContent = (str) => {
   if (!str) return false;
-  // Kalau ada tag HTML block-level → anggap HTML biasa
   if (/<(p|h[1-6]|ul|ol|li|div|blockquote|table|pre|code|span)[\s>]/i.test(str)) return false;
-  // Ada ciri-ciri Markdown/LaTeX
-  if (/\$\$[\s\S]+?\$\$/.test(str)) return true;        // block math
-  if (/\$[^$\n]+\$/.test(str)) return true;              // inline math
-  if (/^#{1,6}\s/m.test(str)) return true;               // heading
-  if (/\*\*[^*\n]+\*\*/.test(str)) return true;          // bold
-  if (/^\s*[-*]\s+/m.test(str)) return true;             // bullet list
+  if (/\$\$[\s\S]+?\$\$/.test(str)) return true;
+  if (/\$[^$\n]+\$/.test(str)) return true;
+  if (/^#{1,6}\s/m.test(str)) return true;
+  if (/\*\*[^*\n]+\*\*/.test(str)) return true;
+  if (/^\s*[-*]\s+/m.test(str)) return true;
   return false;
 };
 
@@ -159,15 +157,13 @@ const MaterialDetail = () => {
   }, [user, id, loading]);
 
   const handleTandaiSelesai = async () => {
-    if (!user || isCompleted) return;
+    // ⚡ Cegah klik jika belum 15 menit atau sudah selesai
+    if (!user || isCompleted || readingSecondsRef.current < TARGET_SECONDS) return;
+    
     try {
       setSaving(true);
       setIsCompleted(true);
-      if (readingSecondsRef.current < TARGET_SECONDS) {
-        readingSecondsRef.current = TARGET_SECONDS;
-        setReadingSeconds(TARGET_SECONDS);
-        setPercentage(100);
-      }
+      
       await setDoc(doc(db, 'progress', `${user.uid}_${id}`), {
         userId: user.uid, materialId: id,
         materialTitle: material.title,
@@ -207,6 +203,7 @@ const MaterialDetail = () => {
   if (!material) return null;
 
   const finalPercent = isCompleted ? 100 : percentage;
+  const isReadyToComplete = finalPercent >= 100; // ⚡ Cek apakah sudah 15 menit (100%)
 
   // ⚡ Tentukan format konten
   const rawContent = material.content || '';
@@ -292,6 +289,21 @@ const MaterialDetail = () => {
           </div>
         )}
 
+        {/* ⚡ VIDEO PENJELASAN */}
+        {material.videoUrl && (
+          <div className="card-elevated rounded-2xl overflow-hidden mb-4 sm:mb-6">
+            <div className="flex items-center gap-3 px-5 sm:px-6 py-4 border-b border-gray-100 dark:border-slate-700/50">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-md shadow-orange-500/30">
+                <Video className="w-4 h-4 text-white" />
+              </div>
+              <h2 className="font-bold text-gray-900 dark:text-white text-sm sm:text-base">Video Penjelasan</h2>
+            </div>
+            <div className="aspect-video">
+              <iframe src={getYoutubeEmbedUrl(material.videoUrl)} title={`Video ${material.title}`} className="w-full h-full" allowFullScreen />
+            </div>
+          </div>
+        )}
+
         {/* ⚡ TENTANG MATERI */}
         {cleanDescription && (
           <div className="card-elevated rounded-2xl overflow-hidden mb-4 sm:mb-6">
@@ -354,34 +366,23 @@ const MaterialDetail = () => {
           </div>
         )}
 
-        {/* Video */}
-        {material.videoUrl && (
-          <div className="card-elevated rounded-2xl overflow-hidden mb-4 sm:mb-6">
-            <div className="flex items-center gap-3 px-5 sm:px-6 py-4 border-b border-gray-100 dark:border-slate-700/50">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-md shadow-orange-500/30">
-                <Video className="w-4 h-4 text-white" />
-              </div>
-              <h2 className="font-bold text-gray-900 dark:text-white text-sm sm:text-base">Video Penjelasan</h2>
-            </div>
-            <div className="aspect-video">
-              <iframe src={getYoutubeEmbedUrl(material.videoUrl)} title={`Video ${material.title}`} className="w-full h-full" allowFullScreen />
-            </div>
-          </div>
-        )}
-
         {/* Tombol Aksi */}
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
           <button 
             onClick={handleTandaiSelesai} 
-            disabled={isCompleted || saving}
+            disabled={isCompleted || saving || !isReadyToComplete}
             className={`flex-1 flex items-center justify-center gap-2 font-semibold py-3.5 sm:py-4 rounded-xl transition-all text-sm sm:text-base ${
               isCompleted 
                 ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 cursor-not-allowed shadow-inner' 
-                : 'bg-white dark:bg-slate-800 border-2 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-white hover:border-teal-500 cursor-pointer shadow-md hover:shadow-lg'
+                : !isReadyToComplete
+                  ? 'bg-gray-100 text-gray-400 dark:bg-slate-800/50 dark:text-gray-500 cursor-not-allowed border-2 border-transparent'
+                  : 'bg-white dark:bg-slate-800 border-2 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-white hover:border-teal-500 cursor-pointer shadow-md hover:shadow-lg'
             }`}
           >
             {isCompleted ? (
               <><Lock className="w-5 h-5" /> Sudah Selesai (Permanen)</>
+            ) : !isReadyToComplete ? (
+              <><Lock className="w-5 h-5" /> Baca Dulu 15 Menit</>
             ) : (
               <><CheckCircle className="w-5 h-5" />{saving ? 'Menyimpan...' : 'Tandai Selesai 100%'}</>
             )}
