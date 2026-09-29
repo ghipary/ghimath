@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /profil
+Disallow: /sertifikat
+Disallow: /onboarding
+Disallow: /kuis-harian
+Disallow: /login
+Disallow: /register
+Disallow: /reset-password
+
+Sitemap: https://ghimath.vercel.app/sitemap.xml
