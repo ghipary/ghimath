@@ -184,12 +184,25 @@ const MaterialDetail = () => {
     setSaving(false);
   };
 
-  const getYoutubeEmbedUrl = (url) => {
-    if (!url) return '';
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-    const match = url.match(regExp);
-    if (match && match[2].length === 11) return `https://www.youtube.com/embed/${match[2]}`;
-    return url;
+  const getVideoEmbedUrl = (url) => {
+    if (!url) return { type: 'none', url: '' };
+    
+    // Deteksi YouTube
+    const ytRegExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const ytMatch = url.match(ytRegExp);
+    if (ytMatch && ytMatch[2].length === 11) {
+      return { type: 'youtube', url: `https://www.youtube.com/embed/${ytMatch[2]}` };
+    }
+    
+    // Deteksi TikTok (Format: https://www.tiktok.com/@username/video/1234567890)
+    const tiktokRegExp = /\/video\/(\d+)/;
+    const tiktokMatch = url.match(tiktokRegExp);
+    if (tiktokMatch && tiktokMatch[1]) {
+      return { type: 'tiktok', url: `https://www.tiktok.com/embed/v2/${tiktokMatch[1]}` };
+    }
+
+    // Fallback jika URL sudah berupa embed atau tidak dikenali
+    return { type: 'unknown', url: url };
   };
 
   if (loading) {
@@ -290,19 +303,37 @@ const MaterialDetail = () => {
         )}
 
         {/* ⚡ VIDEO PENJELASAN */}
-        {material.videoUrl && (
-          <div className="card-elevated rounded-2xl overflow-hidden mb-4 sm:mb-6">
-            <div className="flex items-center gap-3 px-5 sm:px-6 py-4 border-b border-gray-100 dark:border-slate-700/50">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-md shadow-orange-500/30">
-                <Video className="w-4 h-4 text-white" />
+        {material.videoUrl && (() => {
+          const videoInfo = getVideoEmbedUrl(material.videoUrl);
+          const isTiktok = videoInfo.type === 'tiktok';
+          
+          return (
+            <div className="card-elevated rounded-2xl overflow-hidden mb-4 sm:mb-6">
+              <div className="flex items-center gap-3 px-5 sm:px-6 py-4 border-b border-gray-100 dark:border-slate-700/50">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-md shadow-orange-500/30">
+                  <Video className="w-4 h-4 text-white" />
+                </div>
+                <h2 className="font-bold text-gray-900 dark:text-white text-sm sm:text-base">Video Penjelasan</h2>
               </div>
-              <h2 className="font-bold text-gray-900 dark:text-white text-sm sm:text-base">Video Penjelasan</h2>
+              
+              {/* Container Responsif: YouTube (16:9) vs TikTok (9:16) */}
+              <div className={`w-full flex justify-center bg-gray-50 dark:bg-slate-900/50 ${isTiktok ? 'py-6' : ''}`}>
+                <div className={isTiktok 
+                  ? 'w-full max-w-[400px] aspect-[9/16] rounded-xl overflow-hidden shadow-lg border border-gray-200 dark:border-slate-700' 
+                  : 'w-full aspect-video'
+                }>
+                  <iframe 
+                    src={videoInfo.url} 
+                    title={`Video ${material.title}`} 
+                    className="w-full h-full border-0" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                    allowFullScreen 
+                  />
+                </div>
+              </div>
             </div>
-            <div className="aspect-video">
-              <iframe src={getYoutubeEmbedUrl(material.videoUrl)} title={`Video ${material.title}`} className="w-full h-full" allowFullScreen />
-            </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ⚡ TENTANG MATERI */}
         {cleanDescription && (

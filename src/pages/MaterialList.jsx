@@ -336,7 +336,9 @@ const MaterialList = () => {
           Daftar Materi
         </h1>
         <p className="text-gray-600 dark:text-gray-400 mb-6">
-          {user ? 'Pilih folder untuk melihat materi.' : 'Lihat-lihat dulu, login untuk membaca selengkapnya.'}
+          {user 
+            ? 'Pilih folder untuk melihat materi.' 
+            : 'Login untuk membaca materi selengkapnya. Daftar gratis, 30 detik.'}
         </p>
       </div>
 
