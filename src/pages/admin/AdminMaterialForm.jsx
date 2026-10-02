@@ -627,11 +627,12 @@ Pembahasan: $30 - (-5) = 30 + 5 = 35°C$`);
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-2">
-              <Video className="w-4 h-4" /> Link YouTube (Opsional)
+              <Video className="w-4 h-4" /> Link Video YouTube / TikTok (Opsional)
             </label>
             <input type="text" name="videoUrl" value={formData.videoUrl} onChange={handleChange}
               className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 outline-none"
-              placeholder="https://www.youtube.com/watch?v=xxxxx" />
+              placeholder="Contoh: https://www.youtube.com/watch?v=xxxxx atau https://www.tiktok.com/@user/video/xxxxx" />
+            <p className="text-xs text-gray-500 mt-1.5">Cukup paste link video dari browser. Sistem akan otomatis menyesuaikan ukuran tampilannya.</p>
           </div>
 
           <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/10 rounded-xl border border-amber-200/60 dark:border-amber-800/50">

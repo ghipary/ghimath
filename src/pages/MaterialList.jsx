@@ -107,7 +107,6 @@ const MaterialList = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [openFolders, setOpenFolders] = useState({});
-  const [showLoginModal, setShowLoginModal] = useState(false);
   
   const [viewMode, setViewMode] = useState('jenjang'); 
 
@@ -276,13 +275,6 @@ const MaterialList = () => {
     setOpenFolders((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const handleCardClick = (e) => {
-    if (!user) {
-      e.preventDefault();
-      setShowLoginModal(true);
-    }
-  };
-
   const isFolderLocked = (group) => {
     if (viewMode !== 'jenjang') return false;
     if (!user) return false;
@@ -338,7 +330,7 @@ const MaterialList = () => {
         <p className="text-gray-600 dark:text-gray-400 mb-6">
           {user 
             ? 'Pilih folder untuk melihat materi.' 
-            : 'Login untuk membaca materi selengkapnya. Daftar gratis, 30 detik.'}
+            : 'Akses semua materi secara gratis! Login untuk menyimpan progres belajarmu.'}
         </p>
       </div>
 
@@ -630,7 +622,6 @@ const MaterialList = () => {
                             <Link 
                               key={mat.id} 
                               to={`/materi/${mat.id}`}
-                              onClick={handleCardClick}
                               className={`group/card bg-white dark:bg-slate-800/50 rounded-xl transition-all overflow-hidden relative hover:-translate-y-1 ${
                                 isAdvanced
                                   ? `border-[3px] ${
@@ -721,8 +712,6 @@ const MaterialList = () => {
                                   </div>
                                 </div>
 
-                                {/* ⚡ DESKRIPSI DIHAPUS DARI SINI */}
-
                                 {isOpened && !isCompleted && (
                                   <div className="mb-2">
                                     <div className="flex items-center justify-between text-[10px] text-amber-600 dark:text-amber-400 mb-1">
@@ -771,52 +760,6 @@ const MaterialList = () => {
           </div>
         )}
       </div>
-
-      {/* MODAL LOGIN */}
-      {showLoginModal && (
-        <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
-          onClick={() => setShowLoginModal(false)}
-        >
-          <div 
-            className="bg-white dark:bg-slate-800 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button 
-              onClick={() => setShowLoginModal(false)}
-              className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
-            >
-              <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-            </button>
-
-            <div className="w-16 h-16 bg-gradient-to-br from-teal-400 via-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-teal-500/30">
-              <Lock className="w-8 h-8 text-white" />
-            </div>
-
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white text-center mb-2">
-              Login Dulu Yuk!
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400 text-center mb-6 leading-relaxed">
-              Untuk membaca materi lengkap, kamu perlu <strong>masuk</strong> atau <strong>daftar</strong> dulu. Gratis, kok!
-            </p>
-
-            <div className="flex flex-col gap-3">
-              <Link 
-                to="/register"
-                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-teal-500/30 hover:shadow-xl"
-              >
-                Daftar Gratis Sekarang
-              </Link>
-              <Link 
-                to="/login"
-                className="w-full flex items-center justify-center gap-2 bg-white dark:bg-slate-700 text-gray-700 dark:text-white border-2 border-gray-200 dark:border-slate-600 hover:border-teal-600 font-semibold py-3.5 rounded-xl transition-all"
-              >
-                Sudah Punya Akun? Masuk
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* MODAL JENJANG TERKUNCI */}
       {lockedModal && (

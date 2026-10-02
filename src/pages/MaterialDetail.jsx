@@ -5,7 +5,7 @@ import MarkdownRenderer from '../components/MarkdownRenderer';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { ArrowLeft, CheckCircle, BookOpen, Video, ListChecks, Loader, Clock, TrendingUp, PauseCircle, Lock, FileText, Sparkles } from 'lucide-react';
+import { ArrowLeft, CheckCircle, BookOpen, Video, ListChecks, Loader, Clock, TrendingUp, PauseCircle, Lock, FileText, Sparkles, UserPlus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AITutor from '../components/AITutor';
 
@@ -71,6 +71,7 @@ const MaterialDetail = () => {
         setMaterial({ id: docSnap.id, ...docSnap.data() });
 
         if (user) {
+          // Logika fetch progress hanya jalan jika user login
           const progressRef = doc(db, 'progress', `${user.uid}_${id}`);
           const progressSnap = await getDoc(progressRef);
           let existingSeconds = 0;
@@ -110,8 +111,9 @@ const MaterialDetail = () => {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
+  // ⚡ Timer berjalan untuk semua orang (guest & logged in)
   useEffect(() => {
-    if (loading || !user || !isTabActive || isCompleted) return;
+    if (loading || !isTabActive || isCompleted) return;
     let lastTick = Date.now();
     let rafId;
     const tick = () => {
@@ -127,8 +129,9 @@ const MaterialDetail = () => {
     };
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
-  }, [loading, user, isTabActive, isCompleted]);
+  }, [loading, isTabActive, isCompleted]); // Hapus dependensi 'user' di sini
 
+  // Auto-save hanya untuk user yang login
   useEffect(() => {
     if (loading || !user) return;
     const interval = setInterval(async () => {
@@ -157,8 +160,14 @@ const MaterialDetail = () => {
   }, [user, id, loading]);
 
   const handleTandaiSelesai = async () => {
-    // ⚡ Cegah klik jika belum 15 menit atau sudah selesai
-    if (!user || isCompleted || readingSecondsRef.current < TARGET_SECONDS) return;
+    // ⚡ Jika belum login, arahkan ke login
+    if (!user) {
+      toast.error('Login dulu untuk menandai selesai dan menyimpan progresmu!');
+      navigate('/login');
+      return;
+    }
+
+    if (isCompleted || readingSecondsRef.current < TARGET_SECONDS) return;
     
     try {
       setSaving(true);
@@ -216,7 +225,7 @@ const MaterialDetail = () => {
   if (!material) return null;
 
   const finalPercent = isCompleted ? 100 : percentage;
-  const isReadyToComplete = finalPercent >= 100; // ⚡ Cek apakah sudah 15 menit (100%)
+  const isReadyToComplete = finalPercent >= 100;
 
   // ⚡ Tentukan format konten
   const rawContent = material.content || '';
@@ -266,7 +275,8 @@ const MaterialDetail = () => {
           </h1>
         </div>
 
-        {user && (
+        {/* ⚡ UBAH BAGIAN PROGRESS CARD */}
+        {user ? (
           <div className="card-elevated rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6">
             <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
               <div className="flex items-center gap-3">
@@ -299,6 +309,25 @@ const MaterialDetail = () => {
             <p className="text-xs text-gray-500 dark:text-gray-400">
               {isCompleted ? 'Kamu sudah menyelesaikan materi ini. Bagus! 🎉' : !isTabActive ? '⏸️ Timer dijeda karena kamu pindah tab.' : finalPercent >= 100 ? 'Progress sudah 100%! Klik "Tandai Selesai".' : `Baca terus untuk menambah progress. Target 15 menit baca.`}
             </p>
+          </div>
+        ) : (
+          <div className="card-elevated rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6 border-l-4 border-l-teal-500 bg-gradient-to-r from-teal-50/50 to-cyan-50/30 dark:from-teal-900/10 dark:to-cyan-900/5">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-start gap-3 w-full">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center shadow-md shadow-teal-500/30 flex-shrink-0">
+                  <UserPlus className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 dark:text-white text-sm sm:text-base">Kamu sedang membaca sebagai Tamu</h3>
+                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    Login untuk menyimpan progres belajarmu, mengerjakan kuis, dan mendapatkan sertifikat.
+                  </p>
+                </div>
+              </div>
+              <Link to="/login" className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-600 text-white rounded-xl font-bold text-sm shadow-md hover:shadow-lg transition-all text-center flex-shrink-0">
+                Login Sekarang
+              </Link>
+            </div>
           </div>
         )}
 
@@ -397,20 +426,24 @@ const MaterialDetail = () => {
           </div>
         )}
 
-        {/* Tombol Aksi */}
+        {/* ⚡ UBAH BAGIAN TOMBOL AKSI */}
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
           <button 
             onClick={handleTandaiSelesai} 
-            disabled={isCompleted || saving || !isReadyToComplete}
+            disabled={user ? (isCompleted || saving || !isReadyToComplete) : false}
             className={`flex-1 flex items-center justify-center gap-2 font-semibold py-3.5 sm:py-4 rounded-xl transition-all text-sm sm:text-base ${
-              isCompleted 
-                ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 cursor-not-allowed shadow-inner' 
-                : !isReadyToComplete
-                  ? 'bg-gray-100 text-gray-400 dark:bg-slate-800/50 dark:text-gray-500 cursor-not-allowed border-2 border-transparent'
-                  : 'bg-white dark:bg-slate-800 border-2 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-white hover:border-teal-500 cursor-pointer shadow-md hover:shadow-lg'
+              !user
+                ? 'bg-white dark:bg-slate-800 border-2 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-white hover:border-teal-500 cursor-pointer shadow-md hover:shadow-lg'
+                : isCompleted 
+                  ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 cursor-not-allowed shadow-inner' 
+                  : !isReadyToComplete
+                    ? 'bg-gray-100 text-gray-400 dark:bg-slate-800/50 dark:text-gray-500 cursor-not-allowed border-2 border-transparent'
+                    : 'bg-white dark:bg-slate-800 border-2 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-white hover:border-teal-500 cursor-pointer shadow-md hover:shadow-lg'
             }`}
           >
-            {isCompleted ? (
+            {!user ? (
+              <><Lock className="w-5 h-5" /> Login untuk Tandai Selesai</>
+            ) : isCompleted ? (
               <><Lock className="w-5 h-5" /> Sudah Selesai (Permanen)</>
             ) : !isReadyToComplete ? (
               <><Lock className="w-5 h-5" /> Baca Dulu 15 Menit</>
@@ -418,8 +451,16 @@ const MaterialDetail = () => {
               <><CheckCircle className="w-5 h-5" />{saving ? 'Menyimpan...' : 'Tandai Selesai 100%'}</>
             )}
           </button>
+          
           <Link 
             to={`/materi/${material.id}/kuis`} 
+            onClick={(e) => {
+              if (!user) {
+                e.preventDefault();
+                toast.error('Silakan login terlebih dahulu untuk mengerjakan kuis!');
+                navigate('/login');
+              }
+            }}
             className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-teal-500 via-cyan-600 to-teal-600 hover:from-teal-600 hover:to-cyan-700 text-white font-semibold py-3.5 sm:py-4 rounded-xl transition-all shadow-lg shadow-teal-500/30 hover:shadow-xl text-sm sm:text-base"
           >
             <ListChecks className="w-5 h-5" /> Latihan Soal

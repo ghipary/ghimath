@@ -92,9 +92,14 @@ function App() {
             <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/kuis-harian" element={<ProtectedRoute><DailyChallenge /></ProtectedRoute>} />
+            
+            {/* ⚡ MATERI BISA DIAKSES TANPA LOGIN */}
             <Route path="/materi" element={<MaterialList />} />
-            <Route path="/materi/:id" element={<ProtectedRoute><MaterialDetail /></ProtectedRoute>} />
+            <Route path="/materi/:id" element={<MaterialDetail />} />
+            
+            {/* ⚡ KUIS TETAP BUTUH LOGIN */}
             <Route path="/materi/:id/kuis" element={<ProtectedRoute><Quiz /></ProtectedRoute>} />
+            
             <Route path="/profil" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/sertifikat" element={<ProtectedRoute><Certificate /></ProtectedRoute>} />
             <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
