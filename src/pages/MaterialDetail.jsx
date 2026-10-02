@@ -5,7 +5,7 @@ import MarkdownRenderer from '../components/MarkdownRenderer';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { ArrowLeft, CheckCircle, BookOpen, Video, ListChecks, Loader, Clock, TrendingUp, PauseCircle, Lock, FileText, Sparkles, UserPlus } from 'lucide-react';
+import { ArrowLeft, CheckCircle, BookOpen, Video, ListChecks, Loader, Clock, TrendingUp, PauseCircle, Lock, FileText, Sparkles, UserPlus, Link2, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AITutor from '../components/AITutor';
 
@@ -25,7 +25,6 @@ const sanitizeHtml = (html) => {
     .replace(/&nbsp;/g, ' ');
 };
 
-// ⚡ Deteksi apakah konten pakai Markdown + LaTeX
 const isMarkdownContent = (str) => {
   if (!str) return false;
   if (/<(p|h[1-6]|ul|ol|li|div|blockquote|table|pre|code|span)[\s>]/i.test(str)) return false;
@@ -42,6 +41,17 @@ const isHtmlContent = (str) => {
   return /<[a-z][\s\S]*>/i.test(str);
 };
 
+// ⚡ Helper: buat slug dari teks heading
+const slugify = (text) => {
+  return String(text)
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')       // hapus karakter non-alfanumerik kecuali spasi & strip
+    .replace(/\s+/g, '-')           // spasi jadi strip
+    .replace(/-+/g, '-')            // strip beruntun jadi satu
+    .substring(0, 60);              // batasi panjang
+};
+
 const MaterialDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -53,8 +63,10 @@ const MaterialDetail = () => {
   const [percentage, setPercentage] = useState(0);
   const [isTabActive, setIsTabActive] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [copiedAnchor, setCopiedAnchor] = useState(null);
 
   const readingSecondsRef = useRef(0);
+  const contentRef = useRef(null);
 
   const calcPercent = (sec) => Math.min(100, Math.round((sec / TARGET_SECONDS) * 100));
   const fmtTime = (sec) => {
@@ -71,7 +83,6 @@ const MaterialDetail = () => {
         setMaterial({ id: docSnap.id, ...docSnap.data() });
 
         if (user) {
-          // Logika fetch progress hanya jalan jika user login
           const progressRef = doc(db, 'progress', `${user.uid}_${id}`);
           const progressSnap = await getDoc(progressRef);
           let existingSeconds = 0;
@@ -104,6 +115,124 @@ const MaterialDetail = () => {
     fetchMaterial();
   }, [id, navigate, user]);
 
+  // ⚡ AUTO-GENERATE ID & SHARE BUTTON untuk setiap heading di materi
+  useEffect(() => {
+    if (loading || !material) return;
+
+    // Beri jeda sedikit agar MarkdownRenderer selesai render
+    const timer = setTimeout(() => {
+      const container = contentRef.current;
+      if (!container) return;
+
+      const headings = container.querySelectorAll('h1, h2, h3, h4, h5, h6');
+      const usedIds = new Set();
+
+      headings.forEach((h, idx) => {
+        // Skip jika heading di dalam tombol/link dsb
+        if (h.closest('button, a')) return;
+
+        // Generate ID jika belum ada
+        if (!h.id) {
+          let baseSlug = slugify(h.textContent || `section-${idx + 1}`);
+          if (!baseSlug) baseSlug = `section-${idx + 1}`;
+          
+          // Pastikan unik
+          let uniqueId = baseSlug;
+          let counter = 1;
+          while (usedIds.has(uniqueId)) {
+            uniqueId = `${baseSlug}-${counter}`;
+            counter++;
+          }
+          h.id = uniqueId;
+        }
+        usedIds.add(h.id);
+
+        // Skip kalau tombol share sudah ada
+        if (h.querySelector('.share-anchor-btn')) return;
+
+        // Buat tombol share
+        const btn = document.createElement('button');
+        btn.className = 'share-anchor-btn';
+        btn.type = 'button';
+        btn.title = 'Salin link ke bagian ini';
+        btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`;
+        btn.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const url = `${window.location.origin}${window.location.pathname}#${h.id}`;
+          
+          const onSuccess = () => {
+            setCopiedAnchor(h.id);
+            toast.success('Link section dicopy! 🔗');
+            // Update URL tanpa reload
+            window.history.replaceState(null, '', `#${h.id}`);
+            setTimeout(() => setCopiedAnchor(null), 2500);
+          };
+
+          if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(url).then(onSuccess).catch(() => {
+              fallbackCopy(url, onSuccess);
+            });
+          } else {
+            fallbackCopy(url, onSuccess);
+          }
+        };
+        h.appendChild(btn);
+      });
+
+      // ⚡ Scroll ke hash jika ada
+      const hash = window.location.hash.substring(1);
+      if (hash) {
+        const target = document.getElementById(hash);
+        if (target) {
+          setTimeout(() => {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            target.classList.add('highlight-target');
+            setTimeout(() => target.classList.remove('highlight-target'), 2500);
+          }, 300);
+        }
+      }
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [loading, material]);
+
+  // Fallback copy untuk browser lama / non-secure context
+  const fallbackCopy = (text, onSuccess) => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand('copy');
+      onSuccess && onSuccess();
+    } catch {
+      toast.error('Gagal menyalin link');
+    }
+    document.body.removeChild(ta);
+  };
+
+  // ⚡ Update hash saat user scroll manual (opsional, tanpa reload)
+  useEffect(() => {
+    const handleScroll = () => {
+      const container = contentRef.current;
+      if (!container) return;
+      const headings = container.querySelectorAll('h1, h2, h3, h4, h5, h6');
+      let currentId = '';
+      headings.forEach((h) => {
+        const rect = h.getBoundingClientRect();
+        if (rect.top <= 150 && rect.top > -100) currentId = h.id;
+      });
+      if (currentId && window.location.hash !== `#${currentId}`) {
+        window.history.replaceState(null, '', `#${currentId}`);
+      }
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [loading, material]);
+
   useEffect(() => {
     const handleVisibilityChange = () => setIsTabActive(!document.hidden);
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -111,7 +240,6 @@ const MaterialDetail = () => {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
-  // ⚡ Timer berjalan untuk semua orang (guest & logged in)
   useEffect(() => {
     if (loading || !isTabActive || isCompleted) return;
     let lastTick = Date.now();
@@ -129,9 +257,8 @@ const MaterialDetail = () => {
     };
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
-  }, [loading, isTabActive, isCompleted]); // Hapus dependensi 'user' di sini
+  }, [loading, isTabActive, isCompleted]);
 
-  // Auto-save hanya untuk user yang login
   useEffect(() => {
     if (loading || !user) return;
     const interval = setInterval(async () => {
@@ -160,19 +287,16 @@ const MaterialDetail = () => {
   }, [user, id, loading]);
 
   const handleTandaiSelesai = async () => {
-    // ⚡ Jika belum login, arahkan ke login
     if (!user) {
       toast.error('Login dulu untuk menandai selesai dan menyimpan progresmu!');
       navigate('/login');
       return;
     }
-
     if (isCompleted || readingSecondsRef.current < TARGET_SECONDS) return;
     
     try {
       setSaving(true);
       setIsCompleted(true);
-      
       await setDoc(doc(db, 'progress', `${user.uid}_${id}`), {
         userId: user.uid, materialId: id,
         materialTitle: material.title,
@@ -195,22 +319,16 @@ const MaterialDetail = () => {
 
   const getVideoEmbedUrl = (url) => {
     if (!url) return { type: 'none', url: '' };
-    
-    // Deteksi YouTube
     const ytRegExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
     const ytMatch = url.match(ytRegExp);
     if (ytMatch && ytMatch[2].length === 11) {
       return { type: 'youtube', url: `https://www.youtube.com/embed/${ytMatch[2]}` };
     }
-    
-    // Deteksi TikTok (Format: https://www.tiktok.com/@username/video/1234567890)
     const tiktokRegExp = /\/video\/(\d+)/;
     const tiktokMatch = url.match(tiktokRegExp);
     if (tiktokMatch && tiktokMatch[1]) {
       return { type: 'tiktok', url: `https://www.tiktok.com/embed/v2/${tiktokMatch[1]}` };
     }
-
-    // Fallback jika URL sudah berupa embed atau tidak dikenali
     return { type: 'unknown', url: url };
   };
 
@@ -227,7 +345,6 @@ const MaterialDetail = () => {
   const finalPercent = isCompleted ? 100 : percentage;
   const isReadyToComplete = finalPercent >= 100;
 
-  // ⚡ Tentukan format konten
   const rawContent = material.content || '';
   const rawDescription = material.description || '';
   const cleanContent = sanitizeHtml(rawContent);
@@ -273,6 +390,10 @@ const MaterialDetail = () => {
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 dark:from-teal-400 dark:via-cyan-400 dark:to-blue-400 bg-clip-text text-transparent">
             {material.title}
           </h1>
+          <p className="text-xs text-gray-400 mt-2 flex items-center gap-1.5">
+            <Link2 className="w-3.5 h-3.5" />
+            Tip: Hover pada judul sub-bab lalu klik ikon 🔗 untuk share link ke bagian tertentu.
+          </p>
         </div>
 
         {/* ⚡ PROGRESS CARD / GUEST BANNER */}
@@ -331,7 +452,7 @@ const MaterialDetail = () => {
           </div>
         )}
 
-        {/* ⚡ VIDEO PENJELASAN */}
+        {/* VIDEO PENJELASAN */}
         {material.videoUrl && (() => {
           const videoInfo = getVideoEmbedUrl(material.videoUrl);
           const isTiktok = videoInfo.type === 'tiktok';
@@ -344,8 +465,6 @@ const MaterialDetail = () => {
                 </div>
                 <h2 className="font-bold text-gray-900 dark:text-white text-sm sm:text-base">Video Penjelasan</h2>
               </div>
-              
-              {/* Container Responsif: YouTube (16:9) vs TikTok (9:16) */}
               <div className={`w-full flex justify-center bg-gray-50 dark:bg-slate-900/50 ${isTiktok ? 'py-6' : ''}`}>
                 <div className={isTiktok 
                   ? 'w-full max-w-[400px] aspect-[9/16] rounded-xl overflow-hidden shadow-lg border border-gray-200 dark:border-slate-700' 
@@ -364,7 +483,7 @@ const MaterialDetail = () => {
           );
         })()}
 
-        {/* ⚡ TENTANG MATERI */}
+        {/* TENTANG MATERI */}
         {cleanDescription && (
           <div className="card-elevated rounded-2xl overflow-hidden mb-4 sm:mb-6">
             <div className="flex items-center gap-3 px-5 sm:px-6 py-4 border-b border-gray-100 dark:border-slate-700/50">
@@ -385,7 +504,7 @@ const MaterialDetail = () => {
           </div>
         )}
 
-        {/* ⚡ MATERI BACAAN */}
+        {/* ⚡ MATERI BACAAN — DIBUNGKUS .material-body UNTUK AUTO-ID */}
         {hasContent && (
           <div className="card-elevated rounded-2xl overflow-hidden mb-4 sm:mb-6">
             <div className="flex items-center gap-3 px-5 sm:px-6 py-4 border-b border-gray-100 dark:border-slate-700/50">
@@ -399,16 +518,18 @@ const MaterialDetail = () => {
                 </span>
               )}
             </div>
-            <div className="p-4 sm:p-6 md:p-8">
-              {contentIsMarkdown ? (
-                <MarkdownRenderer content={rawContent} />
-              ) : contentIsHtml ? (
-                <div className="material-content" dangerouslySetInnerHTML={{ __html: cleanContent }} />
-              ) : (
-                <div className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-                  {cleanContent}
-                </div>
-              )}
+            <div className="p-4 sm:p-6 md:p-8" ref={contentRef}>
+              <div className="material-body">
+                {contentIsMarkdown ? (
+                  <MarkdownRenderer content={rawContent} />
+                ) : contentIsHtml ? (
+                  <div className="material-content" dangerouslySetInnerHTML={{ __html: cleanContent }} />
+                ) : (
+                  <div className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                    {cleanContent}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -426,7 +547,7 @@ const MaterialDetail = () => {
           </div>
         )}
 
-        {/* ⚡ TOMBOL AKSI */}
+        {/* TOMBOL AKSI */}
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
           <button 
             onClick={handleTandaiSelesai} 

@@ -538,3 +538,68 @@ html, body {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+
+/* ⚡ Highlight animation untuk section yang di-share */
+@keyframes highlightPulse {
+  0% {
+    background-color: rgba(20, 184, 166, 0.25);
+    box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.3);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: 0 0 0 4px transparent;
+  }
+}
+
+.highlight-target {
+  animation: highlightPulse 2s ease-out;
+  border-radius: 8px;
+  scroll-margin-top: 100px; /* biar nggak ketutup navbar */
+  padding: 4px 8px;
+  margin: 0 -8px;
+}
+
+/* ⚡ Styling heading di materi biar ada sedikit jarak scroll */
+.material-body h1,
+.material-body h2,
+.material-body h3,
+.material-body h4,
+.material-body h5,
+.material-body h6 {
+  scroll-margin-top: 100px;
+  position: relative;
+}
+
+/* ⚡ Tombol share muncul saat hover heading */
+.material-body h1:hover .share-anchor-btn,
+.material-body h2:hover .share-anchor-btn,
+.material-body h3:hover .share-anchor-btn,
+.material-body h4:hover .share-anchor-btn {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.share-anchor-btn {
+  opacity: 0;
+  transform: translateX(-8px);
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-left: 8px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #14b8a6, #06b6d4);
+  color: white;
+  cursor: pointer;
+  vertical-align: middle;
+  border: none;
+  box-shadow: 0 2px 8px rgba(20, 184, 166, 0.3);
+}
+
+.share-anchor-btn:hover {
+  transform: translateX(0) scale(1.1);
+  box-shadow: 0 4px 12px rgba(20, 184, 166, 0.5);
+}
