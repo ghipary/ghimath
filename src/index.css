@@ -553,14 +553,14 @@ html, body {
 }
 
 .highlight-target {
-  animation: highlightPulse 2s ease-out;
+  animation: highlightPulse 2.5s ease-out;
   border-radius: 8px;
-  scroll-margin-top: 100px; /* biar nggak ketutup navbar */
+  scroll-margin-top: 100px;
   padding: 4px 8px;
   margin: 0 -8px;
 }
 
-/* ⚡ Styling heading di materi biar ada sedikit jarak scroll */
+/* ⚡ Scroll margin untuk semua heading */
 .material-body h1,
 .material-body h2,
 .material-body h3,
@@ -571,35 +571,37 @@ html, body {
   position: relative;
 }
 
-/* ⚡ Tombol share muncul saat hover heading */
-.material-body h1:hover .share-anchor-btn,
-.material-body h2:hover .share-anchor-btn,
-.material-body h3:hover .share-anchor-btn,
-.material-body h4:hover .share-anchor-btn {
-  opacity: 1;
-  transform: translateX(0);
-}
-
+/* ⚡ Tombol share - SELALU terlihat (opacity 0.4), full saat hover */
 .share-anchor-btn {
-  opacity: 0;
-  transform: translateX(-8px);
+  opacity: 0.35;
   transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  margin-left: 8px;
+  width: 26px;
+  height: 26px;
+  margin-left: 10px;
   border-radius: 8px;
   background: linear-gradient(135deg, #14b8a6, #06b6d4);
   color: white;
   cursor: pointer;
   vertical-align: middle;
   border: none;
-  box-shadow: 0 2px 8px rgba(20, 184, 166, 0.3);
+  box-shadow: 0 2px 6px rgba(20, 184, 166, 0.25);
+  flex-shrink: 0;
 }
 
 .share-anchor-btn:hover {
-  transform: translateX(0) scale(1.1);
+  opacity: 1;
+  transform: scale(1.15);
   box-shadow: 0 4px 12px rgba(20, 184, 166, 0.5);
+}
+
+/* ⚡ Mobile-friendly: selalu kelihatan di layar kecil */
+@media (max-width: 768px) {
+  .share-anchor-btn {
+    opacity: 0.7;
+    width: 28px;
+    height: 28px;
+  }
 }

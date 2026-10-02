@@ -5,7 +5,7 @@ import MarkdownRenderer from '../components/MarkdownRenderer';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { ArrowLeft, CheckCircle, BookOpen, Video, ListChecks, Loader, Clock, TrendingUp, PauseCircle, Lock, FileText, Sparkles, UserPlus, Link2, Check } from 'lucide-react';
+import { ArrowLeft, CheckCircle, BookOpen, Video, ListChecks, Loader, Clock, TrendingUp, PauseCircle, Lock, FileText, Sparkles, UserPlus, Link2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AITutor from '../components/AITutor';
 
@@ -46,10 +46,38 @@ const slugify = (text) => {
   return String(text)
     .toLowerCase()
     .trim()
-    .replace(/[^\w\s-]/g, '')       // hapus karakter non-alfanumerik kecuali spasi & strip
-    .replace(/\s+/g, '-')           // spasi jadi strip
-    .replace(/-+/g, '-')            // strip beruntun jadi satu
-    .substring(0, 60);              // batasi panjang
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .substring(0, 60);
+};
+
+// ⚡ Helper: fallback copy (di luar component biar rapi)
+const fallbackCopy = (text, onSuccess) => {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand('copy');
+    onSuccess && onSuccess();
+  } catch {
+    toast.error('Gagal menyalin link');
+  }
+  document.body.removeChild(ta);
+};
+
+// ⚡ Helper: copy ke clipboard
+const copyToClipboard = (text, onSuccess) => {
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(onSuccess).catch(() => {
+      fallbackCopy(text, onSuccess);
+    });
+  } else {
+    fallbackCopy(text, onSuccess);
+  }
 };
 
 const MaterialDetail = () => {
@@ -63,7 +91,6 @@ const MaterialDetail = () => {
   const [percentage, setPercentage] = useState(0);
   const [isTabActive, setIsTabActive] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [copiedAnchor, setCopiedAnchor] = useState(null);
 
   const readingSecondsRef = useRef(0);
   const contentRef = useRef(null);
@@ -135,8 +162,7 @@ const MaterialDetail = () => {
         if (!h.id) {
           let baseSlug = slugify(h.textContent || `section-${idx + 1}`);
           if (!baseSlug) baseSlug = `section-${idx + 1}`;
-          
-          // Pastikan unik
+
           let uniqueId = baseSlug;
           let counter = 1;
           while (usedIds.has(uniqueId)) {
@@ -156,26 +182,16 @@ const MaterialDetail = () => {
         btn.type = 'button';
         btn.title = 'Salin link ke bagian ini';
         btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`;
+
         btn.onclick = (e) => {
           e.preventDefault();
           e.stopPropagation();
           const url = `${window.location.origin}${window.location.pathname}#${h.id}`;
-          
-          const onSuccess = () => {
-            setCopiedAnchor(h.id);
-            toast.success('Link section dicopy! 🔗');
-            // Update URL tanpa reload
-            window.history.replaceState(null, '', `#${h.id}`);
-            setTimeout(() => setCopiedAnchor(null), 2500);
-          };
 
-          if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(url).then(onSuccess).catch(() => {
-              fallbackCopy(url, onSuccess);
-            });
-          } else {
-            fallbackCopy(url, onSuccess);
-          }
+          copyToClipboard(url, () => {
+            toast.success('Link section dicopy! 🔗');
+            window.history.replaceState(null, '', `#${h.id}`);
+          });
         };
         h.appendChild(btn);
       });
@@ -197,24 +213,7 @@ const MaterialDetail = () => {
     return () => clearTimeout(timer);
   }, [loading, material]);
 
-  // Fallback copy untuk browser lama / non-secure context
-  const fallbackCopy = (text, onSuccess) => {
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    ta.style.position = 'fixed';
-    ta.style.opacity = '0';
-    document.body.appendChild(ta);
-    ta.select();
-    try {
-      document.execCommand('copy');
-      onSuccess && onSuccess();
-    } catch {
-      toast.error('Gagal menyalin link');
-    }
-    document.body.removeChild(ta);
-  };
-
-  // ⚡ Update hash saat user scroll manual (opsional, tanpa reload)
+  // ⚡ Update hash saat user scroll manual
   useEffect(() => {
     const handleScroll = () => {
       const container = contentRef.current;
@@ -293,7 +292,7 @@ const MaterialDetail = () => {
       return;
     }
     if (isCompleted || readingSecondsRef.current < TARGET_SECONDS) return;
-    
+
     try {
       setSaving(true);
       setIsCompleted(true);
@@ -390,13 +389,28 @@ const MaterialDetail = () => {
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 dark:from-teal-400 dark:via-cyan-400 dark:to-blue-400 bg-clip-text text-transparent">
             {material.title}
           </h1>
-          <p className="text-xs text-gray-400 mt-2 flex items-center gap-1.5">
-            <Link2 className="w-3.5 h-3.5" />
-            Tip: Hover pada judul sub-bab lalu klik ikon 🔗 untuk share link ke bagian tertentu.
-          </p>
+
+          {/* ⚡ TOMBOL COPY LINK MATERI */}
+          <div className="flex flex-wrap items-center gap-3 mt-3">
+            <button
+              onClick={() => {
+                const url = `${window.location.origin}/materi/${material.id}`;
+                copyToClipboard(url, () => toast.success('Link materi dicopy! 🔗'));
+              }}
+              className="inline-flex items-center gap-2 text-xs font-semibold text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800/50 px-3 py-1.5 rounded-lg transition-all hover:shadow-md"
+            >
+              <Link2 className="w-3.5 h-3.5" />
+              Copy Link Materi
+            </button>
+
+            <span className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1.5">
+              <Link2 className="w-3.5 h-3.5" />
+              Hover judul sub-bab di bawah & klik 🔗 untuk share bagian tertentu
+            </span>
+          </div>
         </div>
 
-        {/* ⚡ PROGRESS CARD / GUEST BANNER */}
+        {/* PROGRESS CARD / GUEST BANNER */}
         {user ? (
           <div className="card-elevated rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6">
             <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
@@ -504,7 +518,7 @@ const MaterialDetail = () => {
           </div>
         )}
 
-        {/* ⚡ MATERI BACAAN — DIBUNGKUS .material-body UNTUK AUTO-ID */}
+        {/* MATERI BACAAN — DIBUNGKUS .material-body */}
         {hasContent && (
           <div className="card-elevated rounded-2xl overflow-hidden mb-4 sm:mb-6">
             <div className="flex items-center gap-3 px-5 sm:px-6 py-4 border-b border-gray-100 dark:border-slate-700/50">
