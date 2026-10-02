@@ -275,7 +275,7 @@ const MaterialDetail = () => {
           </h1>
         </div>
 
-        {/* ⚡ UBAH BAGIAN PROGRESS CARD */}
+        {/* ⚡ PROGRESS CARD / GUEST BANNER */}
         {user ? (
           <div className="card-elevated rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6">
             <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
@@ -426,7 +426,7 @@ const MaterialDetail = () => {
           </div>
         )}
 
-        {/* ⚡ UBAH BAGIAN TOMBOL AKSI */}
+        {/* ⚡ TOMBOL AKSI */}
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
           <button 
             onClick={handleTandaiSelesai} 
@@ -454,11 +454,12 @@ const MaterialDetail = () => {
           
           <Link 
             to={`/materi/${material.id}/kuis`} 
-            onClick={(e) => {
+            onClick={() => {
               if (!user) {
-                e.preventDefault();
-                toast.error('Silakan login terlebih dahulu untuk mengerjakan kuis!');
-                navigate('/login');
+                toast.success('Mode Tamu: Kamu bisa mencoba kuis, tapi nilai tidak akan disimpan. Login untuk menyimpan nilai!', { 
+                  duration: 5000,
+                  icon: 'ℹ️'
+                });
               }
             }}
             className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-teal-500 via-cyan-600 to-teal-600 hover:from-teal-600 hover:to-cyan-700 text-white font-semibold py-3.5 sm:py-4 rounded-xl transition-all shadow-lg shadow-teal-500/30 hover:shadow-xl text-sm sm:text-base"

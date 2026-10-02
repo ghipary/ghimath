@@ -97,8 +97,8 @@ function App() {
             <Route path="/materi" element={<MaterialList />} />
             <Route path="/materi/:id" element={<MaterialDetail />} />
             
-            {/* ⚡ KUIS TETAP BUTUH LOGIN */}
-            <Route path="/materi/:id/kuis" element={<ProtectedRoute><Quiz /></ProtectedRoute>} />
+            {/* ⚡ KUIS BISA DIAKSES TANPA LOGIN (TAPI NILAI TIDAK DISIMPAN) */}
+            <Route path="/materi/:id/kuis" element={<Quiz />} />
             
             <Route path="/profil" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/sertifikat" element={<ProtectedRoute><Certificate /></ProtectedRoute>} />

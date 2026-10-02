@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import InlineMarkdown from '../components/InlineMarkdown';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { Clock, RotateCcw, ArrowLeft, ListChecks, Loader, AlertTriangle, Trophy, TrendingUp, Sparkles, CheckCircle, XCircle, Award, PartyPopper, Lightbulb, X, RefreshCw } from 'lucide-react';
+import { Clock, RotateCcw, ArrowLeft, ListChecks, Loader, AlertTriangle, Trophy, TrendingUp, Sparkles, CheckCircle, XCircle, Award, PartyPopper, Lightbulb, X, RefreshCw, UserPlus } from 'lucide-react';
 
 const Quiz = () => {
   const { id } = useParams();
@@ -84,6 +84,14 @@ const Quiz = () => {
 
     const result = calculateScore();
     setFinished(true);
+
+    // ⚡ KHUSUS TAMU: Jangan simpan ke database, langsung tampilkan hasil
+    if (!user) {
+      setIsNewRecord(false);
+      setIsNewFastest(false);
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -203,6 +211,7 @@ const Quiz = () => {
 
   if (finished) {
     const result = calculateScore();
+    const isGuest = !user;
     const oldBest = bestResult?.score ?? null;
     const bestSoFar = Math.max(result.score, oldBest ?? 0);
     const oldBestTime = bestResult?.bestTime;
@@ -237,9 +246,14 @@ const Quiz = () => {
                   <Sparkles className="w-3.5 h-3.5" /> Rekor Nilai Baru!
                 </div>
               )}
-              {!isPerfect && isNewRecord && oldBest === null && (
+              {!isPerfect && !isGuest && isNewRecord && oldBest === null && (
                 <div className="inline-flex items-center gap-1.5 bg-gradient-to-r from-teal-400 to-cyan-500 text-white text-xs font-bold px-3 py-1.5 rounded-full mb-4 shadow-lg shadow-teal-500/30">
                   <Sparkles className="w-3.5 h-3.5" /> Kuis Selesai!
+                </div>
+              )}
+              {isGuest && (
+                <div className="inline-flex items-center gap-1.5 bg-gradient-to-r from-blue-400 to-indigo-500 text-white text-xs font-bold px-3 py-1.5 rounded-full mb-4 shadow-lg shadow-blue-500/30">
+                  <UserPlus className="w-3.5 h-3.5" /> Mode Tamu
                 </div>
               )}
 
@@ -264,23 +278,50 @@ const Quiz = () => {
               </p>
               <p className="text-xs text-gray-400 mb-6">Waktu: {formatTime(elapsedTime)}</p>
 
-              <div className="grid grid-cols-2 gap-3 mt-6">
-                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/10 border border-teal-200/60 dark:border-teal-800/50 rounded-2xl p-4">
-                  <Trophy className="w-5 h-5 text-teal-600 dark:text-teal-400 mx-auto mb-1" />
-                  <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Nilai Terbaik</p>
-                  <p className="text-2xl font-extrabold text-teal-600 dark:text-teal-400">{bestSoFar}</p>
+              {/* ⚡ KHUSUS TAMU: Card ajakan login */}
+              {isGuest ? (
+                <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-2 border-amber-300 dark:border-amber-700/60 rounded-2xl p-5 mt-6 text-left shadow-lg">
+                  <div className="flex items-start gap-3 mb-4">
+                    <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
+                      <Trophy className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-amber-900 dark:text-amber-200 text-base">Simpan Nilaimu, {result.score}!</h3>
+                      <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                        Kamu bermain sebagai Tamu. Login sekarang untuk menyimpan skor ini, bersaing di Leaderboard, dan membuka fitur lengkap lainnya!
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Link to="/login" className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white font-bold py-3 rounded-xl shadow-md hover:shadow-lg transition-all text-sm">
+                      <UserPlus className="w-4 h-4" /> Login / Daftar
+                    </Link>
+                    <button onClick={handleRetry} className="flex-1 flex items-center justify-center gap-2 bg-white dark:bg-slate-800 border-2 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-white font-semibold py-3 rounded-xl hover:border-teal-500 transition-all text-sm">
+                      <RotateCcw className="w-4 h-4" /> Coba Lagi
+                    </button>
+                  </div>
                 </div>
-                <div className="bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/10 border border-violet-200/60 dark:border-violet-800/50 rounded-2xl p-4">
-                  <Clock className="w-5 h-5 text-violet-600 dark:text-violet-400 mx-auto mb-1" />
-                  <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Waktu Tercepat</p>
-                  <p className="text-xl font-extrabold text-violet-600 dark:text-violet-400">
-                    {bestTimeSoFar ? formatTime(bestTimeSoFar) : '—'}
-                  </p>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 mt-6">
+                  <div className="bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/10 border border-teal-200/60 dark:border-teal-800/50 rounded-2xl p-4">
+                    <Trophy className="w-5 h-5 text-teal-600 dark:text-teal-400 mx-auto mb-1" />
+                    <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Nilai Terbaik</p>
+                    <p className="text-2xl font-extrabold text-teal-600 dark:text-teal-400">{bestSoFar}</p>
+                  </div>
+                  <div className="bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/10 border border-violet-200/60 dark:border-violet-800/50 rounded-2xl p-4">
+                    <Clock className="w-5 h-5 text-violet-600 dark:text-violet-400 mx-auto mb-1" />
+                    <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Waktu Tercepat</p>
+                    <p className="text-xl font-extrabold text-violet-600 dark:text-violet-400">
+                      {bestTimeSoFar ? formatTime(bestTimeSoFar) : '—'}
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 
+          {/* ... (Bagian isPerfect dan wrongQuestions tetap sama, biarkan saja) ... */}
+          
           {isPerfect && (
             <div className="bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-900/10 dark:via-yellow-900/5 dark:to-orange-900/10 border-2 border-amber-300 dark:border-amber-700/60 rounded-3xl p-6 mb-6">
               <div className="flex items-center gap-3 mb-5 pb-4 border-b border-amber-200 dark:border-amber-800/50">
@@ -415,7 +456,7 @@ const Quiz = () => {
             </div>
           )}
 
-          {!isPerfect && wrongQuestions.length === 0 && (
+          {!isPerfect && wrongQuestions.length === 0 && !isGuest && (
             <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/10 border border-amber-200/60 dark:border-amber-800/50 rounded-2xl p-4 mb-6 flex gap-3">
               <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-amber-800 dark:text-amber-300">
@@ -425,20 +466,22 @@ const Quiz = () => {
             </div>
           )}
 
-          <div className="flex flex-col sm:flex-row gap-3">
-            <button 
-              onClick={handleRetry}
-              className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-teal-500 via-cyan-600 to-teal-600 hover:from-teal-600 hover:to-cyan-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-teal-500/30 hover:shadow-xl"
-            >
-              <RotateCcw className="w-5 h-5" /> Coba Lagi
-            </button>
-            <button 
-              onClick={() => navigate(`/materi/${id}`)} 
-              className="flex-1 flex items-center justify-center gap-2 bg-white dark:bg-slate-800 border-2 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-white hover:border-teal-500 font-semibold py-4 rounded-xl transition-all"
-            >
-              <ArrowLeft className="w-5 h-5" /> Kembali ke Materi
-            </button>
-          </div>
+          {!isGuest && (
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button 
+                onClick={handleRetry}
+                className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-teal-500 via-cyan-600 to-teal-600 hover:from-teal-600 hover:to-cyan-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-teal-500/30 hover:shadow-xl"
+              >
+                <RotateCcw className="w-5 h-5" /> Coba Lagi
+              </button>
+              <button 
+                onClick={() => navigate(`/materi/${id}`)} 
+                className="flex-1 flex items-center justify-center gap-2 bg-white dark:bg-slate-800 border-2 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-white hover:border-teal-500 font-semibold py-4 rounded-xl transition-all"
+              >
+                <ArrowLeft className="w-5 h-5" /> Kembali ke Materi
+              </button>
+            </div>
+          )}
         </div>
 
         {retryingQuestion && (
@@ -577,7 +620,7 @@ const Quiz = () => {
       <Navbar />
       <div className="max-w-3xl mx-auto px-4 py-8">
         
-        {bestResult && (
+        {bestResult && !user && (
           <div className="bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/10 border border-teal-200/60 dark:border-teal-800/50 rounded-xl p-3 mb-4 flex items-center gap-3 text-sm">
             <Trophy className="w-5 h-5 text-teal-600 dark:text-teal-400 flex-shrink-0" />
             <div className="flex-1">
@@ -590,6 +633,16 @@ const Quiz = () => {
             </div>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-400">
               {bestResult.attempts || 1}x
+            </span>
+          </div>
+        )}
+
+        {/* ⚡ Banner Mode Tamu */}
+        {!user && (
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/10 border border-blue-200 dark:border-blue-800 rounded-xl p-3 mb-4 flex items-start gap-2 text-xs text-blue-700 dark:text-blue-300">
+            <UserPlus className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <span>
+              <strong>Mode Tamu:</strong> Kamu bisa mengerjakan kuis ini, tapi nilainya <strong>tidak akan disimpan</strong>. Login untuk menyimpan skor dan bersaing di Leaderboard!
             </span>
           </div>
         )}
