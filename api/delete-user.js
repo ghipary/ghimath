@@ -1,24 +1,22 @@
 // api/delete-user.js
-import admin from 'firebase-admin';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 
 // Inisialisasi Firebase Admin (hanya sekali)
-if (!admin.apps.length) {
+if (getApps().length === 0) {
   try {
-    admin.initializeApp({
-      credential: admin.credential.cert({
+    initializeApp({
+      credential: cert({
         projectId: process.env.FIREBASE_PROJECT_ID,
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        // Vercel kadang mengubah format newline, ini cara aman memformatnya
         privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
       }),
     });
   } catch (error) {
-    console.error('Firebase admin initialization error', error.stack);
+    console.error('Firebase admin initialization error:', error.stack);
   }
 }
-
-const db = admin.firestore();
-const auth = admin.auth();
 
 export default async function handler(req, res) {
   // Hanya izinkan method POST
@@ -26,14 +24,17 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Ambil token dari header Authorization (frontend akan mengirim ini)
+  // Ambil token dari header Authorization
   const idToken = req.headers.authorization?.split('Bearer ')[1];
   if (!idToken) {
     return res.status(401).json({ error: 'Tidak ada token akses' });
   }
 
   try {
-    // 1. Verifikasi token: Siapa yang meminta hapus?
+    const db = getFirestore();
+    const auth = getAuth();
+
+    // 1. Verifikasi token
     const decodedToken = await auth.verifyIdToken(idToken);
     const requesterUid = decodedToken.uid;
 
@@ -43,13 +44,13 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'Akses ditolak. Hanya admin yang bisa menghapus akun.' });
     }
 
-    // 3. Ambil UID target yang mau dihapus dari body
+    // 3. Ambil UID target
     const { uidToDelete } = req.body;
     if (!uidToDelete) {
       return res.status(400).json({ error: 'UID target tidak ditemukan' });
     }
 
-    // 4. Jangan biarkan admin menghapus dirinya sendiri
+    // 4. Cegah admin hapus diri sendiri
     if (uidToDelete === requesterUid) {
       return res.status(400).json({ error: 'Kamu tidak bisa menghapus akunmu sendiri.' });
     }
@@ -58,7 +59,12 @@ export default async function handler(req, res) {
     await db.collection('users').doc(uidToDelete).delete();
 
     // 6. Hapus dari Firebase Authentication
-    await auth.deleteUser(uidToDelete);
+    try {
+      await auth.deleteUser(uidToDelete);
+    } catch (authErr) {
+      // Kalau user sudah tidak ada di Auth, lanjut saja
+      console.warn('Auth user sudah tidak ada atau gagal dihapus:', authErr.message);
+    }
 
     return res.status(200).json({ message: 'Akun berhasil dihapus permanen' });
 
