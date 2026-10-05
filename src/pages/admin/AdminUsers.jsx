@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import { db } from '../../firebase';
 import { collection, getDocs, query, where, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { useAuth } from '../../context/AuthContext';
 import { ArrowLeft, Users, Search, Loader, Mail, GraduationCap, Trophy, X, BookOpen, Calendar, Sparkles, AlertTriangle, Trash2, RotateCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const AdminUsers = () => {
   const navigate = useNavigate();
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [quizResults, setQuizResults] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,8 +17,13 @@ const AdminUsers = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   
   // ⚡ STATE RESET
-  const [resetUser, setResetUser] = useState(null); // user yang mau di-reset
+  const [resetUser, setResetUser] = useState(null);
   const [resetting, setResetting] = useState(false);
+
+  // ⚡ STATE DELETE ACCOUNT
+  const [deleteUser, setDeleteUser] = useState(null);
+  const [deletingUser, setDeletingUser] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   const fetchData = async () => {
     try {
@@ -74,7 +81,6 @@ const AdminUsers = () => {
       const uid = resetUser.uid;
       console.log('🧹 Mulai reset data user:', resetUser.name, '(', uid, ')');
 
-      // 1. Hapus semua progress belajar
       const progressQ = query(collection(db, 'progress'), where('userId', '==', uid));
       const progressSnap = await getDocs(progressQ);
       let deletedCount = 0;
@@ -84,9 +90,7 @@ const AdminUsers = () => {
           deletedCount++;
         })
       );
-      console.log(`✅ Progress dihapus: ${progressSnap.size}`);
 
-      // 2. Hapus semua hasil kuis (termasuk kuis harian)
       const quizQ = query(collection(db, 'quizResults'), where('userId', '==', uid));
       const quizSnap = await getDocs(quizQ);
       await Promise.all(
@@ -95,9 +99,7 @@ const AdminUsers = () => {
           deletedCount++;
         })
       );
-      console.log(`✅ Quiz results dihapus: ${quizSnap.size}`);
 
-      // 3. Hapus semua daily challenges
       const dailyQ = query(collection(db, 'dailyChallenges'), where('userId', '==', uid));
       const dailySnap = await getDocs(dailyQ);
       await Promise.all(
@@ -106,19 +108,15 @@ const AdminUsers = () => {
           deletedCount++;
         })
       );
-      console.log(`✅ Daily challenges dihapus: ${dailySnap.size}`);
 
-      // 4. Reset streak & last active di doc user
       await updateDoc(doc(db, 'users', uid), {
         currentStreak: 0,
         longestStreak: 0,
         lastActiveDate: null,
       });
-      console.log('✅ Streak di-reset');
 
       toast.success(`🧹 Data ${resetUser.name} berhasil di-reset! (${deletedCount} dokumen dihapus)`);
       
-      // Tutup modal & refresh data
       setResetUser(null);
       setSelectedUser(null);
       setLoading(true);
@@ -128,6 +126,43 @@ const AdminUsers = () => {
       toast.error('Gagal reset: ' + (error.message || 'Unknown error'));
     }
     setResetting(false);
+  };
+
+  // ⚡ HANDLE DELETE ACCOUNT (PERMANEN)
+  const handleDeleteAccount = async () => {
+    if (!deleteUser) return;
+    if (deleteConfirmText !== 'HAPUS') {
+      toast.error('Ketik "HAPUS" untuk konfirmasi');
+      return;
+    }
+
+    setDeletingUser(true);
+    try {
+      const idToken = await currentUser.getIdToken();
+      const res = await fetch('/api/delete-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ uidToDelete: deleteUser.uid }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Gagal menghapus akun');
+
+      toast.success(`Akun ${deleteUser.name || deleteUser.email} berhasil dihapus permanen! 🗑️`);
+      
+      // Update state lokal
+      setUsers((prev) => prev.filter((u) => u.uid !== deleteUser.uid));
+      setDeleteUser(null);
+      setDeleteConfirmText('');
+      setSelectedUser(null);
+    } catch (error) {
+      console.error(error);
+      toast.error(error.message);
+    }
+    setDeletingUser(false);
   };
 
   if (loading) {
@@ -233,11 +268,20 @@ const AdminUsers = () => {
                           </button>
                           <button 
                             onClick={() => setResetUser(u)}
-                            className="p-2 text-xs font-semibold bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-all"
+                            className="p-2 text-xs font-semibold bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-all"
                             title="Reset data user"
                           >
                             <RotateCcw className="w-4 h-4" />
                           </button>
+                          {currentUser?.uid !== u.uid && (
+                            <button 
+                              onClick={() => { setDeleteUser(u); setDeleteConfirmText(''); }}
+                              className="p-2 text-xs font-semibold bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-all"
+                              title="Hapus akun permanen"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -250,7 +294,7 @@ const AdminUsers = () => {
       </div>
 
       {/* MODAL DETAIL USER */}
-      {selectedUser && !resetUser && (
+      {selectedUser && !resetUser && !deleteUser && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 overflow-y-auto" onClick={() => setSelectedUser(null)}>
           <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 md:p-8 max-w-2xl w-full shadow-2xl relative my-8" onClick={(e) => e.stopPropagation()}>
             <button onClick={() => setSelectedUser(null)} className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
@@ -314,23 +358,36 @@ const AdminUsers = () => {
               )}
             </div>
 
-            {/* ⚡ TOMBOL RESET DI MODAL DETAIL */}
-            <div className="border-t border-gray-200 dark:border-slate-700 pt-5">
+            <div className="border-t border-gray-200 dark:border-slate-700 pt-5 space-y-3">
               <button
                 onClick={() => setResetUser(selectedUser)}
-                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-red-500 via-rose-500 to-red-600 hover:from-red-600 hover:to-rose-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-red-500/30 hover:shadow-xl"
+                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-amber-500/30 hover:shadow-xl"
               >
                 <RotateCcw className="w-5 h-5" /> Reset Data User Ini
               </button>
-              <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
+              <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
                 ⚠️ Menghapus semua progress & nilai kuis user. Tidak bisa dibatalkan.
               </p>
+
+              {currentUser?.uid !== selectedUser.uid && (
+                <>
+                  <button
+                    onClick={() => { setDeleteUser(selectedUser); setDeleteConfirmText(''); }}
+                    className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-red-500 via-rose-500 to-red-600 hover:from-red-600 hover:to-rose-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-red-500/30 hover:shadow-xl"
+                  >
+                    <Trash2 className="w-5 h-5" /> Hapus Akun Permanen
+                  </button>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                    ⚠️ Menghapus akun & SEMUA data terkait. Tidak bisa dibatalkan.
+                  </p>
+                </>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* ⚡ MODAL KONFIRMASI RESET */}
+      {/* MODAL KONFIRMASI RESET */}
       {resetUser && (
         <div 
           className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[110] flex items-center justify-center p-4 overflow-y-auto" 
@@ -340,22 +397,20 @@ const AdminUsers = () => {
             className="bg-white dark:bg-slate-800 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative overflow-hidden my-8" 
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Background decoration */}
             <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-red-400/20 to-rose-500/10 rounded-full blur-3xl"></div>
 
             <div className="relative">
-              <div className="w-20 h-20 bg-gradient-to-br from-red-400 via-rose-500 to-red-600 rounded-3xl flex items-center justify-center mx-auto mb-5 shadow-xl shadow-red-500/40">
-                <AlertTriangle className="w-10 h-10 text-white" />
+              <div className="w-20 h-20 bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 rounded-3xl flex items-center justify-center mx-auto mb-5 shadow-xl shadow-amber-500/40">
+                <RotateCcw className="w-10 h-10 text-white" />
               </div>
 
               <h3 className="text-2xl font-bold text-gray-900 dark:text-white text-center mb-2">
                 Reset Data User?
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400 text-center mb-5 leading-relaxed">
-                Semua data di bawah ini bakal <strong className="text-red-600 dark:text-red-400">dihapus permanen</strong> untuk user:
+                Semua data di bawah ini bakal <strong className="text-amber-600 dark:text-amber-400">dihapus permanen</strong> untuk user:
               </p>
 
-              {/* User Info */}
               <div className="bg-gradient-to-br from-gray-50 to-violet-50/30 dark:from-slate-900/50 dark:to-slate-900/30 rounded-2xl p-4 mb-5 border border-gray-200/60 dark:border-slate-700/50">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-gradient-to-br from-violet-500 via-purple-600 to-fuchsia-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
@@ -371,35 +426,33 @@ const AdminUsers = () => {
                 </div>
               </div>
 
-              {/* List yang bakal dihapus */}
               <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-2.5 mb-5">
                 <li className="flex items-center gap-2.5">
-                  <span className="w-5 h-5 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 flex items-center justify-center flex-shrink-0">
+                  <span className="w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
                     <X className="w-3 h-3" />
                   </span>
                   Semua progress belajar materi
                 </li>
                 <li className="flex items-center gap-2.5">
-                  <span className="w-5 h-5 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 flex items-center justify-center flex-shrink-0">
+                  <span className="w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
                     <X className="w-3 h-3" />
                   </span>
                   Semua nilai kuis (termasuk kuis harian)
                 </li>
                 <li className="flex items-center gap-2.5">
-                  <span className="w-5 h-5 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 flex items-center justify-center flex-shrink-0">
+                  <span className="w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
                     <X className="w-3 h-3" />
                   </span>
                   Riwayat kuis harian (daily challenges)
                 </li>
                 <li className="flex items-center gap-2.5">
-                  <span className="w-5 h-5 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 flex items-center justify-center flex-shrink-0">
+                  <span className="w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
                     <X className="w-3 h-3" />
                   </span>
                   Streak (current & longest)
                 </li>
               </ul>
 
-              {/* Warning Box */}
               <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/10 border border-amber-200/60 dark:border-amber-800/50 rounded-xl p-3 mb-5 flex gap-2.5">
                 <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                 <div className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
@@ -407,7 +460,6 @@ const AdminUsers = () => {
                 </div>
               </div>
 
-              {/* Tombol Aksi */}
               <div className="flex gap-3">
                 <button 
                   onClick={() => setResetUser(null)} 
@@ -419,7 +471,7 @@ const AdminUsers = () => {
                 <button 
                   onClick={handleResetData} 
                   disabled={resetting}
-                  className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-red-500 via-rose-500 to-red-600 hover:from-red-600 hover:to-rose-700 text-white font-bold transition-all shadow-lg shadow-red-500/30 disabled:opacity-50"
+                  className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold transition-all shadow-lg shadow-amber-500/30 disabled:opacity-50"
                 >
                   {resetting ? (
                     <>
@@ -427,7 +479,122 @@ const AdminUsers = () => {
                     </>
                   ) : (
                     <>
-                      <Trash2 className="w-4 h-4" /> Ya, Reset!
+                      <RotateCcw className="w-4 h-4" /> Ya, Reset!
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ⚡ MODAL KONFIRMASI HAPUS AKUN */}
+      {deleteUser && (
+        <div 
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[120] flex items-center justify-center p-4 overflow-y-auto" 
+          onClick={() => !deletingUser && setDeleteUser(null)}
+        >
+          <div 
+            className="bg-white dark:bg-slate-800 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative overflow-hidden my-8" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-red-500/30 to-rose-600/20 rounded-full blur-3xl"></div>
+
+            <div className="relative">
+              <div className="w-20 h-20 bg-gradient-to-br from-red-500 via-rose-600 to-red-700 rounded-3xl flex items-center justify-center mx-auto mb-5 shadow-xl shadow-red-500/50">
+                <Trash2 className="w-10 h-10 text-white" />
+              </div>
+
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white text-center mb-2">
+                Hapus Akun Permanen?
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 text-center mb-5 leading-relaxed">
+                Akun ini akan <strong className="text-red-600 dark:text-red-400">dihapus total dari sistem</strong>:
+              </p>
+
+              <div className="bg-gradient-to-br from-gray-50 to-red-50/30 dark:from-slate-900/50 dark:to-red-900/10 rounded-2xl p-4 mb-5 border border-red-200/60 dark:border-red-800/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-rose-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
+                    <Users className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-gray-900 dark:text-white truncate">{deleteUser.name || 'Siswa'}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{deleteUser.email}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      {deleteUser.quizCount} kuis • Total skor: {deleteUser.totalScore}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-2.5 mb-5">
+                <li className="flex items-center gap-2.5">
+                  <span className="w-5 h-5 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 flex items-center justify-center flex-shrink-0">
+                    <X className="w-3 h-3" />
+                  </span>
+                  Akun login (Firebase Authentication)
+                </li>
+                <li className="flex items-center gap-2.5">
+                  <span className="w-5 h-5 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 flex items-center justify-center flex-shrink-0">
+                    <X className="w-3 h-3" />
+                  </span>
+                  Data profil di Firestore
+                </li>
+                <li className="flex items-center gap-2.5">
+                  <span className="w-5 h-5 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 flex items-center justify-center flex-shrink-0">
+                    <X className="w-3 h-3" />
+                  </span>
+                  Semua progress, nilai kuis & ujian
+                </li>
+                <li className="flex items-center gap-2.5">
+                  <span className="w-5 h-5 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 flex items-center justify-center flex-shrink-0">
+                    <X className="w-3 h-3" />
+                  </span>
+                  Semua data terkait user ini
+                </li>
+              </ul>
+
+              <div className="bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-900/20 dark:to-rose-900/10 border-2 border-red-300 dark:border-red-800/70 rounded-xl p-4 mb-5">
+                <div className="flex gap-2.5 mb-3">
+                  <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                  <div className="text-xs text-red-800 dark:text-red-300 leading-relaxed">
+                    <strong>PERINGATAN:</strong> Tindakan ini <strong>TIDAK BISA DIBATALKAN</strong>. User harus mendaftar ulang untuk menggunakan aplikasi.
+                  </div>
+                </div>
+                <label className="block text-xs font-bold text-red-800 dark:text-red-300 mb-2">
+                  Ketik <span className="bg-red-200 dark:bg-red-900/50 px-1.5 py-0.5 rounded font-mono">HAPUS</span> untuk konfirmasi:
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value.toUpperCase())}
+                  placeholder="HAPUS"
+                  disabled={deletingUser}
+                  className="w-full px-3 py-2.5 rounded-lg border-2 border-red-300 dark:border-red-700 bg-white dark:bg-slate-900 text-center text-lg font-bold tracking-widest text-red-600 focus:ring-2 focus:ring-red-500 outline-none uppercase"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => { setDeleteUser(null); setDeleteConfirmText(''); }} 
+                  disabled={deletingUser}
+                  className="flex-1 py-3.5 rounded-xl bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-200 font-semibold transition-all disabled:opacity-50"
+                >
+                  Batal
+                </button>
+                <button 
+                  onClick={handleDeleteAccount} 
+                  disabled={deletingUser || deleteConfirmText !== 'HAPUS'}
+                  className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-700 hover:to-rose-800 text-white font-bold transition-all shadow-lg shadow-red-500/40 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {deletingUser ? (
+                    <>
+                      <Loader className="w-4 h-4 animate-spin" /> Menghapus...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" /> HAPUS PERMANEN
                     </>
                   )}
                 </button>

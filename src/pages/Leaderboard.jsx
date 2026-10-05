@@ -3,9 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import { db } from '../firebase';
 import { collection, getDocs } from 'firebase/firestore';
-import { Trophy, Medal, Crown, Loader, ChevronLeft, Sparkles, School, GraduationCap, Flame, Sprout, Zap, Rocket, Gem, Clock, Target, BookMarked, TrendingUp, UserPlus, X, Brain, Info, Star, Award, Trash2 } from 'lucide-react';
+import { Trophy, Medal, Crown, Loader, ChevronLeft, Sparkles, School, GraduationCap, Flame, Sprout, Zap, Rocket, Gem, Clock, Target, BookMarked, TrendingUp, UserPlus, X, Brain, Info, Star, Award } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import toast from 'react-hot-toast';
 
 const MIN_QUIZ = 3;
 
@@ -159,7 +158,6 @@ const Leaderboard = () => {
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState(null);
   const [showInfo, setShowInfo] = useState(false);
-  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -185,42 +183,6 @@ const Leaderboard = () => {
     };
     if (user) fetchAll();
   }, [user]);
-
-  const handleDeleteUser = async (e, uidToDelete, namaUser) => {
-    e.stopPropagation(); // Mencegah modal profil terbuka
-    if (!window.confirm(`Yakin ingin menghapus akun "${namaUser}" secara permanen?`)) return;
-
-    setDeletingId(uidToDelete);
-    try {
-      const idToken = await user.getIdToken();
-      const res = await fetch('/api/delete-user', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
-        },
-        body: JSON.stringify({ uidToDelete }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Gagal menghapus akun');
-
-      toast.success(`Akun ${namaUser} berhasil dihapus! 🗑️`);
-      
-      // Update state lokal (hapus dari allUsers, otomatis hilang dari leaderboard)
-      setAllUsers((prev) => {
-        const newUsers = { ...prev };
-        delete newUsers[uidToDelete];
-        return newUsers;
-      });
-
-    } catch (error) {
-      console.error(error);
-      toast.error(error.message);
-    } finally {
-      setDeletingId(null);
-    }
-  };
 
   const leaderboard = useMemo(() => {
     const userResults = {};
@@ -333,8 +295,6 @@ const Leaderboard = () => {
 
     return list.map((item, idx) => ({ ...item, rank: idx + 1 }));
   }, [allResults, allProgress, allUsers, allExams]);
-
-  const myRole = allUsers[user?.uid]?.role;
 
   if (loading) {
     return (
@@ -488,7 +448,6 @@ const Leaderboard = () => {
                 const isMe = item.uid === user.uid;
                 const isEmpty = item.quizCount === 0;
                 const smartConfig = getSmartScoreConfig(item.smartScore);
-                const isDeleting = deletingId === item.uid;
                 
                 return (
                   <div
@@ -569,23 +528,6 @@ const Leaderboard = () => {
                         </div>
                         <span className="text-lg">{item.smartScore}</span>
                       </div>
-                      
-                      {/* TOMBOL HAPUS AKUN (Hanya untuk Admin, tidak bisa hapus diri sendiri) */}
-                      {myRole === 'admin' && item.uid !== user.uid && (
-                        <button
-                          onClick={(e) => handleDeleteUser(e, item.uid, item.name)}
-                          disabled={isDeleting}
-                          className="px-3 py-1.5 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white text-[10px] font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
-                          title="Hapus Akun"
-                        >
-                          {isDeleting ? (
-                            <Loader className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <Trash2 className="w-3.5 h-3.5" />
-                          )}
-                          {isDeleting ? 'Proses...' : 'Hapus'}
-                        </button>
-                      )}
                     </div>
                   </div>
                 );
