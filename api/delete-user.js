@@ -1,3 +1,8 @@
+m// api/delete-user.js
+export const config = {
+  runtime: 'nodejs',
+};
+
 // api/delete-user.js
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
