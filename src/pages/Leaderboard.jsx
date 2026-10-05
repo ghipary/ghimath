@@ -334,6 +334,8 @@ const Leaderboard = () => {
     return list.map((item, idx) => ({ ...item, rank: idx + 1 }));
   }, [allResults, allProgress, allUsers, allExams]);
 
+  const myRole = allUsers[user?.uid]?.role;
+
   if (loading) {
     return (
       <div className="page-bg flex items-center justify-center">
@@ -569,7 +571,7 @@ const Leaderboard = () => {
                       </div>
                       
                       {/* TOMBOL HAPUS AKUN (Hanya untuk Admin, tidak bisa hapus diri sendiri) */}
-                      {user?.role === 'admin' && item.uid !== user.uid && (
+                      {myRole === 'admin' && item.uid !== user.uid && (
                         <button
                           onClick={(e) => handleDeleteUser(e, item.uid, item.name)}
                           disabled={isDeleting}
