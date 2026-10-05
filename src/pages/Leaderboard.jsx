@@ -3,8 +3,9 @@ import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import { db } from '../firebase';
 import { collection, getDocs } from 'firebase/firestore';
-import { Trophy, Medal, Crown, Loader, ChevronLeft, Sparkles, School, GraduationCap, Flame, Sprout, Zap, Rocket, Gem, Clock, Target, BookMarked, TrendingUp, UserPlus, X, Brain, Info, Star, Award } from 'lucide-react';
+import { Trophy, Medal, Crown, Loader, ChevronLeft, Sparkles, School, GraduationCap, Flame, Sprout, Zap, Rocket, Gem, Clock, Target, BookMarked, TrendingUp, UserPlus, X, Brain, Info, Star, Award, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 const MIN_QUIZ = 3;
 
@@ -37,7 +38,6 @@ const fmtMinutes = (seconds) => {
   return rem > 0 ? `${h}j ${rem}m` : `${h} jam`;
 };
 
-// ⚡ SMART SCORE CONFIG - Pakai Lucide Icons, bukan emoji
 const getSmartScoreConfig = (score) => {
   if (score >= 85) return { 
     gradient: 'from-amber-400 via-yellow-500 to-orange-500', 
@@ -110,7 +110,6 @@ const Avatar = ({ photoURL, name, size = 'md', rank }) => {
   );
 };
 
-// ⚡ KOMPONEN: Kotak Ikon Premium untuk Podium
 const RankIconBox = ({ rank }) => {
   if (rank === 1) {
     return (
@@ -139,7 +138,6 @@ const RankIconBox = ({ rank }) => {
   return null;
 };
 
-// ⚡ KOMPONEN: Ikon Smart Score Premium (kotak gradient)
 const SmartScoreIcon = ({ score, size = 'sm' }) => {
   const config = getSmartScoreConfig(score);
   const IconComponent = config.Icon;
@@ -161,6 +159,7 @@ const Leaderboard = () => {
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState(null);
   const [showInfo, setShowInfo] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -186,6 +185,42 @@ const Leaderboard = () => {
     };
     if (user) fetchAll();
   }, [user]);
+
+  const handleDeleteUser = async (e, uidToDelete, namaUser) => {
+    e.stopPropagation(); // Mencegah modal profil terbuka
+    if (!window.confirm(`Yakin ingin menghapus akun "${namaUser}" secara permanen?`)) return;
+
+    setDeletingId(uidToDelete);
+    try {
+      const idToken = await user.getIdToken();
+      const res = await fetch('/api/delete-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
+        body: JSON.stringify({ uidToDelete }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Gagal menghapus akun');
+
+      toast.success(`Akun ${namaUser} berhasil dihapus! 🗑️`);
+      
+      // Update state lokal (hapus dari allUsers, otomatis hilang dari leaderboard)
+      setAllUsers((prev) => {
+        const newUsers = { ...prev };
+        delete newUsers[uidToDelete];
+        return newUsers;
+      });
+
+    } catch (error) {
+      console.error(error);
+      toast.error(error.message);
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const leaderboard = useMemo(() => {
     const userResults = {};
@@ -382,10 +417,8 @@ const Leaderboard = () => {
       </div>
 
       <div className="page-content max-w-4xl mx-auto px-4 py-4 space-y-6 sm:space-y-8">
-        {/* Podium Top 3 - dengan Icon Box Premium */}
         {hasPodium && (
           <div className="grid grid-cols-3 gap-3 md:gap-4 items-end">
-            {/* Rank 2 */}
             <div className="flex flex-col items-center pt-8">
               <div className="relative mb-3">
                 <Avatar photoURL={top2.photoURL} name={top2.name} size="lg" />
@@ -398,7 +431,6 @@ const Leaderboard = () => {
               <div className="mt-1"><StreakChip streak={top2.currentStreak} /></div>
             </div>
 
-            {/* Rank 1 */}
             <div className="flex flex-col items-center">
               <div className="relative mb-3">
                 <Avatar photoURL={top1.photoURL} name={top1.name} size="xl" />
@@ -415,7 +447,6 @@ const Leaderboard = () => {
               <div className="mt-1"><StreakChip streak={top1.currentStreak} /></div>
             </div>
 
-            {/* Rank 3 */}
             <div className="flex flex-col items-center pt-8">
               <div className="relative mb-3">
                 <Avatar photoURL={top3.photoURL} name={top3.name} size="lg" />
@@ -455,8 +486,10 @@ const Leaderboard = () => {
                 const isMe = item.uid === user.uid;
                 const isEmpty = item.quizCount === 0;
                 const smartConfig = getSmartScoreConfig(item.smartScore);
+                const isDeleting = deletingId === item.uid;
+                
                 return (
-                  <button
+                  <div
                     key={item.uid}
                     onClick={() => setSelectedUser(item)}
                     className={`w-full text-left flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-4 sm:px-6 py-3.5 sm:py-4 transition-colors cursor-pointer ${
@@ -527,16 +560,32 @@ const Leaderboard = () => {
                       </div>
                     </div>
 
-                    <div className="text-right flex-shrink-0 w-full sm:w-auto mt-2 sm:mt-0 flex sm:flex-col justify-between items-center sm:items-end border-t sm:border-t-0 pt-2 sm:pt-0 border-gray-100 dark:border-slate-700">
+                    <div className="text-right flex-shrink-0 w-full sm:w-auto mt-2 sm:mt-0 flex sm:flex-col justify-between items-center sm:items-end border-t sm:border-t-0 pt-2 sm:pt-0 border-gray-100 dark:border-slate-700 gap-2">
                       <div className={`inline-flex items-center gap-1.5 bg-gradient-to-r ${smartConfig.gradient} text-white pl-1.5 pr-3 py-1.5 rounded-xl font-bold shadow-md`}>
                         <div className="bg-white/25 rounded-lg p-1 flex items-center justify-center backdrop-blur-sm">
                           <smartConfig.Icon className="w-3.5 h-3.5 text-white" />
                         </div>
                         <span className="text-lg">{item.smartScore}</span>
                       </div>
-                      <p className="text-[10px] text-gray-400 mt-1">Smart Score</p>
+                      
+                      {/* TOMBOL HAPUS AKUN (Hanya untuk Admin, tidak bisa hapus diri sendiri) */}
+                      {user?.role === 'admin' && item.uid !== user.uid && (
+                        <button
+                          onClick={(e) => handleDeleteUser(e, item.uid, item.name)}
+                          disabled={isDeleting}
+                          className="px-3 py-1.5 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white text-[10px] font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
+                          title="Hapus Akun"
+                        >
+                          {isDeleting ? (
+                            <Loader className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-3.5 h-3.5" />
+                          )}
+                          {isDeleting ? 'Proses...' : 'Hapus'}
+                        </button>
+                      )}
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -544,7 +593,6 @@ const Leaderboard = () => {
         </div>
       </div>
 
-      {/* MODAL PROFIL */}
       {selectedUser && (
         <div 
           className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4"
