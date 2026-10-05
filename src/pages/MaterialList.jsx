@@ -4,7 +4,7 @@ import Navbar from '../components/Navbar';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
-import { Search, BookOpen, Clock, Loader, Lock, X, CheckCircle, BookMarked, TrendingUp, Sparkles, ChevronDown, FolderOpen, Folder, GraduationCap, Layers, Trophy, Target, ShieldAlert, Star } from 'lucide-react';
+import { Search, BookOpen, Clock, Loader, Lock, X, CheckCircle, BookMarked, TrendingUp, Sparkles, ChevronDown, FolderOpen, Folder, GraduationCap, Layers, Trophy, Target, ShieldAlert, Star, Shield } from 'lucide-react';
 
 const getGradeStyle = (grade) => {
   const g = Number(grade);
@@ -120,6 +120,9 @@ const MaterialList = () => {
     ownQuizzes: { total: 0, completed: 0 },
   });
 
+  // ⚡ ADMIN CHECK
+  const isAdmin = userProfile?.role === 'admin';
+
   const stripHtml = (html) => {
     if (!html) return '';
     return html.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
@@ -157,6 +160,8 @@ const MaterialList = () => {
   useEffect(() => {
     const checkUnlockStatus = async () => {
       if (!user || !userProfile?.level || materials.length === 0) return;
+      // ⚡ ADMIN TIDAK PERLU HITUNG UNLOCK
+      if (userProfile.role === 'admin') return;
 
       const userLevel = userProfile.level;
       const ownLevelMaterials = materials.filter((m) => m.level === userLevel);
@@ -276,6 +281,8 @@ const MaterialList = () => {
   };
 
   const isFolderLocked = (group) => {
+    // ⚡ ADMIN BYPASS SEMUA LOCK
+    if (isAdmin) return false;
     if (viewMode !== 'jenjang') return false;
     if (!user) return false;
     if (!userProfile?.level) return false;
@@ -286,6 +293,8 @@ const MaterialList = () => {
   };
 
   const isMaterialLocked = (mat) => {
+    // ⚡ ADMIN BYPASS SEMUA LOCK
+    if (isAdmin) return false;
     if (!user) return false;
     if (!userProfile?.level) return false;
     const isOwnJenjang = mat.level === userProfile.level;
@@ -324,12 +333,23 @@ const MaterialList = () => {
           <Sparkles className="w-3.5 h-3.5" />
           {materials.length} materi tersedia
         </div>
+
+        {/* ⚡ ADMIN MODE BADGE */}
+        {isAdmin && (
+          <div className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-100 to-orange-100 dark:from-amber-900/40 dark:to-orange-900/40 border border-amber-300 dark:border-amber-700/60 px-3 py-1.5 rounded-full text-xs font-bold text-amber-700 dark:text-amber-400 mb-4 ml-2 shadow-sm">
+            <Shield className="w-3.5 h-3.5" />
+            ADMIN MODE — Akses Semua Jenjang
+          </div>
+        )}
+
         <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 dark:from-teal-400 dark:via-cyan-400 dark:to-blue-400 bg-clip-text text-transparent mb-2">
           Daftar Materi
         </h1>
         <p className="text-gray-600 dark:text-gray-400 mb-6">
           {user 
-            ? 'Pilih folder untuk melihat materi.' 
+            ? (isAdmin 
+                ? 'Sebagai admin, kamu bisa mengakses semua materi dari jenjang SMP & SMA tanpa terkunci.' 
+                : 'Pilih folder untuk melihat materi.') 
             : 'Akses semua materi secara gratis! Login untuk menyimpan progres belajarmu.'}
         </p>
       </div>
@@ -372,8 +392,8 @@ const MaterialList = () => {
           </div>
         </div>
 
-        {/* INFO PANEL UNLOCK */}
-        {user && userProfile?.level && !unlockStatus.unlocked && (
+        {/* INFO PANEL UNLOCK — HANYA UNTUK NON-ADMIN */}
+        {user && userProfile?.level && !unlockStatus.unlocked && !isAdmin && (
           <div className="card-elevated rounded-2xl p-4 sm:p-5 mb-6 border-l-4 border-l-amber-500 bg-gradient-to-r from-amber-50/50 to-orange-50/30 dark:from-amber-900/10 dark:to-orange-900/5">
             <div className="flex items-start gap-3 mb-3">
               <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/30 flex-shrink-0">
@@ -491,6 +511,9 @@ const MaterialList = () => {
                 folderIcon = isOpen ? <FolderOpen className="w-6 h-6 sm:w-7 sm:h-7 text-white" /> : <Folder className="w-6 h-6 sm:w-7 sm:h-7 text-white" />;
               }
 
+              // ⚡ ADMIN: bypass tampilan folder dari "jenjang lain" untuk admin
+              const showAdminBadgeOnFolder = isAdmin && !isTopicMode;
+
               return (
                 <div 
                   key={group.id}
@@ -517,6 +540,11 @@ const MaterialList = () => {
                           <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
                             {isTopicMode ? group.grade : `Jenjang ${group.grade}`}
                           </h2>
+                          {showAdminBadgeOnFolder && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-200 to-orange-200 text-amber-800 dark:from-amber-900/60 dark:to-orange-900/60 dark:text-amber-300 flex items-center gap-1">
+                              <Shield className="w-2.5 h-2.5" /> Admin Access
+                            </span>
+                          )}
                           {isLocked && (
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 flex items-center gap-1">
                               <Lock className="w-2.5 h-2.5" /> TERKUNCI
@@ -618,6 +646,9 @@ const MaterialList = () => {
                             );
                           }
 
+                          // ⚡ ADMIN BADGE di kartu materi
+                          const showAdminAccess = isAdmin && mat.level !== userProfile?.level;
+
                           return (
                             <Link 
                               key={mat.id} 
@@ -678,6 +709,12 @@ const MaterialList = () => {
                               {!isCompleted && isOpened && (
                                 <div className="absolute top-3 left-3 bg-gradient-to-r from-amber-500 to-orange-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-md z-10">
                                   <BookMarked className="w-3 h-3" /> {percent}%
+                                </div>
+                              )}
+                              {/* ⚡ ADMIN BADGE di kartu materi */}
+                              {showAdminAccess && !isCompleted && !isOpened && (
+                                <div className="absolute top-3 left-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-md z-10">
+                                  <Shield className="w-3 h-3" /> Admin
                                 </div>
                               )}
 

@@ -5,7 +5,7 @@ import MarkdownRenderer from '../components/MarkdownRenderer';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { ArrowLeft, CheckCircle, BookOpen, Video, ListChecks, Loader, Clock, TrendingUp, PauseCircle, Lock, FileText, Sparkles, UserPlus, Link2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle, BookOpen, Video, ListChecks, Loader, Clock, TrendingUp, PauseCircle, Lock, FileText, Sparkles, UserPlus, Link2, Shield } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AITutor from '../components/AITutor';
 
@@ -41,7 +41,6 @@ const isHtmlContent = (str) => {
   return /<[a-z][\s\S]*>/i.test(str);
 };
 
-// ⚡ Helper: buat slug dari teks heading
 const slugify = (text) => {
   return String(text)
     .toLowerCase()
@@ -52,7 +51,6 @@ const slugify = (text) => {
     .substring(0, 60);
 };
 
-// ⚡ Helper: fallback copy (di luar component biar rapi)
 const fallbackCopy = (text, onSuccess) => {
   const ta = document.createElement('textarea');
   ta.value = text;
@@ -69,7 +67,6 @@ const fallbackCopy = (text, onSuccess) => {
   document.body.removeChild(ta);
 };
 
-// ⚡ Helper: copy ke clipboard
 const copyToClipboard = (text, onSuccess) => {
   if (navigator.clipboard && window.isSecureContext) {
     navigator.clipboard.writeText(text).then(onSuccess).catch(() => {
@@ -91,6 +88,7 @@ const MaterialDetail = () => {
   const [percentage, setPercentage] = useState(0);
   const [isTabActive, setIsTabActive] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const readingSecondsRef = useRef(0);
   const contentRef = useRef(null);
@@ -110,6 +108,12 @@ const MaterialDetail = () => {
         setMaterial({ id: docSnap.id, ...docSnap.data() });
 
         if (user) {
+          // ⚡ Cek role admin dari user profile
+          const userSnap = await getDoc(doc(db, 'users', user.uid));
+          if (userSnap.exists() && userSnap.data().role === 'admin') {
+            setIsAdmin(true);
+          }
+
           const progressRef = doc(db, 'progress', `${user.uid}_${id}`);
           const progressSnap = await getDoc(progressRef);
           let existingSeconds = 0;
@@ -146,7 +150,6 @@ const MaterialDetail = () => {
   useEffect(() => {
     if (loading || !material) return;
 
-    // Beri jeda sedikit agar MarkdownRenderer selesai render
     const timer = setTimeout(() => {
       const container = contentRef.current;
       if (!container) return;
@@ -155,10 +158,8 @@ const MaterialDetail = () => {
       const usedIds = new Set();
 
       headings.forEach((h, idx) => {
-        // Skip jika heading di dalam tombol/link dsb
         if (h.closest('button, a')) return;
 
-        // Generate ID jika belum ada
         if (!h.id) {
           let baseSlug = slugify(h.textContent || `section-${idx + 1}`);
           if (!baseSlug) baseSlug = `section-${idx + 1}`;
@@ -173,10 +174,8 @@ const MaterialDetail = () => {
         }
         usedIds.add(h.id);
 
-        // Skip kalau tombol share sudah ada
         if (h.querySelector('.share-anchor-btn')) return;
 
-        // Buat tombol share
         const btn = document.createElement('button');
         btn.className = 'share-anchor-btn';
         btn.type = 'button';
@@ -196,7 +195,6 @@ const MaterialDetail = () => {
         h.appendChild(btn);
       });
 
-      // ⚡ Scroll ke hash jika ada
       const hash = window.location.hash.substring(1);
       if (hash) {
         const target = document.getElementById(hash);
@@ -213,7 +211,6 @@ const MaterialDetail = () => {
     return () => clearTimeout(timer);
   }, [loading, material]);
 
-  // ⚡ Update hash saat user scroll manual
   useEffect(() => {
     const handleScroll = () => {
       const container = contentRef.current;
@@ -385,12 +382,17 @@ const MaterialDetail = () => {
                 <Sparkles className="w-3 h-3" /> LaTeX
               </span>
             )}
+            {/* ⚡ ADMIN ACCESS BADGE */}
+            {isAdmin && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-gradient-to-r from-amber-200 to-orange-200 text-amber-800 dark:from-amber-900/60 dark:to-orange-900/60 dark:text-amber-300 px-2 py-0.5 rounded-full ring-1 ring-amber-300 dark:ring-amber-700">
+                <Shield className="w-3 h-3" /> Admin Access
+              </span>
+            )}
           </div>
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 dark:from-teal-400 dark:via-cyan-400 dark:to-blue-400 bg-clip-text text-transparent">
             {material.title}
           </h1>
 
-          {/* ⚡ TOMBOL COPY LINK MATERI */}
           <div className="flex flex-wrap items-center gap-3 mt-3">
             <button
               onClick={() => {
@@ -518,7 +520,7 @@ const MaterialDetail = () => {
           </div>
         )}
 
-        {/* MATERI BACAAN — DIBUNGKUS .material-body */}
+        {/* MATERI BACAAN */}
         {hasContent && (
           <div className="card-elevated rounded-2xl overflow-hidden mb-4 sm:mb-6">
             <div className="flex items-center gap-3 px-5 sm:px-6 py-4 border-b border-gray-100 dark:border-slate-700/50">
