@@ -1,5 +1,5 @@
 // api/delete-user.js
-const admin = require('firebase-admin');
+import admin from 'firebase-admin';
 
 // Inisialisasi Firebase Admin (hanya sekali)
 if (!admin.apps.length) {
@@ -16,7 +16,7 @@ if (!admin.apps.length) {
   }
 }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -61,4 +61,4 @@ module.exports = async function handler(req, res) {
     console.error('Error saat menghapus user:', error);
     return res.status(500).json({ error: error.message || 'Gagal menghapus akun' });
   }
-};
+}
