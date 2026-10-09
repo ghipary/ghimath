@@ -5,3 +5,6 @@ dist-ssr
 *.local
 serviceAccount.json
 backups/
+firebase-debug.log
+firestore-debug.log
+*-debug.log

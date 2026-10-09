@@ -1,0 +1,75 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function validScore() {
+      return request.resource.data.score is int
+        && request.resource.data.score >= 0
+        && request.resource.data.score <= 100;
+    }
+
+    // USERS
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow create: if isOwner(userId)
+        && request.resource.data.role == 'user';
+      allow update: if isAdmin() || (
+        isOwner(userId) &&
+        !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['role', 'uid', 'email'])
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /materials/{materialId} { allow read: if true; allow write: if isAdmin(); }
+    match /questions/{questionId} { allow read: if true; allow write: if isAdmin(); }
+    match /quizQuestions/{questionId} { allow read: if true; allow write: if isAdmin(); }
+    match /formulas/{formulaId} { allow read: if true; allow write: if isAdmin(); }
+    match /examPackages/{examId} { allow read: if true; allow write: if isAdmin(); }
+
+    // QUIZ RESULTS — owner boleh perbaiki skornya
+    match /quizResults/{resultId} {
+      allow read: if request.auth != null;
+      allow create: if isOwner(request.resource.data.userId) && validScore();
+      allow update: if isAdmin() || (isOwner(resource.data.userId) && validScore());
+      allow delete: if isAdmin();
+    }
+
+    // PROGRESS
+    match /progress/{progressId} {
+      allow read, update, delete: if isOwner(resource.data.userId) || isAdmin();
+      allow create: if isOwner(request.resource.data.userId);
+    }
+
+    // DAILY CHALLENGES
+    match /dailyChallenges/{challengeId} {
+      allow read, update, delete: if isOwner(resource.data.userId) || isAdmin();
+      allow create: if isOwner(request.resource.data.userId);
+    }
+
+    // EXAM RESULTS
+    match /examResults/{resultId} {
+      allow read: if request.auth != null;
+      allow create: if isOwner(request.resource.data.userId) && validScore();
+      allow update: if isAdmin() || isOwner(resource.data.userId);
+      allow delete: if isAdmin();
+    }
+
+    // FEEDBACK
+    match /feedback/{feedbackId} {
+      allow read: if isAdmin();
+      allow create: if isOwner(request.resource.data.userId);
+      allow update, delete: if isAdmin();
+    }
+  }
+}
